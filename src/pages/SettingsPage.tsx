@@ -155,10 +155,12 @@ export const SettingsPage: React.FC = () => {
         {/* Appearance Card */}
         <div
           className={`p-5 rounded-2xl border space-y-3 ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-2xs'
+            isDark
+              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+              : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
           }`}
         >
-          <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase">
+          <div className={`flex items-center gap-2 ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'} text-xs font-bold uppercase`}>
             {isDark ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
             <span>{lang === 'ar' ? 'المظهر (Theme)' : 'Appearance'}</span>
           </div>
@@ -172,10 +174,10 @@ export const SettingsPage: React.FC = () => {
               onClick={() => updateSettings({ theme: 'dark' })}
               className={`py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 cursor-pointer ${
                 settings.theme === 'dark'
-                  ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                  ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
                   : isDark
-                  ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                  : 'bg-slate-100 border-slate-300 text-slate-700'
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
               }`}
             >
               <Moon className="w-3.5 h-3.5" />
@@ -186,10 +188,10 @@ export const SettingsPage: React.FC = () => {
               onClick={() => updateSettings({ theme: 'light' })}
               className={`py-2.5 px-3 rounded-xl text-xs font-bold border flex items-center justify-center gap-1.5 cursor-pointer ${
                 settings.theme === 'light'
-                  ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                  ? 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]'
                   : isDark
-                  ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                  : 'bg-slate-100 border-slate-300 text-slate-700'
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
               }`}
             >
               <Sun className="w-3.5 h-3.5" />
@@ -201,10 +203,12 @@ export const SettingsPage: React.FC = () => {
         {/* Language Card */}
         <div
           className={`p-5 rounded-2xl border space-y-3 ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-2xs'
+            isDark
+              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+              : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
           }`}
         >
-          <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase">
+          <div className={`flex items-center gap-2 ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'} text-xs font-bold uppercase`}>
             <Globe className="w-4 h-4" />
             <span>{lang === 'ar' ? 'اللغة (Language)' : 'Language'}</span>
           </div>
@@ -218,10 +222,10 @@ export const SettingsPage: React.FC = () => {
               onClick={() => updateSettings({ language: 'en' })}
               className={`py-2.5 px-3 rounded-xl text-xs font-bold border cursor-pointer ${
                 settings.language === 'en'
-                  ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                  ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
                   : isDark
-                  ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                  : 'bg-slate-100 border-slate-300 text-slate-700'
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
               }`}
             >
               English
@@ -231,10 +235,10 @@ export const SettingsPage: React.FC = () => {
               onClick={() => updateSettings({ language: 'ar' })}
               className={`py-2.5 px-3 rounded-xl text-xs font-bold border cursor-pointer ${
                 settings.language === 'ar'
-                  ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                  ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
                   : isDark
-                  ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                  : 'bg-slate-100 border-slate-300 text-slate-700'
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
               }`}
             >
               العربية (RTL)
@@ -245,10 +249,12 @@ export const SettingsPage: React.FC = () => {
         {/* Default Weight Unit Card */}
         <div
           className={`p-5 rounded-2xl border space-y-3 ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-2xs'
+            isDark
+              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+              : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
           }`}
         >
-          <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase">
+          <div className={`flex items-center gap-2 ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'} text-xs font-bold uppercase`}>
             <Scale className="w-4 h-4" />
             <span>
               {lang === 'ar' ? 'وحدة الوزن الافتراضية' : 'Preferred Weight Unit'}
@@ -264,10 +270,10 @@ export const SettingsPage: React.FC = () => {
               onClick={() => updateSettings({ preferredWeightUnit: 'kg' })}
               className={`py-2.5 px-3 rounded-xl font-mono-num text-xs font-bold border cursor-pointer ${
                 settings.preferredWeightUnit === 'kg'
-                  ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                  ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
                   : isDark
-                  ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                  : 'bg-slate-100 border-slate-300 text-slate-700'
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
               }`}
             >
               Kilograms (kg)
@@ -277,10 +283,10 @@ export const SettingsPage: React.FC = () => {
               onClick={() => updateSettings({ preferredWeightUnit: 'lbs' })}
               className={`py-2.5 px-3 rounded-xl font-mono-num text-xs font-bold border cursor-pointer ${
                 settings.preferredWeightUnit === 'lbs'
-                  ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                  ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
                   : isDark
-                  ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                  : 'bg-slate-100 border-slate-300 text-slate-700'
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
               }`}
             >
               Pounds (lbs)
@@ -292,11 +298,13 @@ export const SettingsPage: React.FC = () => {
       {/* 2. WEEKLY SCHEDULE EDITOR SHORTCUT */}
       <div
         className={`p-5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-          isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-2xs'
+          isDark
+            ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+            : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
         }`}
       >
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-xs font-bold uppercase text-emerald-400">
+          <div className={`flex items-center gap-2 text-xs font-bold uppercase ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
             <ClipboardList className="w-4 h-4" />
             <span>
               {lang === 'ar'
@@ -313,7 +321,7 @@ export const SettingsPage: React.FC = () => {
 
         <button
           onClick={() => setCurrentSection('schedule')}
-          className="px-4 py-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 font-display font-bold text-xs shrink-0 cursor-pointer"
+          className={`px-4 py-2.5 rounded-xl ${isDark ? 'bg-[hsl(75,92%,56%)]/15 hover:bg-[hsl(75,92%,56%)]/25 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30' : 'bg-[hsl(76,78%,42%)]/10 hover:bg-[hsl(76,78%,42%)]/15 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/30'} border font-display font-bold text-xs shrink-0 cursor-pointer`}
         >
           {lang === 'ar' ? 'فتح محرر الجدول الأسبوعي' : 'Edit Weekly Schedule'}
         </button>
@@ -322,12 +330,14 @@ export const SettingsPage: React.FC = () => {
       {/* 3. DATA MANAGEMENT: EXPORT BACKUP & IMPORT BACKUP */}
       <div
         className={`p-5 sm:p-6 rounded-2xl border space-y-6 ${
-          isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          isDark
+            ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+            : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
         }`}
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-inherit">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold uppercase">
+            <div className={`flex items-center gap-2 ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'} text-xs font-bold uppercase`}>
               <Database className="w-4 h-4" />
               <span>
                 {lang === 'ar'
@@ -347,8 +357,8 @@ export const SettingsPage: React.FC = () => {
             <span
               className={`px-3 py-1 rounded-lg border ${
                 isDark
-                  ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                  : 'bg-slate-100 border-slate-200 text-slate-700'
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
               }`}
             >
               {workouts.length} {lang === 'ar' ? 'تمارين' : 'Workouts'} •{' '}
@@ -364,12 +374,12 @@ export const SettingsPage: React.FC = () => {
           <div
             className={`p-5 rounded-xl border flex flex-col justify-between gap-4 ${
               isDark
-                ? 'bg-[#181F2C]/80 border-[#2D3748]'
-                : 'bg-slate-50 border-slate-200'
+                ? 'bg-[hsl(240,5%,11%)]/80 border-[hsl(240,4%,19%)]'
+                : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
             }`}
           >
             <div className="space-y-2">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center">
+              <div className={`w-10 h-10 rounded-xl ${isDark ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)]'} border flex items-center justify-center`}>
                 <Download className="w-5 h-5" />
               </div>
               <h3 className="font-display font-bold text-base">
@@ -384,7 +394,7 @@ export const SettingsPage: React.FC = () => {
 
             <button
               onClick={handleExportBackup}
-              className="w-full py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+              className={`w-full py-3 px-4 rounded-xl ${isDark ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,62%)]' : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)]'} text-[hsl(240,10%,9%)] font-display font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg ${isDark ? 'shadow-[hsl(75,92%,56%)]/20' : 'shadow-[hsl(76,78%,42%)]/20'} transition-all cursor-pointer`}
             >
               <Download className="w-4 h-4" />
               <span>
@@ -399,8 +409,8 @@ export const SettingsPage: React.FC = () => {
           <div
             className={`p-5 rounded-xl border flex flex-col justify-between gap-4 ${
               isDark
-                ? 'bg-[#181F2C]/80 border-[#2D3748]'
-                : 'bg-slate-50 border-slate-200'
+                ? 'bg-[hsl(240,5%,11%)]/80 border-[hsl(240,4%,19%)]'
+                : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
             }`}
           >
             <div className="space-y-2">
@@ -479,13 +489,13 @@ export const SettingsPage: React.FC = () => {
           <div
             className={`p-5 rounded-2xl border-2 space-y-5 ${
               isDark
-                ? 'bg-[#0E131B] border-emerald-500/50'
-                : 'bg-emerald-50/40 border-emerald-400'
+                ? 'bg-[hsl(240,6%,5.5%)] border-[hsl(75,92%,56%)]/50'
+                : 'bg-[hsl(76,78%,42%)]/5 border-[hsl(76,78%,42%)]/40'
             }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400">
+                <span className={`inline-flex items-center gap-1.5 text-xs font-bold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                   <CheckCircle2 className="w-4 h-4" />
                   <span>
                     {lang === 'ar'
@@ -514,10 +524,12 @@ export const SettingsPage: React.FC = () => {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
               <div
                 className={`p-3 rounded-xl border ${
-                  isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+                  isDark
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
+                    : 'bg-white border-[hsl(40,10%,88%)]'
                 }`}
               >
-                <div className="font-mono-num text-lg font-bold text-emerald-400">
+                <div className={`font-mono-num text-lg font-bold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                   {validationResult.summary.totalWorkouts}
                 </div>
                 <div className="text-[11px] text-gray-400">
@@ -527,7 +539,9 @@ export const SettingsPage: React.FC = () => {
 
               <div
                 className={`p-3 rounded-xl border ${
-                  isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+                  isDark
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
+                    : 'bg-white border-[hsl(40,10%,88%)]'
                 }`}
               >
                 <div className="font-mono-num text-lg font-bold text-cyan-400">
@@ -540,7 +554,9 @@ export const SettingsPage: React.FC = () => {
 
               <div
                 className={`p-3 rounded-xl border ${
-                  isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+                  isDark
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
+                    : 'bg-white border-[hsl(40,10%,88%)]'
                 }`}
               >
                 <div className="font-mono-num text-lg font-bold text-purple-400">
@@ -553,7 +569,9 @@ export const SettingsPage: React.FC = () => {
 
               <div
                 className={`p-3 rounded-xl border ${
-                  isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+                  isDark
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
+                    : 'bg-white border-[hsl(40,10%,88%)]'
                 }`}
               >
                 <div className="font-mono-num text-lg font-bold">
@@ -580,13 +598,15 @@ export const SettingsPage: React.FC = () => {
                   onClick={() => setImportMode('merge')}
                   className={`p-4 rounded-xl border text-start transition-all cursor-pointer ${
                     importMode === 'merge'
-                      ? 'bg-emerald-500/15 border-emerald-500 ring-1 ring-emerald-500/40'
+                      ? isDark
+                        ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)] ring-1 ring-[hsl(75,92%,56%)]/40'
+                        : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)] ring-1 ring-[hsl(76,78%,42%)]/30'
                       : isDark
-                      ? 'bg-[#121721] border-[#2D3748]'
-                      : 'bg-white border-slate-200'
+                      ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
+                      : 'bg-white border-[hsl(40,10%,88%)]'
                   }`}
                 >
-                  <div className="font-display font-bold text-sm text-emerald-400">
+                  <div className={`font-display font-bold text-sm ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                     {lang === 'ar'
                       ? 'الخيار B: دمج البيانات (Merge)'
                       : 'OPTION B: MERGE (Recommended)'}
@@ -606,8 +626,8 @@ export const SettingsPage: React.FC = () => {
                     importMode === 'replace'
                       ? 'bg-amber-500/15 border-amber-500 ring-1 ring-amber-500/40'
                       : isDark
-                      ? 'bg-[#121721] border-[#2D3748]'
-                      : 'bg-white border-slate-200'
+                      ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
+                      : 'bg-white border-[hsl(40,10%,88%)]'
                   }`}
                 >
                   <div className="font-display font-bold text-sm text-amber-400">
@@ -661,8 +681,8 @@ export const SettingsPage: React.FC = () => {
                 onClick={() => setValidationResult(null)}
                 className={`px-4 py-2.5 rounded-xl text-xs font-semibold border cursor-pointer ${
                   isDark
-                    ? 'bg-[#121721] border-[#2D3748] text-gray-300'
-                    : 'bg-white border-slate-300 text-slate-700'
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-gray-300'
+                    : 'bg-white border-[hsl(40,10%,85%)] text-slate-700'
                 }`}
               >
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
@@ -675,7 +695,9 @@ export const SettingsPage: React.FC = () => {
                 className={`px-5 py-2.5 rounded-xl font-display font-bold text-xs cursor-pointer ${
                   importMode === 'replace'
                     ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
-                    : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950'
+                    : isDark
+                    ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,62%)] text-[hsl(240,10%,9%)]'
+                    : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white'
                 }`}
               >
                 {isImporting
@@ -696,11 +718,11 @@ export const SettingsPage: React.FC = () => {
 
         {/* IMPORT SUCCESS SUMMARY BANNER */}
         {lastImportSummary && (
-          <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/40 text-emerald-300 flex items-start justify-between gap-3">
+          <div className={`p-4 rounded-xl ${isDark ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/35 text-[hsl(76,78%,42%)]'} border flex items-start justify-between gap-3`}>
             <div className="flex items-start gap-2.5 text-xs sm:text-sm">
-              <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
+              <CheckCircle2 className={`w-5 h-5 ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'} shrink-0 mt-0.5`} />
               <div>
-                <div className="font-bold text-emerald-400">
+                <div className={`font-bold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                   {lang === 'ar'
                     ? 'اكتمل استيراد النسخة الاحتياطية بنجاح!'
                     : 'Backup Import Completed Successfully!'}
@@ -728,7 +750,9 @@ export const SettingsPage: React.FC = () => {
         {/* Device Transfer Workflow */}
         <div
           className={`p-5 rounded-2xl border space-y-3 ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-2xs'
+            isDark
+              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+              : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
           }`}
         >
           <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase">
@@ -742,7 +766,7 @@ export const SettingsPage: React.FC = () => {
 
           <div className={`text-xs space-y-2 leading-relaxed ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
             <p>
-              <strong className="text-emerald-400">
+              <strong className={isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}>
                 {lang === 'ar' ? 'على الهاتف القديم:' : '1. On Old Phone:'}
               </strong>{' '}
               {lang === 'ar'
@@ -763,7 +787,9 @@ export const SettingsPage: React.FC = () => {
         {/* Local Storage Reminder */}
         <div
           className={`p-5 rounded-2xl border space-y-3 ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-2xs'
+            isDark
+              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+              : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
           }`}
         >
           <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase">
@@ -777,7 +803,7 @@ export const SettingsPage: React.FC = () => {
 
           <div className={`text-xs space-y-2 leading-relaxed ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
             <p className="flex items-start gap-2">
-              <HardDrive className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <HardDrive className={`w-4 h-4 ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'} shrink-0 mt-0.5`} />
               <span>
                 {lang === 'ar'
                   ? 'يتم تخزين جميع تمارينك محلياً على جهازك داخل المتصفح (IndexedDB) بدون أي خوادم سحابية أو حسابات.'
