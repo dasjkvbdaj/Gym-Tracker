@@ -164,13 +164,13 @@ export const Dashboard: React.FC = () => {
       <div
         className={`rounded-2xl p-5 sm:p-6 border relative overflow-hidden ${
           isDark
-            ? 'bg-gradient-to-br from-[#121721] via-[#121721] to-[#152225] border-[#1F2937]'
-            : 'bg-white border-slate-200 shadow-sm'
+            ? 'bg-gradient-to-br from-[hsl(240,5%,7.5%)] via-[hsl(240,5%,7.5%)] to-[hsl(240,5%,11%)] border-[hsl(240,4%,16%)]'
+            : 'bg-white border-[hsl(40,10%,88%)] shadow-sm'
         }`}
       >
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
           <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/25">
               <CalendarIcon className="w-3.5 h-3.5" />
               <span>{formatFullDate(todayStr, lang)}</span>
             </div>
@@ -185,7 +185,7 @@ export const Dashboard: React.FC = () => {
                       ? `خطة ${translateDayName(todayMeta.dayOfWeek, lang)} المقترحة: `
                       : `${todayMeta.dayOfWeek}'s Scheduled Plan: `}
                   </span>
-                  <span className="font-semibold text-emerald-400">
+                  <span className={`font-semibold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                     {todayPlan.title}
                   </span>
                 </>
@@ -206,7 +206,7 @@ export const Dashboard: React.FC = () => {
               <>
                 <button
                   onClick={handleStartTodayPlan}
-                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                  className={`w-full sm:w-auto px-5 py-3 rounded-xl ${isDark ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)]' : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,36%)]'} text-slate-950 font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer`}
                 >
                   <Play className="w-4 h-4 fill-current" />
                   <span>{t.startWorkout}</span>
@@ -222,7 +222,7 @@ export const Dashboard: React.FC = () => {
                   }
                   className={`w-full sm:w-auto px-4 py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 border transition-colors cursor-pointer ${
                     isDark
-                      ? 'bg-[#1A2130] border-[#2D3748] text-cyan-400 hover:bg-[#222B3D]'
+                      ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-cyan-400 hover:bg-[hsl(240,5%,14%)]'
                       : 'bg-cyan-50 border-cyan-200 text-cyan-800 hover:bg-cyan-100'
                   }`}
                 >
@@ -239,14 +239,14 @@ export const Dashboard: React.FC = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+            isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between">
             <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
               {t.totalSessions}
             </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)] flex items-center justify-center">
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
@@ -260,14 +260,14 @@ export const Dashboard: React.FC = () => {
 
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+            isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between">
             <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
               {t.thisWeek}
             </span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)] flex items-center justify-center">
               <Activity className="w-4 h-4" />
             </div>
           </div>
@@ -281,7 +281,7 @@ export const Dashboard: React.FC = () => {
 
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+            isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between">
@@ -302,7 +302,7 @@ export const Dashboard: React.FC = () => {
 
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+            isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between">
@@ -328,11 +328,11 @@ export const Dashboard: React.FC = () => {
       {stats.lastWorkout ? (
         <div
           className={`rounded-xl p-5 border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+            isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
           }`}
         >
           <div className="space-y-1">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+            <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
               <History className="w-3.5 h-3.5" />
               <span>{t.lastCompletedWorkout}</span>
             </div>
@@ -371,8 +371,8 @@ export const Dashboard: React.FC = () => {
             onClick={() => setCurrentSection('history')}
             className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border self-start sm:self-center transition-colors cursor-pointer ${
               isDark
-                ? 'bg-[#1A2130] border-[#2D3748] text-gray-200 hover:border-emerald-500/40'
-                : 'bg-slate-100 border-slate-200 text-slate-800 hover:bg-slate-200'
+                ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200 hover:border-[hsl(75,92%,56%)]/40'
+                : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-800 hover:bg-[hsl(40,15%,95%)]'
             }`}
           >
             <span>{lang === 'ar' ? 'عرض السجل الكامل' : 'View in History'}</span>
@@ -383,11 +383,11 @@ export const Dashboard: React.FC = () => {
         <div
           className={`rounded-2xl p-6 sm:p-8 border text-center space-y-4 ${
             isDark
-              ? 'bg-[#121721]/80 border-dashed border-[#2D3748]'
-              : 'bg-white border-dashed border-slate-300'
+              ? 'bg-[hsl(240,5%,7.5%)]/80 border-dashed border-[hsl(240,4%,19%)]'
+              : 'bg-white border-dashed border-[hsl(40,10%,85%)]'
           }`}
         >
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
+          <div className={`w-12 h-12 rounded-2xl ${isDark ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/25 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/25 text-[hsl(76,78%,42%)]'} border flex items-center justify-center mx-auto`}>
             <Dumbbell className="w-6 h-6" />
           </div>
           <div className="max-w-md mx-auto space-y-1.5">
@@ -399,7 +399,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
             <button
               onClick={handleStartTodayPlan}
-              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-semibold text-sm flex items-center gap-2 shadow-md cursor-pointer"
+              className={`px-5 py-2.5 rounded-xl ${isDark ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)]' : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,36%)]'} text-slate-950 font-display font-semibold text-sm flex items-center gap-2 shadow-md cursor-pointer`}
             >
               <Play className="w-4 h-4 fill-current" />
               <span>{t.startWorkout}</span>
@@ -408,8 +408,8 @@ export const Dashboard: React.FC = () => {
               onClick={() => setCurrentSection('schedule')}
               className={`px-4 py-2.5 rounded-xl text-sm font-medium border cursor-pointer ${
                 isDark
-                  ? 'bg-[#1A2130] border-[#2D3748] text-gray-300 hover:bg-[#222B3D]'
-                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300 hover:bg-[hsl(240,5%,14%)]'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700 hover:bg-[hsl(40,15%,95%)]'
               }`}
             >
               {lang === 'ar' ? 'استعراض جدول الأسبوع' : 'Explore Weekly Schedule'}
@@ -423,7 +423,7 @@ export const Dashboard: React.FC = () => {
         {/* Weekly Activity Chart (7 cols) */}
         <div
           className={`lg:col-span-7 rounded-xl p-5 border flex flex-col justify-between ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+            isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between mb-4">
@@ -437,7 +437,7 @@ export const Dashboard: React.FC = () => {
                   : 'Actual recorded sets and sessions completed this week'}
               </p>
             </div>
-            <span className="text-xs font-mono-num px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <span className={`text-xs font-mono-num px-2.5 py-1 rounded-lg ${isDark ? 'bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/20' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/20'} border`}>
               {formatShortDate(weekRange.startOfWeek, lang)} –{' '}
               {formatShortDate(weekRange.endOfWeek, lang)}
             </span>
@@ -451,7 +451,7 @@ export const Dashboard: React.FC = () => {
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
-                  stroke={isDark ? '#1F2937' : '#E2E8F0'}
+                  stroke={isDark ? 'hsl(240, 4%, 16%)' : 'hsl(40, 10%, 88%)'}
                   vertical={false}
                 />
                 <XAxis
@@ -468,8 +468,8 @@ export const Dashboard: React.FC = () => {
                 />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: isDark ? '#121721' : '#FFFFFF',
-                    borderColor: isDark ? '#2D3748' : '#CBD5E1',
+                    backgroundColor: isDark ? 'hsl(240, 5%, 7.5%)' : '#FFFFFF',
+                    borderColor: isDark ? 'hsl(240, 4%, 19%)' : 'hsl(40, 10%, 88%)',
                     borderRadius: '12px',
                     color: isDark ? '#F3F4F6' : '#0F172A',
                     fontSize: '12px',
@@ -488,7 +488,7 @@ export const Dashboard: React.FC = () => {
                 <Bar
                   dataKey="sets"
                   name="sets"
-                  fill="#10B981"
+                  fill={isDark ? 'hsl(75, 92%, 56%)' : 'hsl(76, 78%, 42%)'}
                   radius={[6, 6, 0, 0]}
                   maxBarSize={36}
                 />
@@ -507,7 +507,7 @@ export const Dashboard: React.FC = () => {
         {/* Predefined Weekly Schedule Overview (5 cols) */}
         <div
           className={`lg:col-span-5 rounded-xl p-5 border flex flex-col justify-between ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+            isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between mb-3">
@@ -521,7 +521,7 @@ export const Dashboard: React.FC = () => {
             </div>
             <button
               onClick={() => setCurrentSection('schedule')}
-              className="text-xs font-semibold text-emerald-400 hover:underline cursor-pointer"
+              className={`text-xs font-semibold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'} hover:underline cursor-pointer`}
             >
               {lang === 'ar' ? 'تعديل الجدول' : 'Customize'}
             </button>
@@ -536,18 +536,18 @@ export const Dashboard: React.FC = () => {
                   className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition-colors ${
                     isToday
                       ? isDark
-                        ? 'bg-emerald-500/10 border-emerald-500/40'
-                        : 'bg-emerald-50 border-emerald-300'
+                        ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/40'
+                        : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30'
                       : isDark
-                      ? 'bg-[#181F2C]/60 border-[#1F2937]'
-                      : 'bg-slate-50 border-slate-200'
+                      ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,16%)]'
+                      : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span
                       className={`font-display font-bold w-16 shrink-0 ${
                         isToday
-                          ? 'text-emerald-400'
+                          ? isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
                           : isDark
                           ? 'text-gray-300'
                           : 'text-slate-700'
@@ -583,8 +583,8 @@ export const Dashboard: React.FC = () => {
                       }
                       className={`px-2 py-1 rounded text-[11px] font-semibold shrink-0 transition-colors cursor-pointer ${
                         isDark
-                          ? 'bg-[#222B3D] hover:bg-emerald-500 hover:text-slate-950 text-emerald-400'
-                          : 'bg-emerald-100 hover:bg-emerald-500 hover:text-white text-emerald-800'
+                          ? 'bg-[hsl(240,5%,11%)] hover:bg-[hsl(75,92%,56%)] hover:text-slate-950 text-[hsl(75,92%,56%)]'
+                          : 'bg-[hsl(76,78%,42%)]/10 hover:bg-[hsl(76,78%,42%)] hover:text-white text-[hsl(76,78%,42%)]'
                       }`}
                       title={`Start ${dayPlan.title} today`}
                     >
@@ -603,14 +603,14 @@ export const Dashboard: React.FC = () => {
         {/* Recent Workout Activity */}
         <div
           className={`rounded-xl p-5 border ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+            isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-display font-bold">{t.recentActivity}</h2>
             <button
               onClick={() => setCurrentSection('history')}
-              className="text-xs font-semibold text-emerald-400 hover:underline cursor-pointer"
+              className={`text-xs font-semibold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'} hover:underline cursor-pointer`}
             >
               {lang === 'ar' ? 'عرض الكل' : 'View All'}
             </button>
@@ -635,8 +635,8 @@ export const Dashboard: React.FC = () => {
                     onClick={() => setCurrentSection('history')}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                       isDark
-                        ? 'bg-[#181F2C]/70 border-[#1F2937] hover:border-emerald-500/40'
-                        : 'bg-slate-50 border-slate-200 hover:border-emerald-400'
+                        ? 'bg-[hsl(240,5%,11%)]/70 border-[hsl(240,4%,16%)] hover:border-[hsl(75,92%,56%)]/40'
+                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)] hover:border-[hsl(76,78%,42%)]'
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -646,7 +646,7 @@ export const Dashboard: React.FC = () => {
                             className={`w-2 h-2 rounded-full ${
                               session.workoutType === 'cardio'
                                 ? 'bg-cyan-400'
-                                : 'bg-emerald-400'
+                                : isDark ? 'bg-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]'
                             }`}
                           />
                           <h3 className="font-display font-semibold text-sm">
@@ -672,7 +672,7 @@ export const Dashboard: React.FC = () => {
                             )}
                           </span>
                         ) : (
-                          <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                          <span className={`px-2 py-0.5 rounded ${isDark ? 'bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/25' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/25'} border`}>
                             {session.exercises.length}{' '}
                             {lang === 'ar' ? 'تمارين' : 'ex'} • {totalSets}{' '}
                             {lang === 'ar' ? 'مجموعات' : 'sets'}
@@ -688,8 +688,8 @@ export const Dashboard: React.FC = () => {
                             key={mg}
                             className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
                               isDark
-                                ? 'bg-[#121721] text-gray-300 border border-[#2D3748]'
-                                : 'bg-white text-slate-600 border border-slate-200'
+                                ? 'bg-[hsl(240,5%,7.5%)] text-gray-300 border border-[hsl(240,4%,19%)]'
+                                : 'bg-white text-slate-600 border border-[hsl(40,10%,88%)]'
                             }`}
                           >
                             {translateMuscleGroup(mg, lang)}
@@ -707,7 +707,7 @@ export const Dashboard: React.FC = () => {
         {/* Recent Exercise Progression */}
         <div
           className={`rounded-xl p-5 border ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+            isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
           }`}
         >
           <div className="flex items-center justify-between mb-4">
@@ -716,7 +716,7 @@ export const Dashboard: React.FC = () => {
             </h2>
             <button
               onClick={() => setCurrentSection('progress')}
-              className="text-xs font-semibold text-emerald-400 hover:underline cursor-pointer"
+              className={`text-xs font-semibold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'} hover:underline cursor-pointer`}
             >
               {lang === 'ar' ? 'تحليل التطور' : 'Full Progress'}
             </button>
@@ -739,8 +739,8 @@ export const Dashboard: React.FC = () => {
                     onClick={() => openProgressForExercise(prog.exerciseId)}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                       isDark
-                        ? 'bg-[#181F2C]/70 border-[#1F2937] hover:border-emerald-500/40'
-                        : 'bg-slate-50 border-slate-200 hover:border-emerald-400'
+                        ? 'bg-[hsl(240,5%,11%)]/70 border-[hsl(240,4%,16%)] hover:border-[hsl(75,92%,56%)]/40'
+                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)] hover:border-[hsl(76,78%,42%)]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -761,7 +761,7 @@ export const Dashboard: React.FC = () => {
                         <span className={isDark ? 'text-gray-400' : 'text-slate-500'}>
                           {lang === 'ar' ? 'الأخير:' : 'Latest:'}
                         </span>
-                        <span className="font-mono-num font-bold text-emerald-400">
+                        <span className={`font-mono-num font-bold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                           {cur.bestWeightSet
                             ? formatSetPerformance(
                                 cur.bestWeightSet.weight,
