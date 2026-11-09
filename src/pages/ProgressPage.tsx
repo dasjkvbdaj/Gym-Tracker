@@ -160,7 +160,9 @@ export const ProgressPage: React.FC = () => {
         {/* Timeframe Selector: All Time | Monthly | Weekly */}
         <div
           className={`inline-flex rounded-xl p-1 border self-start sm:self-auto ${
-            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200'
+            isDark
+              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+              : 'bg-white border-[hsl(40,10%,88%)]'
           }`}
         >
           {(
@@ -175,7 +177,9 @@ export const ProgressPage: React.FC = () => {
               onClick={() => setTimeframe(tf.id)}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 timeframe === tf.id
-                  ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                  ? isDark
+                    ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] shadow-xs'
+                    : 'bg-[hsl(76,78%,42%)] text-white shadow-xs'
                   : isDark
                   ? 'text-gray-400 hover:text-gray-200'
                   : 'text-slate-600 hover:text-slate-900'
@@ -190,7 +194,9 @@ export const ProgressPage: React.FC = () => {
       {/* EXERCISE SELECTOR BAR */}
       <div
         className={`p-4 rounded-2xl border space-y-3.5 ${
-          isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-2xs'
+          isDark
+            ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+            : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
         }`}
       >
         {/* Muscle Group Filter Pills */}
@@ -199,10 +205,12 @@ export const ProgressPage: React.FC = () => {
             onClick={() => setMuscleFilter('ALL')}
             className={`px-3 py-1 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
               muscleFilter === 'ALL'
-                ? 'bg-emerald-500 text-slate-950'
+                ? isDark
+                  ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]'
+                  : 'bg-[hsl(76,78%,42%)] text-white'
                 : isDark
-                ? 'bg-[#181F2C] text-gray-300'
-                : 'bg-slate-100 text-slate-700'
+                ? 'bg-[hsl(240,5%,11%)] text-gray-300'
+                : 'bg-[hsl(40,15%,94%)] text-slate-700'
             }`}
           >
             {lang === 'ar' ? 'الكل' : 'All Groups'}
@@ -213,10 +221,12 @@ export const ProgressPage: React.FC = () => {
               onClick={() => setMuscleFilter(mg)}
               className={`px-3 py-1 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
                 muscleFilter === mg
-                  ? 'bg-emerald-500 text-slate-950'
+                  ? isDark
+                    ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]'
+                    : 'bg-[hsl(76,78%,42%)] text-white'
                   : isDark
-                  ? 'bg-[#181F2C] text-gray-300'
-                  : 'bg-slate-100 text-slate-700'
+                  ? 'bg-[hsl(240,5%,11%)] text-gray-300'
+                  : 'bg-[hsl(40,15%,94%)] text-slate-700'
               }`}
             >
               {translateMuscleGroup(mg, lang)}
@@ -236,10 +246,10 @@ export const ProgressPage: React.FC = () => {
             id="progress-exercise-select"
             value={activeExercise?.id || ''}
             onChange={(e) => setSelectedProgressExerciseId(e.target.value)}
-            className={`flex-1 px-3.5 py-2.5 rounded-xl font-display font-bold text-sm border focus:outline-none focus:border-emerald-500 ${
+            className={`flex-1 px-3.5 py-2.5 rounded-xl font-display font-bold text-sm border focus:outline-none ${
               isDark
-                ? 'bg-[#181F2C] border-[#2D3748] text-white'
-                : 'bg-slate-50 border-slate-300 text-slate-900'
+                ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-white focus:border-[hsl(75,92%,56%)]'
+                : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,85%)] text-slate-900 focus:border-[hsl(76,78%,42%)]'
             }`}
           >
             {filteredExercises.map((ex) => {
@@ -259,7 +269,9 @@ export const ProgressPage: React.FC = () => {
       {!progressSummary || progressSummary.totalSessions === 0 ? (
         <div
           className={`p-10 rounded-2xl border border-dashed text-center space-y-3 ${
-            isDark ? 'border-[#2D3748] text-gray-400' : 'border-slate-300 text-slate-500'
+            isDark
+              ? 'border-[hsl(240,4%,19%)] text-gray-400'
+              : 'border-[hsl(40,10%,85%)] text-slate-500'
           }`}
         >
           <TrendingUp className="w-8 h-8 mx-auto opacity-40" />
@@ -282,17 +294,17 @@ export const ProgressPage: React.FC = () => {
             <div
               className={`p-4 sm:p-5 rounded-xl border ${
                 isDark
-                  ? 'bg-[#121721] border-[#1F2937]'
-                  : 'bg-white border-slate-200 shadow-2xs'
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                  : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>
                   {lang === 'ar' ? 'أعلى وزن مسجل' : 'Best Recorded Weight'}
                 </span>
-                <Award className="w-4 h-4 text-emerald-400" />
+                <Award className={`w-4 h-4 ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`} />
               </div>
-              <div className="mt-2 font-mono-num text-xl sm:text-2xl font-bold text-emerald-400">
+              <div className={`mt-2 font-mono-num text-xl sm:text-2xl font-bold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                 {progressSummary.bestWeightRecord
                   ? formatOriginalWeight(
                       progressSummary.bestWeightRecord.weight,
@@ -318,8 +330,8 @@ export const ProgressPage: React.FC = () => {
             <div
               className={`p-4 sm:p-5 rounded-xl border ${
                 isDark
-                  ? 'bg-[#121721] border-[#1F2937]'
-                  : 'bg-white border-slate-200 shadow-2xs'
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                  : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between text-xs text-gray-400">
@@ -357,15 +369,15 @@ export const ProgressPage: React.FC = () => {
             <div
               className={`p-4 sm:p-5 rounded-xl border ${
                 isDark
-                  ? 'bg-[#121721] border-[#1F2937]'
-                  : 'bg-white border-slate-200 shadow-2xs'
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                  : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>
                   {lang === 'ar' ? 'الأداء الأخير' : 'Most Recent Session'}
                 </span>
-                <Dumbbell className="w-4 h-4 text-emerald-400" />
+                <Dumbbell className={`w-4 h-4 ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`} />
               </div>
               <div className="mt-2 font-mono-num text-base sm:text-lg font-bold">
                 {progressSummary.currentSession?.bestWeightSet
@@ -391,8 +403,8 @@ export const ProgressPage: React.FC = () => {
             <div
               className={`p-4 sm:p-5 rounded-xl border ${
                 isDark
-                  ? 'bg-[#121721] border-[#1F2937]'
-                  : 'bg-white border-slate-200 shadow-2xs'
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                  : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between text-xs text-gray-400">
@@ -420,8 +432,8 @@ export const ProgressPage: React.FC = () => {
           <div
             className={`rounded-2xl border p-5 sm:p-6 ${
               isDark
-                ? 'bg-[#121721] border-[#1F2937]'
-                : 'bg-white border-slate-200 shadow-xs'
+                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
             }`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-inherit">
@@ -446,7 +458,9 @@ export const ProgressPage: React.FC = () => {
                     <span
                       className={`px-3 py-1 rounded-lg font-mono-num text-xs font-bold border ${
                         progressSummary.comparisonDelta.weightDiffOriginal > 0
-                          ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                          ? isDark
+                            ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
+                            : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/30'
                           : progressSummary.comparisonDelta.weightDiffOriginal < 0
                           ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
                           : 'bg-gray-500/15 text-gray-300 border-gray-500/30'
@@ -458,7 +472,11 @@ export const ProgressPage: React.FC = () => {
                       {progressSummary.comparisonDelta.unitLabel}
                     </span>
                   ) : !progressSummary.comparisonDelta.sameUnit ? (
-                    <span className="px-3 py-1 rounded-lg font-mono-num text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    <span className={`px-3 py-1 rounded-lg font-mono-num text-xs font-bold border ${
+                      isDark
+                        ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
+                        : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/30'
+                    }`}>
                       {progressSummary.comparisonDelta.weightDiffNormalized > 0
                         ? `+${progressSummary.comparisonDelta.weightDiffNormalized}`
                         : progressSummary.comparisonDelta.weightDiffNormalized}{' '}
@@ -487,8 +505,8 @@ export const ProgressPage: React.FC = () => {
               <div
                 className={`p-4 rounded-xl border ${
                   isDark
-                    ? 'bg-[#181F2C]/60 border-[#2D3748]'
-                    : 'bg-slate-50 border-slate-200'
+                    ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,19%)]'
+                    : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
                 }`}
               >
                 <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
@@ -522,8 +540,8 @@ export const ProgressPage: React.FC = () => {
                           key={s.id}
                           className={`text-[11px] font-mono-num px-2 py-0.5 rounded border ${
                             isDark
-                              ? 'bg-[#121721] border-[#2D3748] text-gray-300'
-                              : 'bg-white border-slate-200 text-slate-700'
+                              ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-300'
+                              : 'bg-white border-[hsl(40,10%,88%)] text-slate-700'
                           }`}
                         >
                           #{s.setNumber}:{' '}
@@ -550,11 +568,11 @@ export const ProgressPage: React.FC = () => {
               <div
                 className={`p-4 rounded-xl border ${
                   isDark
-                    ? 'bg-emerald-500/10 border-emerald-500/40'
-                    : 'bg-emerald-50/70 border-emerald-300'
+                    ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/40'
+                    : 'bg-[hsl(76,78%,42%)]/5 border-[hsl(76,78%,42%)]/30'
                 }`}
               >
-                <div className="flex items-center justify-between text-xs text-emerald-400 mb-2">
+                <div className={`flex items-center justify-between text-xs mb-2 ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                   <span className="font-bold uppercase flex items-center gap-1">
                     <ArrowRight className="w-3.5 h-3.5" />
                     {lang === 'ar' ? 'الجلسة الحالية (الأحدث)' : 'Current Session (Latest)'}
@@ -572,7 +590,7 @@ export const ProgressPage: React.FC = () => {
                 {progressSummary.currentSession &&
                 progressSummary.currentSession.bestWeightSet ? (
                   <div className="space-y-2">
-                    <div className="font-mono-num text-lg font-bold text-emerald-400">
+                    <div className={`font-mono-num text-lg font-bold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                       {formatSetPerformance(
                         progressSummary.currentSession.bestWeightSet.weight,
                         progressSummary.currentSession.weightType,
@@ -586,8 +604,8 @@ export const ProgressPage: React.FC = () => {
                           key={s.id}
                           className={`text-[11px] font-mono-num px-2 py-0.5 rounded border ${
                             isDark
-                              ? 'bg-[#121721] border-emerald-500/30 text-gray-200'
-                              : 'bg-white border-emerald-200 text-slate-800'
+                              ? 'bg-[hsl(240,6%,4%)] border-[hsl(75,92%,56%)]/30 text-gray-200'
+                              : 'bg-white border-[hsl(76,78%,42%)]/25 text-slate-800'
                           }`}
                         >
                           #{s.setNumber}:{' '}
@@ -613,8 +631,8 @@ export const ProgressPage: React.FC = () => {
               <div
                 className={`rounded-2xl border p-5 ${
                   isDark
-                    ? 'bg-[#121721] border-[#1F2937]'
-                    : 'bg-white border-slate-200 shadow-xs'
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                    : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
                 }`}
               >
                 <div className="mb-4">
@@ -638,7 +656,7 @@ export const ProgressPage: React.FC = () => {
                     >
                       <CartesianGrid
                         strokeDasharray="3 3"
-                        stroke={isDark ? '#1F2937' : '#E2E8F0'}
+                        stroke={isDark ? 'hsl(240, 4%, 16%)' : 'hsl(40, 10%, 88%)'}
                       />
                       <XAxis
                         dataKey="date"
@@ -649,8 +667,8 @@ export const ProgressPage: React.FC = () => {
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: isDark ? '#121721' : '#FFFFFF',
-                          borderColor: isDark ? '#2D3748' : '#CBD5E1',
+                          backgroundColor: isDark ? 'hsl(240, 5%, 7.5%)' : 'hsl(0, 0%, 100%)',
+                          borderColor: isDark ? 'hsl(240, 4%, 19%)' : 'hsl(40, 10%, 88%)',
                           borderRadius: '12px',
                           fontSize: '12px',
                         }}
@@ -662,9 +680,9 @@ export const ProgressPage: React.FC = () => {
                       <Line
                         type="monotone"
                         dataKey="weightValue"
-                        stroke="#10B981"
+                        stroke={isDark ? 'hsl(75, 92%, 56%)' : 'hsl(76, 78%, 42%)'}
                         strokeWidth={3}
-                        dot={{ r: 5, fill: '#10B981' }}
+                        dot={{ r: 5, fill: isDark ? 'hsl(75, 92%, 56%)' : 'hsl(76, 78%, 42%)' }}
                         activeDot={{ r: 7 }}
                       />
                     </LineChart>
@@ -679,8 +697,8 @@ export const ProgressPage: React.FC = () => {
                 progressSummary.isBodyweightOnly ? 'lg:col-span-2' : ''
               } ${
                 isDark
-                  ? 'bg-[#121721] border-[#1F2937]'
-                  : 'bg-white border-slate-200 shadow-xs'
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                  : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
               }`}
             >
               <div className="mb-4">
@@ -704,7 +722,7 @@ export const ProgressPage: React.FC = () => {
                   >
                     <CartesianGrid
                       strokeDasharray="3 3"
-                      stroke={isDark ? '#1F2937' : '#E2E8F0'}
+                      stroke={isDark ? 'hsl(240, 4%, 16%)' : 'hsl(40, 10%, 88%)'}
                     />
                     <XAxis
                       dataKey="date"
@@ -716,8 +734,8 @@ export const ProgressPage: React.FC = () => {
                     />
                     <Tooltip
                       contentStyle={{
-                        backgroundColor: isDark ? '#121721' : '#FFFFFF',
-                        borderColor: isDark ? '#2D3748' : '#CBD5E1',
+                        backgroundColor: isDark ? 'hsl(240, 5%, 7.5%)' : 'hsl(0, 0%, 100%)',
+                        borderColor: isDark ? 'hsl(240, 4%, 19%)' : 'hsl(40, 10%, 88%)',
                         borderRadius: '12px',
                         fontSize: '12px',
                       }}
@@ -744,8 +762,8 @@ export const ProgressPage: React.FC = () => {
           <div
             className={`rounded-2xl border p-5 space-y-4 ${
               isDark
-                ? 'bg-[#121721] border-[#1F2937]'
-                : 'bg-white border-slate-200 shadow-xs'
+                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
             }`}
           >
             <h3 className="font-display font-bold text-base">
@@ -760,12 +778,12 @@ export const ProgressPage: React.FC = () => {
                   key={`${rec.workoutId}_${rec.actualDate}`}
                   className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                     isDark
-                      ? 'bg-[#181F2C]/70 border-[#2D3748]'
-                      : 'bg-slate-50 border-slate-200'
+                      ? 'bg-[hsl(240,5%,11%)]/70 border-[hsl(240,4%,19%)]'
+                      : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
                   }`}
                 >
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+                    <div className={`flex items-center gap-2 text-xs font-semibold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                       <Calendar className="w-3.5 h-3.5" />
                       <span>{formatFullDate(rec.actualDate, lang)}</span>
                     </div>
@@ -780,8 +798,8 @@ export const ProgressPage: React.FC = () => {
                         key={s.id}
                         className={`px-2.5 py-1 rounded-lg font-mono-num text-xs font-semibold border ${
                           isDark
-                            ? 'bg-[#121721] border-[#2D3748] text-gray-200'
-                            : 'bg-white border-slate-200 text-slate-800'
+                            ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-200'
+                            : 'bg-white border-[hsl(40,10%,88%)] text-slate-800'
                         }`}
                       >
                         #{s.setNumber}:{' '}
