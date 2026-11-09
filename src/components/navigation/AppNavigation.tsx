@@ -94,15 +94,17 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <div
       className={`min-h-screen flex flex-col lg:flex-row ${
-        isDark ? 'bg-[#0A0D12] text-[#F3F4F6]' : 'bg-[#F8FAFC] text-[#0F172A]'
+        isDark
+          ? 'bg-[hsl(240,6%,4%)] text-[hsl(0,0%,97%)]'
+          : 'bg-[hsl(40,20%,97.5%)] text-[hsl(240,10%,9%)]'
       }`}
     >
       {/* DESKTOP SIDEBAR */}
       <aside
         className={`hidden lg:flex lg:flex-col lg:w-[264px] lg:fixed lg:inset-y-0 z-30 border-e ${
           isDark
-            ? 'bg-[#121721] border-[#1F2937]'
-            : 'bg-white border-slate-200 shadow-sm'
+            ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+            : 'bg-white border-[hsl(40,10%,88%)] shadow-sm'
         }`}
       >
         {/* Brand Header */}
@@ -111,13 +113,19 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
             onClick={() => setCurrentSection('dashboard')}
             className="flex items-center gap-3 text-start group focus:outline-none"
           >
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-500 group-hover:text-slate-950 transition-all">
+            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+              isDark
+                ? 'bg-[hsl(75,92%,56%)]/15 border border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)] group-hover:bg-[hsl(75,92%,56%)] group-hover:text-[hsl(240,6%,4%)]'
+                : 'bg-[hsl(76,78%,42%)]/10 border border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)] group-hover:bg-[hsl(76,78%,42%)] group-hover:text-white'
+            }`}>
               <Dumbbell className="w-5 h-5" />
             </div>
             <div>
               <div className="font-display font-bold text-lg tracking-tight leading-none flex items-center gap-1.5">
                 <span>IRONPULSE</span>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className={`w-2 h-2 rounded-full animate-pulse ${
+                  isDark ? 'bg-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]'
+                }`} />
               </div>
               <p
                 className={`text-xs mt-0.5 ${
@@ -137,7 +145,9 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
             className={`w-full py-3 px-4 rounded-xl font-display font-semibold text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer ${
               activeWorkout
                 ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/15'
-                : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/15'
+                : isDark
+                ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,62%)] text-[hsl(240,6%,4%)] shadow-[hsl(75,92%,56%)]/15'
+                : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,38%)] text-white shadow-[hsl(76,78%,42%)]/15'
             }`}
           >
             <Play className="w-4 h-4 fill-current" />
@@ -162,18 +172,20 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                   isActive
                     ? isDark
-                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold'
-                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
+                      ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/30 font-semibold'
+                      : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border border-[hsl(76,78%,42%)]/25 font-semibold'
                     : isDark
-                    ? 'text-gray-400 hover:text-gray-100 hover:bg-[#1A2130]'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                    ? 'text-gray-400 hover:text-gray-100 hover:bg-[hsl(240,5%,11%)]'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-[hsl(40,15%,94%)]'
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <Icon
                     className={`w-4 h-4 ${
                       isActive
-                        ? 'text-emerald-400'
+                        ? isDark
+                          ? 'text-[hsl(75,92%,56%)]'
+                          : 'text-[hsl(76,78%,42%)]'
                         : isDark
                         ? 'text-gray-400'
                         : 'text-slate-500'
@@ -192,14 +204,20 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
         {/* Bottom Quick Preferences Footer */}
         <div
           className={`p-4 border-t space-y-3 ${
-            isDark ? 'border-[#1F2937] bg-[#0D1119]' : 'border-slate-200 bg-slate-50'
+            isDark
+              ? 'border-[hsl(240,4%,16%)] bg-[hsl(240,6%,4%)]'
+              : 'border-[hsl(40,10%,88%)] bg-[hsl(40,15%,95%)]'
           }`}
         >
           <div className="flex items-center justify-between text-xs">
             <span className={isDark ? 'text-gray-400' : 'text-slate-500'}>
               {lang === 'ar' ? 'الوحدة الافتراضية:' : 'Default Unit:'}
             </span>
-            <span className="font-mono-num font-semibold uppercase px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            <span className={`font-mono-num font-semibold uppercase px-2 py-0.5 rounded border ${
+              isDark
+                ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
+                : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/25'
+            }`}>
               {settings.preferredWeightUnit}
             </span>
           </div>
@@ -209,8 +227,8 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
               onClick={toggleTheme}
               className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                 isDark
-                  ? 'bg-[#121721] border-[#1F2937] text-gray-300 hover:border-gray-600'
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300 hover:border-[hsl(240,4%,19%)]'
+                  : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-[hsl(40,15%,94%)]'
               }`}
               title="Toggle Dark / Light Theme"
             >
@@ -222,12 +240,14 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
               onClick={toggleLanguage}
               className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
                 isDark
-                  ? 'bg-[#121721] border-[#1F2937] text-gray-300 hover:border-gray-600'
-                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300 hover:border-[hsl(240,4%,19%)]'
+                  : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-[hsl(40,15%,94%)]'
               }`}
               title="Switch Language (English / العربية)"
             >
-              <Globe className="w-3.5 h-3.5 text-emerald-400" />
+              <Globe className={`w-3.5 h-3.5 ${
+                isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+              }`} />
               <span>{lang === 'en' ? 'العربية' : 'English'}</span>
             </button>
           </div>
@@ -238,8 +258,8 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
       <header
         className={`lg:hidden sticky top-0 z-30 border-b backdrop-blur-md ${
           isDark
-            ? 'bg-[#0A0D12]/90 border-[#1F2937]'
-            : 'bg-white/90 border-slate-200'
+            ? 'bg-[hsl(240,6%,4%)]/90 border-[hsl(240,4%,16%)]'
+            : 'bg-white/90 border-[hsl(40,10%,88%)]'
         }`}
       >
         <div className="px-4 h-14 flex items-center justify-between">
@@ -247,7 +267,11 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
             onClick={() => setCurrentSection('dashboard')}
             className="flex items-center gap-2.5 focus:outline-none"
           >
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              isDark
+                ? 'bg-[hsl(75,92%,56%)]/15 border border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]'
+                : 'bg-[hsl(76,78%,42%)]/10 border border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)]'
+            }`}>
               <Dumbbell className="w-4 h-4" />
             </div>
             <span className="font-display font-bold text-base tracking-tight">
@@ -260,8 +284,8 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
               onClick={toggleLanguage}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border ${
                 isDark
-                  ? 'bg-[#121721] border-[#1F2937] text-gray-300'
-                  : 'bg-slate-100 border-slate-200 text-slate-700'
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
               }`}
             >
               {lang === 'en' ? 'عربي' : 'EN'}
@@ -270,8 +294,8 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
               onClick={toggleTheme}
               className={`p-2 rounded-lg border ${
                 isDark
-                  ? 'bg-[#121721] border-[#1F2937] text-amber-400'
-                  : 'bg-slate-100 border-slate-200 text-slate-700'
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-amber-400'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
               }`}
               aria-label="Toggle theme"
             >
@@ -291,10 +315,12 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
                 onClick={() => setCurrentSection(item.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
                   isActive
-                    ? 'bg-emerald-500 text-slate-950 font-semibold shadow-sm'
+                    ? isDark
+                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)] font-semibold shadow-sm'
+                      : 'bg-[hsl(76,78%,42%)] text-white font-semibold shadow-sm'
                     : isDark
-                    ? 'bg-[#121721] text-gray-400 border border-[#1F2937]'
-                    : 'bg-slate-100 text-slate-600 border border-slate-200'
+                    ? 'bg-[hsl(240,5%,7.5%)] text-gray-400 border border-[hsl(240,4%,16%)]'
+                    : 'bg-[hsl(40,15%,94%)] text-slate-600 border border-[hsl(40,10%,88%)]'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -345,8 +371,8 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
       <nav
         className={`lg:hidden fixed bottom-0 inset-x-0 z-30 h-[68px] border-t backdrop-blur-lg px-2 flex items-center justify-around ${
           isDark
-            ? 'bg-[#121721]/95 border-[#1F2937]'
-            : 'bg-white/95 border-slate-200'
+            ? 'bg-[hsl(240,5%,7.5%)]/95 border-[hsl(240,4%,16%)]'
+            : 'bg-white/95 border-[hsl(40,10%,88%)]'
         }`}
       >
         {mobileBottomItems.map((item) => {
@@ -364,7 +390,9 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
                   className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
                     activeWorkout
                       ? 'bg-amber-500 text-slate-950 shadow-amber-500/25'
-                      : 'bg-emerald-500 text-slate-950 shadow-emerald-500/25'
+                      : isDark
+                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)] shadow-[hsl(75,92%,56%)]/25'
+                      : 'bg-[hsl(76,78%,42%)] text-white shadow-[hsl(76,78%,42%)]/25'
                   }`}
                 >
                   <Icon className="w-5 h-5 fill-current" />
@@ -374,7 +402,9 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
                     activeWorkout
                       ? 'text-amber-400'
                       : isActive
-                      ? 'text-emerald-400'
+                      ? isDark
+                        ? 'text-[hsl(75,92%,56%)]'
+                        : 'text-[hsl(76,78%,42%)]'
                       : isDark
                       ? 'text-gray-300'
                       : 'text-slate-700'
@@ -392,7 +422,9 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
               onClick={() => setCurrentSection(item.id)}
               className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl min-w-[56px] transition-colors ${
                 isActive
-                  ? 'text-emerald-400'
+                  ? isDark
+                    ? 'text-[hsl(75,92%,56%)]'
+                    : 'text-[hsl(76,78%,42%)]'
                   : isDark
                   ? 'text-gray-400 hover:text-gray-200'
                   : 'text-slate-500 hover:text-slate-900'
@@ -418,11 +450,11 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
                 ? 'bg-red-950/90 border-red-500/40 text-red-200'
                 : toast.type === 'info'
                 ? isDark
-                  ? 'bg-[#1A2130]/95 border-gray-700 text-gray-100'
+                  ? 'bg-[hsl(240,5%,11%)]/95 border-[hsl(240,4%,19%)] text-gray-100'
                   : 'bg-slate-900 text-white border-slate-700'
                 : isDark
-                ? 'bg-[#121721]/95 border-emerald-500/40 text-emerald-300'
-                : 'bg-emerald-950 text-emerald-100 border-emerald-500/40'
+                ? 'bg-[hsl(240,5%,7.5%)]/95 border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]'
+                : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]/40'
             }`}
           >
             <div className="flex items-center gap-2.5 text-xs sm:text-sm font-medium">
@@ -431,7 +463,9 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
               ) : toast.type === 'info' ? (
                 <Info className="w-4 h-4 text-cyan-400 shrink-0" />
               ) : (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className={`w-4 h-4 shrink-0 ${
+                  isDark ? 'text-[hsl(75,92%,56%)]' : 'text-white'
+                }`} />
               )}
               <span>{toast.text}</span>
             </div>
