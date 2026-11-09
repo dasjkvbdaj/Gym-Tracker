@@ -1,0 +1,809 @@
+import React, { useMemo } from 'react';
+import {
+  Activity,
+  ArrowUpRight,
+  Calendar as CalendarIcon,
+  CheckCircle2,
+  Clock,
+  Dumbbell,
+  Flame,
+  History,
+  Play,
+} from 'lucide-react';
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
+import { useGym } from '../context/GymContext';
+import { getExerciseProgressSummary } from '../services/progressService';
+import {
+  formatDurationMinutes,
+  formatFullDate,
+  formatShortDate,
+  getCurrentWeekRange,
+  getDateMetadata,
+  toLocalDateString,
+} from '../utils/dateUtils';
+import {
+  translateDayName,
+  translateMuscleGroup,
+  UI_TEXT,
+} from '../utils/i18n';
+import { formatSetPerformance } from '../utils/unitConversion';
+
+export const Dashboard: React.FC = () => {
+  const {
+    completedWorkouts,
+    activeWorkout,
+    weeklySchedule,
+    exercises,
+    settings,
+    setCurrentSection,
+    startNewWorkout,
+    openProgressForExercise,
+  } = useGym();
+
+  const lang = settings.language;
+  const t = UI_TEXT[lang];
+  const isDark = settings.theme === 'dark';
+
+  const todayStr = toLocalDateString(new Date());
+  const todayMeta = getDateMetadata(todayStr);
+  const todayPlan = weeklySchedule.find((d) => d.day === todayMeta.dayOfWeek);
+
+  const weekRange = useMemo(() => getCurrentWeekRange(new Date()), []);
+
+  // Core KPI Calculations from actual saved workouts
+  const stats = useMemo(() => {
+    const totalSessions = completedWorkouts.length;
+    const workoutsThisWeek = completedWorkouts.filter(
+      (w) => w.actualDate >= weekRange.startOfWeek && w.actualDate <= weekRange.endOfWeek
+    ).length;
+    const cardioSessions = completedWorkouts.filter(
+      (w) => w.workoutType === 'cardio' || w.muscleGroups.includes('Cardio')
+    ).length;
+    const totalMinutes = completedWorkouts.reduce(
+      (acc, w) => acc + (w.durationMinutes || 0),
+      0
+    );
+    const lastWorkout = completedWorkouts[0] || null;
+
+    return {
+      totalSessions,
+      workoutsThisWeek,
+      cardioSessions,
+      totalMinutes,
+      lastWorkout,
+    };
+  }, [completedWorkouts, weekRange]);
+
+  // Weekly Activity Chart Data (Mon - Sun of current week: Sessions & Completed Sets)
+  const weeklyChartData = useMemo(() => {
+    return weekRange.weekDates.map(({ day, dateStr }) => {
+      const dayWorkouts = completedWorkouts.filter((w) => w.actualDate === dateStr);
+      const totalSets = dayWorkouts.reduce((sum, w) => {
+        const exSets = (w.exercises || []).reduce(
+          (sAcc, ex) => sAcc + (ex.sets ? ex.sets.length : 0),
+          0
+        );
+        return sum + exSets;
+      }, 0);
+
+      return {
+        dayName: translateDayName(day, lang, true),
+        fullDate: formatShortDate(dateStr, lang),
+        sessions: dayWorkouts.length,
+        sets: totalSets,
+      };
+    });
+  }, [completedWorkouts, weekRange, lang]);
+
+  // Recent Exercise Progression (exercises performed in completed workouts)
+  const recentProgressions = useMemo(() => {
+    if (completedWorkouts.length === 0) return [];
+
+    // Find unique exerciseIds from recent workouts
+    const seenExerciseIds = new Set<string>();
+    const items: ReturnType<typeof getExerciseProgressSummary>[] = [];
+
+    for (const w of completedWorkouts) {
+      for (const exEntry of w.exercises || []) {
+        if (!seenExerciseIds.has(exEntry.exerciseId)) {
+          seenExerciseIds.add(exEntry.exerciseId);
+          const libEx = exercises.find((e) => e.id === exEntry.exerciseId);
+          const exName = libEx ? libEx.name : exEntry.exerciseNameSnapshot;
+          const summary = getExerciseProgressSummary(
+            exEntry.exerciseId,
+            exName,
+            completedWorkouts,
+            settings.preferredWeightUnit,
+            'all',
+            lang
+          );
+          if (summary.currentSession && summary.currentSession.bestWeightSet) {
+            items.push(summary);
+          }
+        }
+        if (items.length >= 6) break;
+      }
+      if (items.length >= 6) break;
+    }
+
+    return items;
+  }, [completedWorkouts, exercises, settings.preferredWeightUnit, lang]);
+
+  const handleStartTodayPlan = async () => {
+    if (activeWorkout) {
+      setCurrentSection('start-workout');
+      return;
+    }
+    if (todayPlan && todayPlan.workoutType !== 'rest') {
+      await startNewWorkout({
+        workoutType: todayPlan.workoutType,
+        title: todayPlan.title,
+        muscleGroups: todayPlan.muscleGroups,
+        exerciseIds: todayPlan.assignedExerciseIds,
+        actualDate: todayStr,
+      });
+    } else {
+      await startNewWorkout({
+        workoutType: 'strength',
+        actualDate: todayStr,
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* HERO HEADER */}
+      <div
+        className={`rounded-2xl p-5 sm:p-6 border relative overflow-hidden ${
+          isDark
+            ? 'bg-gradient-to-br from-[#121721] via-[#121721] to-[#152225] border-[#1F2937]'
+            : 'bg-white border-slate-200 shadow-sm'
+        }`}
+      >
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+          <div className="space-y-1.5">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              <CalendarIcon className="w-3.5 h-3.5" />
+              <span>{formatFullDate(todayStr, lang)}</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">
+              {lang === 'ar' ? 'لوحة متابعة التمارين' : 'Personal Training Dashboard'}
+            </h1>
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+              {todayPlan ? (
+                <>
+                  <span>
+                    {lang === 'ar'
+                      ? `خطة ${translateDayName(todayMeta.dayOfWeek, lang)} المقترحة: `
+                      : `${todayMeta.dayOfWeek}'s Scheduled Plan: `}
+                  </span>
+                  <span className="font-semibold text-emerald-400">
+                    {todayPlan.title}
+                  </span>
+                </>
+              ) : null}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {activeWorkout ? (
+              <button
+                onClick={() => setCurrentSection('start-workout')}
+                className="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
+              >
+                <Play className="w-4 h-4 fill-current" />
+                <span>{t.resumeWorkout}</span>
+              </button>
+            ) : (
+              <>
+                <button
+                  onClick={handleStartTodayPlan}
+                  className="w-full sm:w-auto px-5 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>{t.startWorkout}</span>
+                </button>
+                <button
+                  onClick={() =>
+                    startNewWorkout({
+                      workoutType: 'cardio',
+                      title: 'Cardio Session',
+                      muscleGroups: ['Cardio'],
+                      actualDate: todayStr,
+                    })
+                  }
+                  className={`w-full sm:w-auto px-4 py-3 rounded-xl font-medium text-sm flex items-center justify-center gap-2 border transition-colors cursor-pointer ${
+                    isDark
+                      ? 'bg-[#1A2130] border-[#2D3748] text-cyan-400 hover:bg-[#222B3D]'
+                      : 'bg-cyan-50 border-cyan-200 text-cyan-800 hover:bg-cyan-100'
+                  }`}
+                >
+                  <Flame className="w-4 h-4" />
+                  <span>{lang === 'ar' ? 'تسجيل كارديو' : 'Log Cardio'}</span>
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 4 KPI SUMMARY CARDS */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        <div
+          className={`p-4 sm:p-5 rounded-xl border ${
+            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+              {t.totalSessions}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 font-mono-num text-2xl sm:text-3xl font-bold">
+            {stats.totalSessions}
+          </div>
+          <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+            {lang === 'ar' ? 'جلسات مكتملة ومسجلة' : 'Completed workouts saved'}
+          </p>
+        </div>
+
+        <div
+          className={`p-4 sm:p-5 rounded-xl border ${
+            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+              {t.thisWeek}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-400 flex items-center justify-center">
+              <Activity className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 font-mono-num text-2xl sm:text-3xl font-bold">
+            {stats.workoutsThisWeek}
+          </div>
+          <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+            {lang === 'ar' ? 'خلال الأسبوع الحالي' : 'Recorded this week'}
+          </p>
+        </div>
+
+        <div
+          className={`p-4 sm:p-5 rounded-xl border ${
+            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+              {t.cardioSessions}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-cyan-500/15 text-cyan-400 flex items-center justify-center">
+              <Flame className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 font-mono-num text-2xl sm:text-3xl font-bold">
+            {stats.cardioSessions}
+          </div>
+          <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+            {lang === 'ar' ? 'إجمالي جلسات الكارديو' : 'Total cardio sessions'}
+          </p>
+        </div>
+
+        <div
+          className={`p-4 sm:p-5 rounded-xl border ${
+            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className={`text-xs font-medium ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+              {t.totalWorkoutTime}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center">
+              <Clock className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 font-mono-num text-2xl sm:text-3xl font-bold">
+            {stats.totalMinutes > 0
+              ? formatDurationMinutes(stats.totalMinutes, lang)
+              : '0m'}
+          </div>
+          <p className={`text-xs mt-1 ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+            {lang === 'ar' ? 'مجموع وقت التدريب' : 'Tracked training duration'}
+          </p>
+        </div>
+      </div>
+
+      {/* LAST COMPLETED WORKOUT BANNER OR EMPTY STATE */}
+      {stats.lastWorkout ? (
+        <div
+          className={`rounded-xl p-5 border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
+            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-emerald-400">
+              <History className="w-3.5 h-3.5" />
+              <span>{t.lastCompletedWorkout}</span>
+            </div>
+            <h2 className="text-lg font-display font-bold">{stats.lastWorkout.title}</h2>
+            <div
+              className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-xs ${
+                isDark ? 'text-gray-400' : 'text-slate-600'
+              }`}
+            >
+              <span>
+                {lang === 'ar' ? 'التاريخ:' : 'Date:'}{' '}
+                <strong className={isDark ? 'text-gray-200' : 'text-slate-900'}>
+                  {formatFullDate(stats.lastWorkout.actualDate, lang)}
+                </strong>
+              </span>
+              {stats.lastWorkout.durationMinutes && (
+                <span>
+                  {lang === 'ar' ? 'المدة:' : 'Duration:'}{' '}
+                  <strong className="font-mono-num">
+                    {formatDurationMinutes(stats.lastWorkout.durationMinutes, lang)}
+                  </strong>
+                </span>
+              )}
+              {stats.lastWorkout.workoutType === 'strength' && (
+                <span>
+                  {lang === 'ar' ? 'التمارين:' : 'Exercises:'}{' '}
+                  <strong className="font-mono-num">
+                    {stats.lastWorkout.exercises.length}
+                  </strong>
+                </span>
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={() => setCurrentSection('history')}
+            className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border self-start sm:self-center transition-colors cursor-pointer ${
+              isDark
+                ? 'bg-[#1A2130] border-[#2D3748] text-gray-200 hover:border-emerald-500/40'
+                : 'bg-slate-100 border-slate-200 text-slate-800 hover:bg-slate-200'
+            }`}
+          >
+            <span>{lang === 'ar' ? 'عرض السجل الكامل' : 'View in History'}</span>
+            <ArrowUpRight className="w-4 h-4" />
+          </button>
+        </div>
+      ) : (
+        <div
+          className={`rounded-2xl p-6 sm:p-8 border text-center space-y-4 ${
+            isDark
+              ? 'bg-[#121721]/80 border-dashed border-[#2D3748]'
+              : 'bg-white border-dashed border-slate-300'
+          }`}
+        >
+          <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
+            <Dumbbell className="w-6 h-6" />
+          </div>
+          <div className="max-w-md mx-auto space-y-1.5">
+            <h2 className="text-lg font-display font-bold">{t.noWorkoutsYet}</h2>
+            <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+              {t.startFirstWorkoutDesc}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+            <button
+              onClick={handleStartTodayPlan}
+              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-semibold text-sm flex items-center gap-2 shadow-md cursor-pointer"
+            >
+              <Play className="w-4 h-4 fill-current" />
+              <span>{t.startWorkout}</span>
+            </button>
+            <button
+              onClick={() => setCurrentSection('schedule')}
+              className={`px-4 py-2.5 rounded-xl text-sm font-medium border cursor-pointer ${
+                isDark
+                  ? 'bg-[#1A2130] border-[#2D3748] text-gray-300 hover:bg-[#222B3D]'
+                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+              }`}
+            >
+              {lang === 'ar' ? 'استعراض جدول الأسبوع' : 'Explore Weekly Schedule'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* MIDDLE GRID: WEEKLY ACTIVITY CHART + WEEKLY SCHEDULE OVERVIEW */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Weekly Activity Chart (7 cols) */}
+        <div
+          className={`lg:col-span-7 rounded-xl p-5 border flex flex-col justify-between ${
+            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-display font-bold">
+                {t.weeklyActivityChart}
+              </h2>
+              <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                {lang === 'ar'
+                  ? 'عدد المجموعات والجلسات المسجلة فعلياً خلال هذا الأسبوع'
+                  : 'Actual recorded sets and sessions completed this week'}
+              </p>
+            </div>
+            <span className="text-xs font-mono-num px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              {formatShortDate(weekRange.startOfWeek, lang)} –{' '}
+              {formatShortDate(weekRange.endOfWeek, lang)}
+            </span>
+          </div>
+
+          <div className="h-60 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={weeklyChartData}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke={isDark ? '#1F2937' : '#E2E8F0'}
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="dayName"
+                  tick={{ fill: isDark ? '#9CA3AF' : '#64748B', fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  allowDecimals={false}
+                  tick={{ fill: isDark ? '#9CA3AF' : '#64748B', fontSize: 12 }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: isDark ? '#121721' : '#FFFFFF',
+                    borderColor: isDark ? '#2D3748' : '#CBD5E1',
+                    borderRadius: '12px',
+                    color: isDark ? '#F3F4F6' : '#0F172A',
+                    fontSize: '12px',
+                  }}
+                  formatter={(value: unknown, name: unknown) => [
+                    String(value),
+                    name === 'sets'
+                      ? lang === 'ar'
+                        ? 'المجموعات المكتملة'
+                        : 'Completed Sets'
+                      : lang === 'ar'
+                      ? 'الجلسات'
+                      : 'Workout Sessions',
+                  ]}
+                />
+                <Bar
+                  dataKey="sets"
+                  name="sets"
+                  fill="#10B981"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={36}
+                />
+                <Bar
+                  dataKey="sessions"
+                  name="sessions"
+                  fill="#06B6D4"
+                  radius={[6, 6, 0, 0]}
+                  maxBarSize={24}
+                />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Predefined Weekly Schedule Overview (5 cols) */}
+        <div
+          className={`lg:col-span-5 rounded-xl p-5 border flex flex-col justify-between ${
+            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-base font-display font-bold">{t.weeklySchedule}</h2>
+              <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                {lang === 'ar'
+                  ? 'مرجع تخطيطي — يمكنك التمرين في أي يوم'
+                  : 'Planning reference — train any workout on any day'}
+              </p>
+            </div>
+            <button
+              onClick={() => setCurrentSection('schedule')}
+              className="text-xs font-semibold text-emerald-400 hover:underline cursor-pointer"
+            >
+              {lang === 'ar' ? 'تعديل الجدول' : 'Customize'}
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {weeklySchedule.map((dayPlan) => {
+              const isToday = dayPlan.day === todayMeta.dayOfWeek;
+              return (
+                <div
+                  key={dayPlan.day}
+                  className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition-colors ${
+                    isToday
+                      ? isDark
+                        ? 'bg-emerald-500/10 border-emerald-500/40'
+                        : 'bg-emerald-50 border-emerald-300'
+                      : isDark
+                      ? 'bg-[#181F2C]/60 border-[#1F2937]'
+                      : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span
+                      className={`font-display font-bold w-16 shrink-0 ${
+                        isToday
+                          ? 'text-emerald-400'
+                          : isDark
+                          ? 'text-gray-300'
+                          : 'text-slate-700'
+                      }`}
+                    >
+                      {translateDayName(dayPlan.day, lang, true)}
+                    </span>
+                    <span
+                      className={`truncate font-medium ${
+                        dayPlan.workoutType === 'rest'
+                          ? 'text-gray-500 italic'
+                          : dayPlan.workoutType === 'cardio'
+                          ? 'text-cyan-400'
+                          : isDark
+                          ? 'text-gray-200'
+                          : 'text-slate-800'
+                      }`}
+                    >
+                      {dayPlan.title}
+                    </span>
+                  </div>
+
+                  {dayPlan.workoutType !== 'rest' && (
+                    <button
+                      onClick={() =>
+                        startNewWorkout({
+                          workoutType: dayPlan.workoutType === 'cardio' ? 'cardio' : 'strength',
+                          title: dayPlan.title,
+                          muscleGroups: dayPlan.muscleGroups,
+                          exerciseIds: dayPlan.assignedExerciseIds,
+                          actualDate: todayStr,
+                        })
+                      }
+                      className={`px-2 py-1 rounded text-[11px] font-semibold shrink-0 transition-colors cursor-pointer ${
+                        isDark
+                          ? 'bg-[#222B3D] hover:bg-emerald-500 hover:text-slate-950 text-emerald-400'
+                          : 'bg-emerald-100 hover:bg-emerald-500 hover:text-white text-emerald-800'
+                      }`}
+                      title={`Start ${dayPlan.title} today`}
+                    >
+                      {lang === 'ar' ? 'ابدأ' : 'Start'}
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* BOTTOM GRID: RECENT WORKOUT ACTIVITY & RECENT EXERCISE PROGRESSION */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Recent Workout Activity */}
+        <div
+          className={`rounded-xl p-5 border ${
+            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-display font-bold">{t.recentActivity}</h2>
+            <button
+              onClick={() => setCurrentSection('history')}
+              className="text-xs font-semibold text-emerald-400 hover:underline cursor-pointer"
+            >
+              {lang === 'ar' ? 'عرض الكل' : 'View All'}
+            </button>
+          </div>
+
+          {completedWorkouts.length === 0 ? (
+            <div className={`py-8 text-center text-xs ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+              {lang === 'ar'
+                ? 'ستظهر أحدث تمارينك المكتملة هنا بمجرد حفظ أول تمرين.'
+                : 'Your recent completed workouts will appear here once recorded.'}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {completedWorkouts.slice(0, 4).map((session) => {
+                const totalSets = (session.exercises || []).reduce(
+                  (acc, ex) => acc + (ex.sets ? ex.sets.length : 0),
+                  0
+                );
+                return (
+                  <div
+                    key={session.id}
+                    onClick={() => setCurrentSection('history')}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                      isDark
+                        ? 'bg-[#181F2C]/70 border-[#1F2937] hover:border-emerald-500/40'
+                        : 'bg-slate-50 border-slate-200 hover:border-emerald-400'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              session.workoutType === 'cardio'
+                                ? 'bg-cyan-400'
+                                : 'bg-emerald-400'
+                            }`}
+                          />
+                          <h3 className="font-display font-semibold text-sm">
+                            {session.title}
+                          </h3>
+                        </div>
+                        <p
+                          className={`text-xs mt-0.5 ${
+                            isDark ? 'text-gray-400' : 'text-slate-500'
+                          }`}
+                        >
+                          {formatFullDate(session.actualDate, lang)}
+                        </p>
+                      </div>
+
+                      <div className="text-end font-mono-num text-xs">
+                        {session.workoutType === 'cardio' ? (
+                          <span className="px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
+                            {formatDurationMinutes(
+                              session.cardioDetails?.durationMinutes ||
+                                session.durationMinutes,
+                              lang
+                            )}
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                            {session.exercises.length}{' '}
+                            {lang === 'ar' ? 'تمارين' : 'ex'} • {totalSets}{' '}
+                            {lang === 'ar' ? 'مجموعات' : 'sets'}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {session.muscleGroups.length > 0 && (
+                      <div className="flex flex-wrap gap-1.5 mt-2.5">
+                        {session.muscleGroups.map((mg) => (
+                          <span
+                            key={mg}
+                            className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
+                              isDark
+                                ? 'bg-[#121721] text-gray-300 border border-[#2D3748]'
+                                : 'bg-white text-slate-600 border border-slate-200'
+                            }`}
+                          >
+                            {translateMuscleGroup(mg, lang)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Recent Exercise Progression */}
+        <div
+          className={`rounded-xl p-5 border ${
+            isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-display font-bold">
+              {t.recentProgression}
+            </h2>
+            <button
+              onClick={() => setCurrentSection('progress')}
+              className="text-xs font-semibold text-emerald-400 hover:underline cursor-pointer"
+            >
+              {lang === 'ar' ? 'تحليل التطور' : 'Full Progress'}
+            </button>
+          </div>
+
+          {recentProgressions.length === 0 ? (
+            <div className={`py-8 text-center text-xs ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
+              {lang === 'ar'
+                ? 'سجّل تمارينك لمشاهدة مقارنات الأوزان والعدات بين الجلسات.'
+                : 'Record workouts to track weight and repetition progression across sessions.'}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {recentProgressions.map((prog) => {
+                const cur = prog.currentSession!;
+                const prev = prog.previousSession;
+                return (
+                  <div
+                    key={prog.exerciseId}
+                    onClick={() => openProgressForExercise(prog.exerciseId)}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
+                      isDark
+                        ? 'bg-[#181F2C]/70 border-[#1F2937] hover:border-emerald-500/40'
+                        : 'bg-slate-50 border-slate-200 hover:border-emerald-400'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-display font-semibold text-sm">
+                        {prog.exerciseName}
+                      </span>
+                      <span
+                        className={`text-[11px] font-mono-num ${
+                          isDark ? 'text-gray-400' : 'text-slate-500'
+                        }`}
+                      >
+                        {formatShortDate(cur.actualDate, lang)}
+                      </span>
+                    </div>
+
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className={isDark ? 'text-gray-400' : 'text-slate-500'}>
+                          {lang === 'ar' ? 'الأخير:' : 'Latest:'}
+                        </span>
+                        <span className="font-mono-num font-bold text-emerald-400">
+                          {cur.bestWeightSet
+                            ? formatSetPerformance(
+                                cur.bestWeightSet.weight,
+                                cur.weightType,
+                                cur.bestWeightSet.reps,
+                                lang
+                              )
+                            : '—'}
+                        </span>
+                      </div>
+
+                      {prev && prev.bestWeightSet ? (
+                        <div className="flex items-center gap-1.5 text-[11px]">
+                          <span className={isDark ? 'text-gray-500' : 'text-slate-400'}>
+                            {lang === 'ar' ? 'السابق:' : 'Prev:'}
+                          </span>
+                          <span className="font-mono-num">
+                            {formatSetPerformance(
+                              prev.bestWeightSet.weight,
+                              prev.weightType,
+                              prev.bestWeightSet.reps,
+                              lang
+                            )}
+                          </span>
+                        </div>
+                      ) : (
+                        <span
+                          className={`text-[11px] ${
+                            isDark ? 'text-gray-500' : 'text-slate-400'
+                          }`}
+                        >
+                          {lang === 'ar' ? 'أول جلسة مسجلة' : 'First logged session'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};

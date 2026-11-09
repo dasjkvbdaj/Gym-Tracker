@@ -1,0 +1,56 @@
+import React, { useEffect } from 'react';
+import { Dumbbell } from 'lucide-react';
+import { AppNavigation } from './components/navigation/AppNavigation';
+import { GymProvider, useGym } from './context/GymContext';
+import { CalendarPage } from './pages/CalendarPage';
+import { Dashboard } from './pages/Dashboard';
+import { ExerciseLibrary } from './pages/ExerciseLibrary';
+import { MyWorkout } from './pages/MyWorkout';
+import { ProgressPage } from './pages/ProgressPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { StartWorkout } from './pages/StartWorkout';
+import { WorkoutHistory } from './pages/WorkoutHistory';
+
+const MainRouter: React.FC = () => {
+  const { isInitialized, currentSection } = useGym();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentSection]);
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-[#0A0D12] text-[#F3F4F6] flex flex-col items-center justify-center gap-3">
+        <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 flex items-center justify-center animate-pulse">
+          <Dumbbell className="w-6 h-6" />
+        </div>
+        <div className="font-display font-bold text-sm tracking-wider text-gray-400">
+          INITIALIZING LOCAL DATABASE...
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <AppNavigation>
+      {currentSection === 'dashboard' && <Dashboard />}
+      {currentSection === 'schedule' && <MyWorkout />}
+      {currentSection === 'exercises' && <ExerciseLibrary />}
+      {currentSection === 'start-workout' && <StartWorkout />}
+      {currentSection === 'history' && <WorkoutHistory />}
+      {currentSection === 'calendar' && <CalendarPage />}
+      {currentSection === 'progress' && <ProgressPage />}
+      {currentSection === 'settings' && <SettingsPage />}
+    </AppNavigation>
+  );
+};
+
+export function App() {
+  return (
+    <GymProvider>
+      <MainRouter />
+    </GymProvider>
+  );
+}
+
+export default App;

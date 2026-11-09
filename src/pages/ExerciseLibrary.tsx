@@ -1,0 +1,615 @@
+import React, { useMemo, useState } from 'react';
+import {
+  Calendar,
+  Dumbbell,
+  Edit3,
+  History,
+  Plus,
+  Search,
+  Trash2,
+  TrendingUp,
+  X,
+} from 'lucide-react';
+import { useGym } from '../context/GymContext';
+import {
+  Exercise,
+  MuscleGroup,
+  WeightUnit,
+} from '../types/workout';
+import {
+  formatFullDate,
+} from '../utils/dateUtils';
+import {
+  MUSCLE_GROUPS,
+  translateDayName,
+  translateMuscleGroup,
+} from '../utils/i18n';
+import { formatSetPerformance } from '../utils/unitConversion';
+
+export const ExerciseLibrary: React.FC = () => {
+  const {
+    exercises,
+    completedWorkouts,
+    weeklySchedule,
+    settings,
+    addExercise,
+    updateExercise,
+    deleteExercise,
+    openProgressForExercise,
+  } = useGym();
+
+  const lang = settings.language;
+  const isDark = settings.theme === 'dark';
+
+  const [selectedCategory, setSelectedCategory] = useState<MuscleGroup | 'ALL'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Add / Edit Exercise Modal State
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
+  const [formName, setFormName] = useState('');
+  const [formMuscleGroup, setFormMuscleGroup] = useState<MuscleGroup>('Back');
+
+  // Exercise History & Day Assignment Modal
+  const [historyModalExercise, setHistoryModalExercise] = useState<Exercise | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const filteredExercises = useMemo(() => {
+    return exercises.filter((ex) => {
+      if (selectedCategory !== 'ALL' && ex.muscleGroup !== selectedCategory) {
+        return false;
+      }
+      if (
+        searchQuery.trim() &&
+        !ex.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) &&
+        !ex.muscleGroup.toLowerCase().includes(searchQuery.trim().toLowerCase())
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [exercises, selectedCategory, searchQuery]);
+
+  // Count how many times each exercise was performed in completed workouts
+  const exerciseSessionCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const w of completedWorkouts) {
+      for (const entry of w.exercises || []) {
+        counts.set(entry.exerciseId, (counts.get(entry.exerciseId) || 0) + 1);
+      }
+    }
+    return counts;
+  }, [completedWorkouts]);
+
+  const openAddModal = () => {
+    setEditingExercise(null);
+    setFormName('');
+    setFormMuscleGroup(selectedCategory === 'ALL' ? 'Back' : selectedCategory);
+    setIsFormOpen(true);
+  };
+
+  const openEditModal = (ex: Exercise) => {
+    setEditingExercise(ex);
+    setFormName(ex.name);
+    setFormMuscleGroup(ex.muscleGroup);
+    setIsFormOpen(true);
+  };
+
+  const handleSaveExercise = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formName.trim()) return;
+
+    if (editingExercise) {
+      await updateExercise({
+        ...editingExercise,
+        name: formName.trim(),
+        muscleGroup: formMuscleGroup,
+      });
+    } else {
+      await addExercise({
+        name: formName.trim(),
+        muscleGroup: formMuscleGroup,
+      });
+    }
+
+    setIsFormOpen(false);
+  };
+
+  // Historical records for selected exercise in history modal
+  const selectedExerciseHistory = useMemo(() => {
+    if (!historyModalExercise) return [];
+    const logs: {
+      workoutId: string;
+      actualDate: string;
+      workoutTitle: string;
+      weightType: WeightUnit;
+      sets: { setNumber: number; weight: number | null; reps: number }[];
+      notes: string;
+    }[] = [];
+
+    for (const w of completedWorkouts) {
+      for (const entry of w.exercises || []) {
+        if (entry.exerciseId === historyModalExercise.id) {
+          logs.push({
+            workoutId: w.id,
+            actualDate: w.actualDate,
+            workoutTitle: w.title,
+            weightType: entry.weightType,
+            sets: entry.sets || [],
+            notes: entry.notes || '',
+          });
+        }
+      }
+    }
+    return logs;
+  }, [historyModalExercise, completedWorkouts]);
+
+  return (
+    <div className="space-y-6">
+      {/* HEADER */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">
+            {lang === 'ar' ? 'مكتبة التمارين الشاملة' : 'Exercise Library'}
+          </h1>
+          <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+            {lang === 'ar'
+              ? 'إدارة تمارينك حسب الفئات العضلية بسهولة.'
+              : 'Organize and manage exercises by muscle group.'}
+          </p>
+        </div>
+
+        <button
+          onClick={openAddModal}
+          className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+        >
+          <Plus className="w-4 h-4" />
+          <span>{lang === 'ar' ? 'إضافة تمرين جديد' : 'Add New Exercise'}</span>
+        </button>
+      </div>
+
+      {/* SEARCH & MUSCLE GROUP FILTER BAR */}
+      <div
+        className={`p-4 rounded-2xl border space-y-3.5 ${
+          isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-2xs'
+        }`}
+      >
+        <div className="relative">
+          <Search
+            className={`w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3.5 ${
+              isDark ? 'text-gray-500' : 'text-slate-400'
+            }`}
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={
+              lang === 'ar'
+                ? 'ابحث عن تمرين بالاسم (مثال: Lat Pulldown, Bench Press)...'
+                : 'Search exercises by name (e.g., Lat Pulldown, Cable Row, Squat)...'
+            }
+            className={`w-full ps-10 pe-4 py-2.5 rounded-xl text-sm border focus:outline-none focus:border-emerald-500 ${
+              isDark
+                ? 'bg-[#181F2C] border-[#2D3748] text-gray-100 placeholder-gray-500'
+                : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+            }`}
+          />
+        </div>
+
+        {/* Muscle Group Category Tabs */}
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+          <button
+            onClick={() => setSelectedCategory('ALL')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+              selectedCategory === 'ALL'
+                ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                : isDark
+                ? 'bg-[#181F2C] text-gray-300 hover:bg-[#222B3D]'
+                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+            }`}
+          >
+            {lang === 'ar' ? `الكل (${exercises.length})` : `All (${exercises.length})`}
+          </button>
+
+          {MUSCLE_GROUPS.map((mg) => {
+            const count = exercises.filter((e) => e.muscleGroup === mg).length;
+            const active = selectedCategory === mg;
+            return (
+              <button
+                key={mg}
+                onClick={() => setSelectedCategory(mg)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                  active
+                    ? 'bg-emerald-500 text-slate-950 shadow-xs'
+                    : isDark
+                    ? 'bg-[#181F2C] text-gray-300 hover:bg-[#222B3D]'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+              >
+                {translateMuscleGroup(mg, lang)} ({count})
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* EXERCISES LIST GRID */}
+      {filteredExercises.length === 0 ? (
+        <div
+          className={`p-10 rounded-2xl border border-dashed text-center space-y-3 ${
+            isDark ? 'border-[#2D3748] text-gray-400' : 'border-slate-300 text-slate-500'
+          }`}
+        >
+          <Dumbbell className="w-8 h-8 mx-auto opacity-40" />
+          <p className="text-sm font-medium">
+            {exercises.length === 0
+              ? lang === 'ar'
+                ? 'مكتبة التمارين فارغة. أضف تمارينك المخصصة للبدء.'
+                : 'Your exercise library is empty. Add your exercises to get started.'
+              : lang === 'ar'
+              ? 'لا توجد تمارين مطابقة للبحث الحالي.'
+              : 'No exercises match your current filter.'}
+          </p>
+          <button
+            onClick={openAddModal}
+            className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-semibold text-xs cursor-pointer"
+          >
+            {lang === 'ar' ? 'إضافة تمرين جديد' : 'Add New Exercise'}
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredExercises.map((ex) => {
+            const sessionsCount = exerciseSessionCounts.get(ex.id) || 0;
+            const assignedDays = weeklySchedule
+              .filter((d) => d.assignedExerciseIds.includes(ex.id))
+              .map((d) => d.day);
+
+            return (
+              <div
+                key={ex.id}
+                className={`p-4 rounded-xl border flex flex-col justify-between gap-3 transition-all ${
+                  isDark
+                    ? 'bg-[#121721] border-[#1F2937] hover:border-gray-700'
+                    : 'bg-white border-slate-200 shadow-2xs hover:border-slate-300'
+                }`}
+              >
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        {translateMuscleGroup(ex.muscleGroup, lang)}
+                      </span>
+                      <h3 className="font-display font-bold text-base mt-1.5">
+                        {ex.name}
+                      </h3>
+                    </div>
+                  </div>
+
+                  {/* Assigned Weekly Days badges */}
+                  {assignedDays.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1 pt-1">
+                      <Calendar className="w-3 h-3 text-gray-400 me-0.5" />
+                      {assignedDays.map((d) => (
+                        <span
+                          key={d}
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                            isDark
+                              ? 'bg-[#181F2C] text-gray-300 border border-[#2D3748]'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}
+                        >
+                          {translateDayName(d, lang, true)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Card Footer Actions */}
+                <div className="pt-3 border-t border-inherit flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setHistoryModalExercise(ex)}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 border transition-colors cursor-pointer ${
+                        isDark
+                          ? 'bg-[#181F2C] border-[#2D3748] text-gray-300 hover:border-emerald-500/40'
+                          : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                      }`}
+                      title="View Exercise History"
+                    >
+                      <History className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>
+                        {lang === 'ar'
+                          ? `السجل (${sessionsCount})`
+                          : `History (${sessionsCount})`}
+                      </span>
+                    </button>
+
+                    {sessionsCount > 0 && (
+                      <button
+                        onClick={() => openProgressForExercise(ex.id)}
+                        className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                          isDark
+                            ? 'bg-[#181F2C] border-[#2D3748] text-emerald-400 hover:bg-emerald-500/15'
+                            : 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                        }`}
+                        title="View Progress Charts"
+                      >
+                        <TrendingUp className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => openEditModal(ex)}
+                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                        isDark
+                          ? 'text-gray-400 hover:text-gray-100 hover:bg-[#181F2C]'
+                          : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                      }`}
+                      title="Edit Exercise"
+                    >
+                      <Edit3 className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirmId(ex.id)}
+                      className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                        isDark
+                          ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'
+                          : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                      }`}
+                      title="Delete Exercise"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ADD / EDIT EXERCISE MODAL */}
+      {isFormOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <form
+            onSubmit={handleSaveExercise}
+            className={`w-full max-w-lg rounded-2xl border p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto ${
+              isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+            }`}
+          >
+            <div className="flex items-center justify-between border-b border-inherit pb-3">
+              <h3 className="font-display font-bold text-lg">
+                {editingExercise
+                  ? lang === 'ar'
+                    ? 'تعديل بيانات التمرين'
+                    : 'Edit Exercise'
+                  : lang === 'ar'
+                  ? 'إضافة تمرين جديد للمكتبة'
+                  : 'Add New Exercise'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setIsFormOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1.5">
+                {lang === 'ar' ? 'اسم التمرين (يدعم الإنجليزية والعربية)' : 'Exercise Name *'}
+              </label>
+              <input
+                type="text"
+                required
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="e.g., Wide-Grip Lat Pulldown, Cable Row..."
+                className={`w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none focus:border-emerald-500 ${
+                  isDark
+                    ? 'bg-[#181F2C] border-[#2D3748] text-gray-100'
+                    : 'bg-slate-50 border-slate-300 text-slate-900'
+                }`}
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold mb-1.5">
+                {lang === 'ar' ? 'الفئة العضلية *' : 'Muscle Group *'}
+              </label>
+              <select
+                value={formMuscleGroup}
+                onChange={(e) => setFormMuscleGroup(e.target.value as MuscleGroup)}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none focus:border-emerald-500 ${
+                  isDark
+                    ? 'bg-[#181F2C] border-[#2D3748] text-gray-100'
+                    : 'bg-slate-50 border-slate-300 text-slate-900'
+                }`}
+              >
+                {MUSCLE_GROUPS.map((mg) => (
+                  <option key={mg} value={mg}>
+                    {translateMuscleGroup(mg, lang)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-inherit">
+              <button
+                type="button"
+                onClick={() => setIsFormOpen(false)}
+                className={`px-4 py-2 rounded-xl text-xs font-medium border cursor-pointer ${
+                  isDark
+                    ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
+                    : 'bg-slate-100 border-slate-300 text-slate-700'
+                }`}
+              >
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs cursor-pointer"
+              >
+                {editingExercise
+                  ? lang === 'ar'
+                    ? 'حفظ التغييرات'
+                    : 'Save Changes'
+                  : lang === 'ar'
+                  ? 'إضافة التمرين'
+                  : 'Create Exercise'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* EXERCISE HISTORY MODAL */}
+      {historyModalExercise && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-xl rounded-2xl border p-5 sm:p-6 space-y-4 max-h-[85vh] flex flex-col ${
+              isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+            }`}
+          >
+            <div className="flex items-center justify-between border-b border-inherit pb-3">
+              <div>
+                <span className="text-xs font-semibold text-emerald-400">
+                  {translateMuscleGroup(historyModalExercise.muscleGroup, lang)}
+                </span>
+                <h3 className="font-display font-bold text-lg">
+                  {historyModalExercise.name} —{' '}
+                  {lang === 'ar' ? 'سجل الأداء' : 'Workout History'}
+                </h3>
+              </div>
+              <button
+                onClick={() => setHistoryModalExercise(null)}
+                className="p-1.5 rounded-lg hover:bg-white/10"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {selectedExerciseHistory.length === 0 ? (
+                <div className="py-10 text-center text-xs text-gray-400">
+                  {lang === 'ar'
+                    ? 'لم يتم تسجيل أي جلسات لهذا التمرين بعد.'
+                    : 'No completed workout sessions recorded for this exercise yet.'}
+                </div>
+              ) : (
+                selectedExerciseHistory.map((log, i) => (
+                  <div
+                    key={`${log.workoutId}_${i}`}
+                    className={`p-3.5 rounded-xl border space-y-2 ${
+                      isDark
+                        ? 'bg-[#181F2C] border-[#2D3748]'
+                        : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-emerald-400">
+                        {formatFullDate(log.actualDate, lang)}
+                      </span>
+                      <span className="font-mono-num uppercase text-gray-400">
+                        {log.weightType === 'none' ? 'Bodyweight' : log.weightType}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {log.sets.map((s) => (
+                        <div
+                          key={s.setNumber}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-mono-num border ${
+                            isDark
+                              ? 'bg-[#121721] border-[#2D3748]'
+                              : 'bg-white border-slate-200'
+                          }`}
+                        >
+                          <span className="text-gray-400 me-1.5">#{s.setNumber}:</span>
+                          <span className="font-semibold">
+                            {formatSetPerformance(s.weight, log.weightType, s.reps, lang)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-inherit flex items-center justify-between">
+              {selectedExerciseHistory.length > 0 ? (
+                <button
+                  onClick={() => {
+                    const id = historyModalExercise.id;
+                    setHistoryModalExercise(null);
+                    openProgressForExercise(id);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 font-semibold text-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>{lang === 'ar' ? 'فتح مخطط التطور' : 'View Progress Chart'}</span>
+                </button>
+              ) : (
+                <div />
+              )}
+              <button
+                onClick={() => setHistoryModalExercise(null)}
+                className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-semibold text-xs cursor-pointer"
+              >
+                {lang === 'ar' ? 'إغلاق' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE EXERCISE CONFIRMATION MODAL */}
+      {deleteConfirmId && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
+          <div
+            className={`w-full max-w-md rounded-2xl border p-5 space-y-4 ${
+              isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+            }`}
+          >
+            <h3 className="font-display font-bold text-base text-red-400">
+              {lang === 'ar' ? 'تأكيد حذف التمرين' : 'Delete Exercise from Library?'}
+            </h3>
+            <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
+              {lang === 'ar'
+                ? 'سيتم إزالة هذا التمرين من المكتبة، ولكن جميع السجلات التاريخية السابقة لهذا التمرين ستبقى محفوظة بالكامل.'
+                : 'This exercise will be removed from your active library. Any historical workouts where you performed this exercise will remain safely preserved.'}
+            </p>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                onClick={() => setDeleteConfirmId(null)}
+                className={`px-4 py-2 rounded-xl text-xs font-medium border cursor-pointer ${
+                  isDark
+                    ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
+                    : 'bg-slate-100 border-slate-200 text-slate-700'
+                }`}
+              >
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                onClick={async () => {
+                  await deleteExercise(deleteConfirmId);
+                  setDeleteConfirmId(null);
+                }}
+                className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold text-xs cursor-pointer"
+              >
+                {lang === 'ar' ? 'حذف التمرين' : 'Delete Exercise'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
