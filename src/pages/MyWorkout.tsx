@@ -149,8 +149,8 @@ export const MyWorkout: React.FC = () => {
           onClick={resetScheduleToDefault}
           className={`self-start sm:self-auto px-3.5 py-2 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition-colors cursor-pointer ${
             isDark
-              ? 'bg-[#121721] border-[#1F2937] text-gray-300 hover:border-gray-600'
-              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300 hover:border-gray-600'
+              : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-[hsl(40,15%,94%)]'
           }`}
         >
           <RotateCcw className="w-3.5 h-3.5" />
@@ -162,13 +162,13 @@ export const MyWorkout: React.FC = () => {
       <div
         className={`p-3.5 rounded-xl border flex items-start gap-3 text-xs ${
           isDark
-            ? 'bg-emerald-500/5 border-emerald-500/20 text-gray-300'
-            : 'bg-emerald-50 border-emerald-200 text-slate-700'
+            ? 'bg-[hsl(75,92%,56%)]/5 border-[hsl(75,92%,56%)]/20 text-gray-300'
+            : 'bg-[hsl(76,78%,42%)]/5 border-[hsl(76,78%,42%)]/20 text-slate-700'
         }`}
       >
-        <Info className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+        <Info className={`w-4 h-4 shrink-0 mt-0.5 ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`} />
         <div>
-          <strong className="text-emerald-400">
+          <strong className={isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}>
             {lang === 'ar' ? 'ملاحظة هامة:' : 'Flexible Scheduling:'}
           </strong>{' '}
           {lang === 'ar'
@@ -193,18 +193,20 @@ export const MyWorkout: React.FC = () => {
               className={`p-3.5 rounded-xl border text-start transition-all flex flex-col justify-between min-h-[112px] cursor-pointer ${
                 isSelected
                   ? isDark
-                    ? 'bg-emerald-500/15 border-emerald-500 ring-1 ring-emerald-500/40'
-                    : 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500/30'
+                    ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)] ring-1 ring-[hsl(75,92%,56%)]/40'
+                    : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)] ring-1 ring-[hsl(76,78%,42%)]/30'
                   : isDark
-                  ? 'bg-[#121721] border-[#1F2937] hover:border-gray-600'
-                  : 'bg-white border-slate-200 hover:border-slate-300 shadow-2xs'
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] hover:border-gray-600'
+                  : 'bg-white border-[hsl(40,10%,88%)] hover:border-[hsl(40,10%,85%)] shadow-2xs'
               }`}
             >
               <div className="flex items-center justify-between gap-1 w-full">
                 <span
                   className={`text-xs font-display font-bold uppercase tracking-wider ${
                     isSelected
-                      ? 'text-emerald-400'
+                      ? isDark
+                        ? 'text-[hsl(75,92%,56%)]'
+                        : 'text-[hsl(76,78%,42%)]'
                       : isDark
                       ? 'text-gray-400'
                       : 'text-slate-500'
@@ -213,7 +215,7 @@ export const MyWorkout: React.FC = () => {
                   {translateDayName(dayItem.day, lang)}
                 </span>
                 {isToday && (
-                  <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500 text-slate-950">
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'}`}>
                     {lang === 'ar' ? 'اليوم' : 'Today'}
                   </span>
                 )}
@@ -259,13 +261,17 @@ export const MyWorkout: React.FC = () => {
       {/* SELECTED DAY DETAIL PANEL */}
       <div
         className={`rounded-2xl border p-5 sm:p-6 space-y-6 ${
-          isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-xs'
+          isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
         }`}
       >
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-inherit">
           <div className="space-y-2">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="px-3 py-1 rounded-lg text-xs font-display font-bold uppercase bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+              <span className={`px-3 py-1 rounded-lg text-xs font-display font-bold uppercase border ${
+                isDark
+                  ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
+                  : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/30'
+              }`}>
                 {translateDayName(currentDayPlan.day, lang)}
               </span>
 
@@ -305,8 +311,8 @@ export const MyWorkout: React.FC = () => {
                     key={mg}
                     className={`px-2.5 py-1 rounded-lg text-xs font-semibold border ${
                       isDark
-                        ? 'bg-[#181F2C] border-[#2D3748] text-emerald-300'
-                        : 'bg-slate-100 border-slate-200 text-slate-800'
+                        ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-[hsl(75,92%,56%)]'
+                        : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-800'
                     }`}
                   >
                     {translateMuscleGroup(mg, lang)}
@@ -322,8 +328,8 @@ export const MyWorkout: React.FC = () => {
               onClick={openEditDayModal}
               className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors cursor-pointer ${
                 isDark
-                  ? 'bg-[#181F2C] border-[#2D3748] text-gray-200 hover:border-gray-500'
-                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200 hover:border-gray-500'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700 hover:bg-[hsl(40,12%,91%)]'
               }`}
             >
               <Edit3 className="w-3.5 h-3.5" />
@@ -332,7 +338,11 @@ export const MyWorkout: React.FC = () => {
 
             <button
               onClick={handleStartSelectedDayWorkout}
-              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+              className={`px-5 py-2.5 rounded-xl font-display font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg transition-all cursor-pointer ${
+                isDark
+                  ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)] shadow-[hsl(75,92%,56%)]/20'
+                  : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white shadow-[hsl(76,78%,42%)]/20'
+              }`}
             >
               <Play className="w-4 h-4 fill-current" />
               <span>
@@ -353,7 +363,7 @@ export const MyWorkout: React.FC = () => {
           <form
             onSubmit={handleSaveDayEdit}
             className={`p-4 sm:p-5 rounded-xl border space-y-4 ${
-              isDark ? 'bg-[#181F2C] border-[#2D3748]' : 'bg-slate-50 border-slate-200'
+              isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]' : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
             }`}
           >
             <div className="flex items-center justify-between">
@@ -381,10 +391,10 @@ export const MyWorkout: React.FC = () => {
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
                   placeholder="e.g., Back + Biceps + Forearms"
-                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none focus:border-emerald-500 ${
+                  className={`w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none ${isDark ? 'focus:border-[hsl(75,92%,56%)]' : 'focus:border-[hsl(76,78%,42%)]'} ${
                     isDark
-                      ? 'bg-[#121721] border-[#2D3748] text-gray-100'
-                      : 'bg-white border-slate-300 text-slate-900'
+                      ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-100'
+                      : 'bg-white border-[hsl(40,10%,85%)] text-slate-900'
                   }`}
                 />
               </div>
@@ -401,10 +411,12 @@ export const MyWorkout: React.FC = () => {
                       onClick={() => setEditType(tOpt)}
                       className={`py-2 px-3 rounded-xl text-xs font-semibold capitalize border transition-all cursor-pointer ${
                         editType === tOpt
-                          ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                          ? isDark
+                            ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
+                            : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]'
                           : isDark
-                          ? 'bg-[#121721] border-[#2D3748] text-gray-300'
-                          : 'bg-white border-slate-300 text-slate-700'
+                          ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-300'
+                          : 'bg-white border-[hsl(40,10%,85%)] text-slate-700'
                       }`}
                     >
                       {tOpt === 'strength'
@@ -439,10 +451,12 @@ export const MyWorkout: React.FC = () => {
                         onClick={() => toggleEditMuscleGroup(mg)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all cursor-pointer ${
                           active
-                            ? 'bg-emerald-500/20 border-emerald-500 text-emerald-400 font-semibold'
+                            ? isDark
+                              ? 'bg-[hsl(75,92%,56%)]/20 border-[hsl(75,92%,56%)] text-[hsl(75,92%,56%)] font-semibold'
+                              : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)] text-[hsl(76,78%,42%)] font-semibold'
                             : isDark
-                            ? 'bg-[#121721] border-[#2D3748] text-gray-400'
-                            : 'bg-white border-slate-300 text-slate-600'
+                            ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-400'
+                            : 'bg-white border-[hsl(40,10%,85%)] text-slate-600'
                         }`}
                       >
                         {active && <Check className="w-3 h-3" />}
@@ -463,10 +477,10 @@ export const MyWorkout: React.FC = () => {
                 value={editNotes}
                 onChange={(e) => setEditNotes(e.target.value)}
                 placeholder="Optional planning notes..."
-                className={`w-full px-3.5 py-2 rounded-xl text-sm border focus:outline-none focus:border-emerald-500 ${
+                className={`w-full px-3.5 py-2 rounded-xl text-sm border focus:outline-none ${isDark ? 'focus:border-[hsl(75,92%,56%)]' : 'focus:border-[hsl(76,78%,42%)]'} ${
                   isDark
-                    ? 'bg-[#121721] border-[#2D3748] text-gray-100'
-                    : 'bg-white border-slate-300 text-slate-900'
+                    ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-100'
+                    : 'bg-white border-[hsl(40,10%,85%)] text-slate-900'
                 }`}
               />
             </div>
@@ -477,15 +491,19 @@ export const MyWorkout: React.FC = () => {
                 onClick={() => setIsEditingPlan(false)}
                 className={`px-4 py-2 rounded-xl text-xs font-medium border cursor-pointer ${
                   isDark
-                    ? 'bg-[#121721] border-[#2D3748] text-gray-300'
-                    : 'bg-white border-slate-300 text-slate-700'
+                    ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-300'
+                    : 'bg-white border-[hsl(40,10%,85%)] text-slate-700'
                 }`}
               >
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs cursor-pointer"
+                className={`px-4 py-2 rounded-xl font-semibold text-xs cursor-pointer ${
+                  isDark
+                    ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
+                    : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white'
+                }`}
               >
                 {lang === 'ar' ? 'حفظ التعديلات' : 'Save Day Plan'}
               </button>
@@ -517,7 +535,11 @@ export const MyWorkout: React.FC = () => {
                   );
                   setIsAddExerciseModalOpen(true);
                 }}
-                className="px-3.5 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className={`px-3.5 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                  isDark
+                    ? 'bg-[hsl(75,92%,56%)]/15 hover:bg-[hsl(75,92%,56%)]/25 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
+                    : 'bg-[hsl(76,78%,42%)]/10 hover:bg-[hsl(76,78%,42%)]/15 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/30'
+                }`}
               >
                 <Plus className="w-4 h-4" />
                 <span>{lang === 'ar' ? 'إضافة تمرين لليوم' : 'Add Exercise to Day'}</span>
@@ -527,8 +549,8 @@ export const MyWorkout: React.FC = () => {
                 onClick={() => setCurrentSection('exercises')}
                 className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors cursor-pointer ${
                   isDark
-                    ? 'bg-[#181F2C] border-[#2D3748] text-gray-300 hover:border-gray-600'
-                    : 'bg-slate-100 border-slate-200 text-slate-700'
+                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300 hover:border-gray-600'
+                    : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
                 }`}
               >
                 {lang === 'ar' ? 'مكتبة التمارين' : 'Exercise Library'}
@@ -540,8 +562,8 @@ export const MyWorkout: React.FC = () => {
             <div
               className={`p-8 rounded-xl border border-dashed text-center space-y-2 ${
                 isDark
-                  ? 'border-[#2D3748] text-gray-400'
-                  : 'border-slate-300 text-slate-500'
+                  ? 'border-[hsl(240,4%,19%)] text-gray-400'
+                  : 'border-[hsl(40,10%,85%)] text-slate-500'
               }`}
             >
               <Dumbbell className="w-6 h-6 mx-auto opacity-50" />
@@ -562,12 +584,16 @@ export const MyWorkout: React.FC = () => {
                   key={ex.id}
                   className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
                     isDark
-                      ? 'bg-[#181F2C]/80 border-[#1F2937]'
-                      : 'bg-slate-50 border-slate-200'
+                      ? 'bg-[hsl(240,5%,11%)]/80 border-[hsl(240,4%,16%)]'
+                      : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <span className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-400 font-mono-num text-xs font-bold flex items-center justify-center shrink-0">
+                    <span className={`w-7 h-7 rounded-lg font-mono-num text-xs font-bold flex items-center justify-center shrink-0 ${
+                      isDark
+                        ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
+                        : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
+                    }`}>
                       {idx + 1}
                     </span>
                     <div className="min-w-0">
@@ -575,7 +601,7 @@ export const MyWorkout: React.FC = () => {
                         {ex.name}
                       </h4>
                       <div className="flex items-center gap-2 mt-0.5 text-[11px]">
-                        <span className="text-emerald-400 font-medium">
+                        <span className={`font-medium ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                           {translateMuscleGroup(ex.muscleGroup, lang)}
                         </span>
                         <span className={isDark ? 'text-gray-500' : 'text-slate-400'}>•</span>
@@ -613,7 +639,7 @@ export const MyWorkout: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div
             className={`w-full max-w-lg rounded-2xl border p-5 space-y-4 max-h-[85vh] flex flex-col ${
-              isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+              isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]' : 'bg-white border-[hsl(40,10%,88%)]'
             }`}
           >
             <div className="flex items-center justify-between border-b border-inherit pb-3">
@@ -643,10 +669,12 @@ export const MyWorkout: React.FC = () => {
                 onClick={() => setFilterMuscleGroup('ALL')}
                 className={`px-3 py-1 rounded-lg text-xs font-medium shrink-0 cursor-pointer ${
                   filterMuscleGroup === 'ALL'
-                    ? 'bg-emerald-500 text-slate-950 font-semibold'
+                    ? isDark
+                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] font-semibold'
+                      : 'bg-[hsl(76,78%,42%)] text-white font-semibold'
                     : isDark
-                    ? 'bg-[#181F2C] text-gray-300'
-                    : 'bg-slate-100 text-slate-700'
+                    ? 'bg-[hsl(240,5%,11%)] text-gray-300'
+                    : 'bg-[hsl(40,15%,94%)] text-slate-700'
                 }`}
               >
                 {lang === 'ar' ? 'الكل' : 'All Groups'}
@@ -657,10 +685,12 @@ export const MyWorkout: React.FC = () => {
                   onClick={() => setFilterMuscleGroup(mg)}
                   className={`px-3 py-1 rounded-lg text-xs font-medium shrink-0 cursor-pointer ${
                     filterMuscleGroup === mg
-                      ? 'bg-emerald-500 text-slate-950 font-semibold'
+                      ? isDark
+                        ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] font-semibold'
+                        : 'bg-[hsl(76,78%,42%)] text-white font-semibold'
                       : isDark
-                      ? 'bg-[#181F2C] text-gray-300'
-                      : 'bg-slate-100 text-slate-700'
+                      ? 'bg-[hsl(240,5%,11%)] text-gray-300'
+                      : 'bg-[hsl(40,15%,94%)] text-slate-700'
                   }`}
                 >
                   {translateMuscleGroup(mg, lang)}
@@ -681,13 +711,13 @@ export const MyWorkout: React.FC = () => {
                     key={ex.id}
                     className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
                       isDark
-                        ? 'bg-[#181F2C] border-[#2D3748]'
-                        : 'bg-slate-50 border-slate-200'
+                        ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]'
+                        : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
                     }`}
                   >
                     <div>
                       <div className="font-display font-semibold text-sm">{ex.name}</div>
-                      <div className="text-xs text-emerald-400">
+                      <div className={`text-xs ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
                         {translateMuscleGroup(ex.muscleGroup, lang)} •{' '}
                         <span className="font-mono-num uppercase text-gray-400">
                           {ex.defaultWeightUnit === 'none'
@@ -698,7 +728,11 @@ export const MyWorkout: React.FC = () => {
                     </div>
                     <button
                       onClick={() => assignExerciseToDay(currentDayPlan.day, ex.id)}
-                      className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs flex items-center gap-1 cursor-pointer"
+                      className={`px-3 py-1.5 rounded-lg font-semibold text-xs flex items-center gap-1 cursor-pointer ${
+                        isDark
+                          ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
+                          : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white'
+                      }`}
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
@@ -711,7 +745,11 @@ export const MyWorkout: React.FC = () => {
             <div className="pt-2 border-t border-inherit flex justify-end">
               <button
                 onClick={() => setIsAddExerciseModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-semibold text-xs cursor-pointer"
+                className={`px-4 py-2 rounded-xl font-semibold text-xs cursor-pointer ${
+                  isDark
+                    ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]'
+                    : 'bg-[hsl(76,78%,42%)] text-white'
+                }`}
               >
                 {lang === 'ar' ? 'تم' : 'Done'}
               </button>
