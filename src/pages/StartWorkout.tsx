@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import {
   Calendar as CalendarIcon,
@@ -502,23 +501,21 @@ export const StartWorkout: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-inherit">
-                  <span
-                    className={`text-xs ${
-                      isDark ? 'text-gray-400' : 'text-slate-500'
-                    }`}
-                  >
-                    {dayPlan.workoutType === 'rest'
-                      ? lang === 'ar'
-                        ? 'يوم راحة مخطط'
-                        : 'Scheduled rest day'
-                      : dayPlan.workoutType === 'cardio'
-                      ? lang === 'ar'
+                  {dayPlan.workoutType !== 'strength' && (
+                    <span
+                      className={`text-xs ${
+                        isDark ? 'text-gray-400' : 'text-slate-500'
+                      }`}
+                    >
+                      {dayPlan.workoutType === 'rest'
+                        ? lang === 'ar'
+                          ? 'يوم راحة مخطط'
+                          : 'Scheduled rest day'
+                        : lang === 'ar'
                         ? 'كارديو — ساعة واحدة'
-                        : '60 min Cardio'
-                      : `${dayPlan.assignedExerciseIds.length} ${
-                          lang === 'ar' ? 'تمارين مجهزة' : 'preloaded exercises'
-                        }`}
-                  </span>
+                        : '60 min Cardio'}
+                    </span>
+                  )}
 
                   <button
                     onClick={() =>
