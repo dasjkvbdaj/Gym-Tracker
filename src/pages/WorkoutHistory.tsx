@@ -216,7 +216,11 @@ export const WorkoutHistory: React.FC = () => {
 
         <button
           onClick={() => setIsAddPastModalOpen(true)}
-          className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+          className={`self-start sm:self-auto px-4 py-2.5 rounded-xl ${
+            isDark
+              ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,62%)] text-[hsl(240,10%,9%)] shadow-[hsl(75,92%,56%)]/20'
+              : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,36%)] text-white shadow-[hsl(76,78%,42%)]/20'
+          } font-display font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg transition-all cursor-pointer`}
         >
           <Plus className="w-4 h-4" />
           <span>
@@ -228,7 +232,9 @@ export const WorkoutHistory: React.FC = () => {
       {/* FILTERS & SEARCH BAR */}
       <div
         className={`p-4 rounded-2xl border space-y-3.5 ${
-          isDark ? 'bg-[#121721] border-[#1F2937]' : 'bg-white border-slate-200 shadow-2xs'
+          isDark
+            ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+            : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
         }`}
       >
         <div className="flex flex-col sm:flex-row gap-3">
@@ -243,10 +249,10 @@ export const WorkoutHistory: React.FC = () => {
                   ? 'ابحث بالتاريخ أو اسم التمرين أو العضلة...'
                   : 'Search by workout title, exercise name, or date (YYYY-MM-DD)...'
               }
-              className={`w-full ps-10 pe-4 py-2 rounded-xl text-sm border focus:outline-none focus:border-emerald-500 ${
+              className={`w-full ps-10 pe-4 py-2 rounded-xl text-sm border focus:outline-none ${
                 isDark
-                  ? 'bg-[#181F2C] border-[#2D3748] text-gray-100'
-                  : 'bg-slate-50 border-slate-200 text-slate-900'
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-[hsl(0,0%,97%)] focus:border-[hsl(75,92%,56%)]'
+                  : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)] text-[hsl(240,10%,9%)] focus:border-[hsl(76,78%,42%)]'
               }`}
             />
           </div>
@@ -258,10 +264,12 @@ export const WorkoutHistory: React.FC = () => {
                 onClick={() => setFilterType(tOpt)}
                 className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
                   filterType === tOpt
-                    ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                    ? isDark
+                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
+                      : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]'
                     : isDark
-                    ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                    : 'bg-slate-100 border-slate-200 text-slate-700'
+                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                    : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
                 }`}
               >
                 {tOpt === 'ALL'
@@ -286,10 +294,12 @@ export const WorkoutHistory: React.FC = () => {
             onClick={() => setFilterMuscle('ALL')}
             className={`px-3 py-1 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
               filterMuscle === 'ALL'
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                ? isDark
+                  ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
+                  : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border border-[hsl(76,78%,42%)]/30'
                 : isDark
-                ? 'bg-[#181F2C] text-gray-400'
-                : 'bg-slate-100 text-slate-600'
+                ? 'bg-[hsl(240,5%,11%)] text-gray-400'
+                : 'bg-[hsl(40,15%,94%)] text-slate-600'
             }`}
           >
             {lang === 'ar' ? 'جميع العضلات' : 'All Muscle Groups'}
@@ -300,10 +310,12 @@ export const WorkoutHistory: React.FC = () => {
               onClick={() => setFilterMuscle(mg)}
               className={`px-3 py-1 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
                 filterMuscle === mg
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                  ? isDark
+                    ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
+                    : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border border-[hsl(76,78%,42%)]/30'
                   : isDark
-                  ? 'bg-[#181F2C] text-gray-400'
-                  : 'bg-slate-100 text-slate-600'
+                  ? 'bg-[hsl(240,5%,11%)] text-gray-400'
+                  : 'bg-[hsl(40,15%,94%)] text-slate-600'
               }`}
             >
               {translateMuscleGroup(mg, lang)}
@@ -316,7 +328,9 @@ export const WorkoutHistory: React.FC = () => {
       {filteredWorkouts.length === 0 ? (
         <div
           className={`p-12 rounded-2xl border border-dashed text-center space-y-3 ${
-            isDark ? 'border-[#2D3748] text-gray-400' : 'border-slate-300 text-slate-500'
+            isDark
+              ? 'border-[hsl(240,4%,19%)] text-gray-400'
+              : 'border-[hsl(40,10%,85%)] text-slate-500'
           }`}
         >
           <HistoryIcon className="w-8 h-8 mx-auto opacity-40" />
@@ -347,8 +361,8 @@ export const WorkoutHistory: React.FC = () => {
                 key={session.id}
                 className={`rounded-2xl border overflow-hidden transition-all ${
                   isDark
-                    ? 'bg-[#121721] border-[#1F2937]'
-                    : 'bg-white border-slate-200 shadow-2xs'
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                    : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
                 }`}
               >
                 {/* Session Summary Header Row */}
@@ -357,7 +371,9 @@ export const WorkoutHistory: React.FC = () => {
                     setExpandedSessionId(isExpanded ? null : session.id)
                   }
                   className={`p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 cursor-pointer transition-colors ${
-                    isDark ? 'hover:bg-[#181F2C]/50' : 'hover:bg-slate-50'
+                    isDark
+                      ? 'hover:bg-[hsl(240,5%,11%)]/50'
+                      : 'hover:bg-[hsl(40,15%,95%)]'
                   }`}
                 >
                   <div className="space-y-1.5">
@@ -366,7 +382,9 @@ export const WorkoutHistory: React.FC = () => {
                         className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-bold ${
                           session.workoutType === 'cardio'
                             ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
-                            : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            : isDark
+                            ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/30'
+                            : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border border-[hsl(76,78%,42%)]/30'
                         }`}
                       >
                         {session.workoutType === 'cardio' ? (
@@ -385,7 +403,9 @@ export const WorkoutHistory: React.FC = () => {
                         </span>
                       </span>
 
-                      <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1">
+                      <span className={`text-xs font-semibold flex items-center gap-1 ${
+                        isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                      }`}>
                         <CalendarIcon className="w-3.5 h-3.5" />
                         <span>{formatFullDate(session.actualDate, lang)}</span>
                       </span>
@@ -443,8 +463,8 @@ export const WorkoutHistory: React.FC = () => {
                             key={mg}
                             className={`text-[11px] px-2 py-0.5 rounded-md font-medium ${
                               isDark
-                                ? 'bg-[#181F2C] text-gray-300 border border-[#2D3748]'
-                                : 'bg-slate-100 text-slate-700'
+                                ? 'bg-[hsl(240,5%,11%)] text-gray-300 border border-[hsl(240,4%,19%)]'
+                                : 'bg-[hsl(40,15%,94%)] text-slate-700'
                             }`}
                           >
                             {translateMuscleGroup(mg, lang)}
@@ -465,8 +485,8 @@ export const WorkoutHistory: React.FC = () => {
                       }
                       className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors cursor-pointer ${
                         isDark
-                          ? 'bg-[#181F2C] border-[#2D3748] text-gray-200 hover:border-emerald-500/40'
-                          : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                          ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200 hover:border-[hsl(75,92%,56%)]/40'
+                          : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700 hover:bg-[hsl(40,15%,95%)]'
                       }`}
                     >
                       <Edit3 className="w-3.5 h-3.5" />
@@ -477,8 +497,8 @@ export const WorkoutHistory: React.FC = () => {
                       onClick={() => setDeleteConfirmId(session.id)}
                       className={`p-2 rounded-xl border transition-colors cursor-pointer ${
                         isDark
-                          ? 'bg-[#181F2C] border-[#2D3748] text-gray-400 hover:text-red-400 hover:border-red-500/30'
-                          : 'bg-slate-100 border-slate-200 text-slate-500 hover:text-red-600'
+                          ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-400 hover:text-red-400 hover:border-red-500/30'
+                          : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-500 hover:text-red-600'
                       }`}
                       title="Delete Session"
                     >
@@ -506,8 +526,8 @@ export const WorkoutHistory: React.FC = () => {
                   <div
                     className={`p-4 sm:p-5 border-t space-y-4 ${
                       isDark
-                        ? 'bg-[#0E131B] border-[#1F2937]'
-                        : 'bg-slate-50/70 border-slate-200'
+                        ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,16%)]'
+                        : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
                     }`}
                   >
                     {/* Cardio Details if applicable */}
@@ -515,7 +535,7 @@ export const WorkoutHistory: React.FC = () => {
                       <div
                         className={`p-3.5 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${
                           isDark
-                            ? 'bg-[#121721] border-cyan-500/30'
+                            ? 'bg-[hsl(240,5%,7.5%)] border-cyan-500/30'
                             : 'bg-white border-cyan-200'
                         }`}
                       >
@@ -554,13 +574,17 @@ export const WorkoutHistory: React.FC = () => {
                             key={ex.id}
                             className={`p-4 rounded-xl border space-y-2.5 ${
                               isDark
-                                ? 'bg-[#121721] border-[#1F2937]'
-                                : 'bg-white border-slate-200'
+                                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                                : 'bg-white border-[hsl(40,10%,88%)]'
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2">
-                                <span className="w-6 h-6 rounded-md bg-emerald-500/15 text-emerald-400 font-mono-num text-xs font-bold flex items-center justify-center">
+                                <span className={`w-6 h-6 rounded-md font-mono-num text-xs font-bold flex items-center justify-center ${
+                                  isDark
+                                    ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
+                                    : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
+                                }`}>
                                   {idx + 1}
                                 </span>
                                 <h4 className="font-display font-bold text-sm">
@@ -571,7 +595,9 @@ export const WorkoutHistory: React.FC = () => {
                                 className={`font-mono-num text-[11px] font-bold uppercase px-2 py-0.5 rounded border ${
                                   ex.weightType === 'none'
                                     ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                                    : isDark
+                                    ? 'bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
+                                    : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/30'
                                 }`}
                               >
                                 {ex.weightType === 'none'
@@ -587,7 +613,7 @@ export const WorkoutHistory: React.FC = () => {
                                 <div
                                   key={s.id}
                                   className={`flex items-center justify-between px-3 py-1.5 rounded-lg text-xs font-mono-num ${
-                                    isDark ? 'bg-[#181F2C]' : 'bg-slate-50'
+                                    isDark ? 'bg-[hsl(240,5%,11%)]' : 'bg-[hsl(40,15%,95%)]'
                                   }`}
                                 >
                                   <span className="text-gray-400">
@@ -626,11 +652,13 @@ export const WorkoutHistory: React.FC = () => {
                       <div
                         className={`p-3.5 rounded-xl border text-xs ${
                           isDark
-                            ? 'bg-[#121721] border-[#1F2937] text-gray-300'
-                            : 'bg-white border-slate-200 text-slate-700'
+                            ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300'
+                            : 'bg-white border-[hsl(40,10%,88%)] text-slate-700'
                         }`}
                       >
-                        <strong className="text-emerald-400 block mb-1">
+                        <strong className={`block mb-1 ${
+                          isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                        }`}>
                           {lang === 'ar' ? 'ملاحظات الجلسة:' : 'Session Notes:'}
                         </strong>
                         {session.notes}
@@ -650,7 +678,9 @@ export const WorkoutHistory: React.FC = () => {
           <form
             onSubmit={handleSaveEditedWorkout}
             className={`w-full max-w-3xl rounded-2xl border p-5 sm:p-6 space-y-4 max-h-[90vh] flex flex-col ${
-              isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+              isDark
+                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
+                : 'bg-white border-[hsl(40,10%,88%)]'
             }`}
           >
             <div className="flex items-center justify-between border-b border-inherit pb-3">
@@ -688,8 +718,8 @@ export const WorkoutHistory: React.FC = () => {
                     }
                     className={`w-full px-3 py-2 rounded-xl text-sm border ${
                       isDark
-                        ? 'bg-[#181F2C] border-[#2D3748] text-white'
-                        : 'bg-slate-50 border-slate-300 text-slate-900'
+                        ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-white'
+                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
                     }`}
                   />
                 </div>
@@ -710,8 +740,8 @@ export const WorkoutHistory: React.FC = () => {
                     }
                     className={`w-full px-3 py-2 rounded-xl text-sm font-mono-num border ${
                       isDark
-                        ? 'bg-[#181F2C] border-[#2D3748] text-white'
-                        : 'bg-slate-50 border-slate-300 text-slate-900'
+                        ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-white'
+                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
                     }`}
                   />
                 </div>
@@ -732,8 +762,8 @@ export const WorkoutHistory: React.FC = () => {
                     }
                     className={`w-full px-3 py-2 rounded-xl text-sm font-mono-num border ${
                       isDark
-                        ? 'bg-[#181F2C] border-[#2D3748] text-white'
-                        : 'bg-slate-50 border-slate-300 text-slate-900'
+                        ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-white'
+                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
                     }`}
                   />
                 </div>
@@ -746,8 +776,8 @@ export const WorkoutHistory: React.FC = () => {
                     key={ex.id}
                     className={`p-3.5 rounded-xl border space-y-2.5 ${
                       isDark
-                        ? 'bg-[#181F2C] border-[#2D3748]'
-                        : 'bg-slate-50 border-slate-200'
+                        ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]'
+                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -771,10 +801,12 @@ export const WorkoutHistory: React.FC = () => {
                             onClick={() => handleEditExerciseUnit(ex.id, u.id)}
                             className={`px-2.5 py-1 rounded text-xs font-mono-num font-bold border cursor-pointer ${
                               ex.weightType === u.id
-                                ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                                ? isDark
+                                  ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
+                                  : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]'
                                 : isDark
-                                ? 'bg-[#121721] border-[#2D3748] text-gray-300'
-                                : 'bg-white border-slate-300 text-slate-700'
+                                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-gray-300'
+                                : 'bg-white border-[hsl(40,10%,85%)] text-slate-700'
                             }`}
                           >
                             {u.label}
@@ -817,8 +849,8 @@ export const WorkoutHistory: React.FC = () => {
                                 }
                                 className={`w-full px-2.5 py-1.5 rounded-lg font-mono-num text-xs border ${
                                   isDark
-                                    ? 'bg-[#121721] border-[#2D3748] text-white'
-                                    : 'bg-white border-slate-300 text-slate-900'
+                                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
+                                    : 'bg-white border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
                                 }`}
                               />
                             )}
@@ -838,8 +870,8 @@ export const WorkoutHistory: React.FC = () => {
                               }
                               className={`w-full px-2.5 py-1.5 rounded-lg font-mono-num text-xs border ${
                                 isDark
-                                  ? 'bg-[#121721] border-[#2D3748] text-white'
-                                  : 'bg-white border-slate-300 text-slate-900'
+                                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
+                                  : 'bg-white border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
                               }`}
                             />
                           </div>
@@ -861,7 +893,9 @@ export const WorkoutHistory: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => handleEditAddSet(ex.id)}
-                      className="text-xs font-semibold text-emerald-400 hover:underline flex items-center gap-1"
+                      className={`text-xs font-semibold hover:underline flex items-center gap-1 ${
+                        isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                      }`}
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>{lang === 'ar' ? 'إضافة مجموعة' : 'Add Set'}</span>
@@ -881,8 +915,8 @@ export const WorkoutHistory: React.FC = () => {
                     }}
                     className={`w-full px-3 py-2 rounded-xl text-xs border ${
                       isDark
-                        ? 'bg-[#181F2C] border-[#2D3748] text-gray-200'
-                        : 'bg-slate-50 border-slate-300 text-slate-800'
+                        ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200'
+                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-slate-800'
                     }`}
                   >
                     <option value="">
@@ -911,8 +945,8 @@ export const WorkoutHistory: React.FC = () => {
                   }
                   className={`w-full px-3 py-2 rounded-xl text-xs border ${
                     isDark
-                      ? 'bg-[#181F2C] border-[#2D3748] text-white'
-                      : 'bg-slate-50 border-slate-300 text-slate-900'
+                      ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-white'
+                      : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
                   }`}
                 />
               </div>
@@ -924,15 +958,19 @@ export const WorkoutHistory: React.FC = () => {
                 onClick={() => setEditingWorkout(null)}
                 className={`px-4 py-2 rounded-xl text-xs font-medium border cursor-pointer ${
                   isDark
-                    ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                    : 'bg-slate-100 border-slate-300 text-slate-700'
+                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                    : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
                 }`}
               >
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </button>
               <button
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-display font-bold text-xs cursor-pointer"
+                className={`px-5 py-2 rounded-xl font-display font-bold text-xs cursor-pointer ${
+                  isDark
+                    ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,62%)] text-[hsl(240,10%,9%)]'
+                    : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,36%)] text-white'
+                }`}
               >
                 {lang === 'ar' ? 'حفظ التعديلات' : 'Save Changes'}
               </button>
@@ -946,7 +984,9 @@ export const WorkoutHistory: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div
             className={`w-full max-w-md rounded-2xl border p-5 space-y-4 ${
-              isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+              isDark
+                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
+                : 'bg-white border-[hsl(40,10%,88%)]'
             }`}
           >
             <div className="flex items-center justify-between border-b border-inherit pb-3">
@@ -973,11 +1013,13 @@ export const WorkoutHistory: React.FC = () => {
                 onChange={(e) => setPastDate(e.target.value)}
                 className={`w-full px-3.5 py-2.5 rounded-xl text-sm font-mono-num border ${
                   isDark
-                    ? 'bg-[#181F2C] border-[#2D3748] text-white'
-                    : 'bg-slate-50 border-slate-300 text-slate-900'
+                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-white'
+                    : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
                 }`}
               />
-              <p className="text-xs text-emerald-400 mt-1.5">
+              <p className={`text-xs mt-1.5 ${
+                isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+              }`}>
                 {formatFullDate(pastDate, lang)}
               </p>
             </div>
@@ -992,10 +1034,12 @@ export const WorkoutHistory: React.FC = () => {
                   onClick={() => setPastType('strength')}
                   className={`py-2.5 px-3 rounded-xl text-xs font-bold border cursor-pointer ${
                     pastType === 'strength'
-                      ? 'bg-emerald-500 text-slate-950 border-emerald-500'
+                      ? isDark
+                        ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
+                        : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]'
                       : isDark
-                      ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                      : 'bg-slate-100 border-slate-300 text-slate-700'
+                      ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                      : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
                   }`}
                 >
                   {lang === 'ar' ? 'تمرين حديد' : 'Strength Training'}
@@ -1007,8 +1051,8 @@ export const WorkoutHistory: React.FC = () => {
                     pastType === 'cardio'
                       ? 'bg-cyan-500 text-slate-950 border-cyan-500'
                       : isDark
-                      ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                      : 'bg-slate-100 border-slate-300 text-slate-700'
+                      ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                      : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
                   }`}
                 >
                   {lang === 'ar' ? 'جلسة كارديو' : 'Cardio Session'}
@@ -1021,8 +1065,8 @@ export const WorkoutHistory: React.FC = () => {
                 onClick={() => setIsAddPastModalOpen(false)}
                 className={`px-4 py-2 rounded-xl text-xs font-medium border cursor-pointer ${
                   isDark
-                    ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                    : 'bg-slate-100 border-slate-300 text-slate-700'
+                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                    : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
                 }`}
               >
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
@@ -1032,7 +1076,11 @@ export const WorkoutHistory: React.FC = () => {
                   setIsAddPastModalOpen(false);
                   await openStartWorkoutForDate(pastDate, pastType);
                 }}
-                className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs cursor-pointer"
+                className={`px-4 py-2 rounded-xl font-bold text-xs cursor-pointer ${
+                  isDark
+                    ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]'
+                    : 'bg-[hsl(76,78%,42%)] text-white'
+                }`}
               >
                 {lang === 'ar' ? 'المتابعة لتسجيل التمارين' : 'Open Workout Logger'}
               </button>
@@ -1046,7 +1094,9 @@ export const WorkoutHistory: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div
             className={`w-full max-w-md rounded-2xl border p-5 space-y-4 ${
-              isDark ? 'bg-[#121721] border-[#2D3748]' : 'bg-white border-slate-200'
+              isDark
+                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
+                : 'bg-white border-[hsl(40,10%,88%)]'
             }`}
           >
             <h3 className="font-display font-bold text-base text-red-400">
@@ -1062,8 +1112,8 @@ export const WorkoutHistory: React.FC = () => {
                 onClick={() => setDeleteConfirmId(null)}
                 className={`px-4 py-2 rounded-xl text-xs font-medium border cursor-pointer ${
                   isDark
-                    ? 'bg-[#181F2C] border-[#2D3748] text-gray-300'
-                    : 'bg-slate-100 border-slate-200 text-slate-700'
+                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
+                    : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
                 }`}
               >
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
