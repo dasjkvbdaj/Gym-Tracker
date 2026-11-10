@@ -1,3 +1,4 @@
+
 export type MuscleGroup =
   | 'Back'
   | 'Chest'
@@ -28,7 +29,6 @@ export type AppSection =
   | 'schedule'
   | 'exercises'
   | 'start-workout'
-  | 'history'
   | 'calendar'
   | 'progress'
   | 'settings';
