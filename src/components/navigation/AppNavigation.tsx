@@ -1,11 +1,12 @@
+
 import React from 'react';
+
 import {
   Activity,
   Calendar as CalendarIcon,
   CheckCircle2,
   ClipboardList,
   Dumbbell,
-  History,
   LayoutDashboard,
   Moon,
   Play,
@@ -17,12 +18,15 @@ import {
   Info,
   Globe,
 } from 'lucide-react';
+
 import { useGym } from '../../context/GymContext';
 import { AppSection } from '../../types/workout';
 import { UI_TEXT } from '../../utils/i18n';
 import { OfflineBadge } from '../pwa/OfflineBadge';
 
-export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AppNavigation: React.FC<{
+  children: React.ReactNode;
+}> = ({ children }) => {
   const {
     currentSection,
     setCurrentSection,
@@ -37,11 +41,11 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
   const t = UI_TEXT[lang];
   const isDark = settings.theme === 'dark';
 
+  // DESKTOP NAVIGATION
   const navItems: {
     id: AppSection;
     label: string;
     icon: React.FC<{ className?: string }>;
-    isPrimaryCTA?: boolean;
   }[] = [
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
     { id: 'schedule', label: t.myWorkout, icon: ClipboardList },
@@ -50,45 +54,59 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
       id: 'start-workout',
       label: activeWorkout ? t.resumeWorkout : t.startWorkout,
       icon: Play,
-      isPrimaryCTA: true,
     },
-    { id: 'history', label: t.workoutHistory, icon: History },
     { id: 'calendar', label: t.calendar, icon: CalendarIcon },
     { id: 'progress', label: t.progress, icon: TrendingUp },
     { id: 'settings', label: t.settings, icon: SettingsIcon },
   ];
 
-  // Mobile bottom 5 primary tabs
+  // MOBILE BOTTOM NAVIGATION
   const mobileBottomItems: {
     id: AppSection;
     label: string;
     icon: React.FC<{ className?: string }>;
     isCenter?: boolean;
   }[] = [
-    { id: 'dashboard', label: lang === 'ar' ? 'الرئيسية' : 'Dashboard', icon: LayoutDashboard },
-    { id: 'schedule', label: lang === 'ar' ? 'جدولي' : 'Schedule', icon: ClipboardList },
+    {
+      id: 'dashboard',
+      label: lang === 'ar' ? 'الرئيسية' : 'Dashboard',
+      icon: LayoutDashboard,
+    },
+    {
+      id: 'schedule',
+      label: lang === 'ar' ? 'جدولي' : 'Schedule',
+      icon: ClipboardList,
+    },
     {
       id: 'start-workout',
       label: activeWorkout
-        ? lang === 'ar'
-          ? 'متابعة'
-          : 'Active'
-        : lang === 'ar'
-        ? 'تمرين'
-        : 'Workout',
+        ? lang === 'ar' ? 'متابعة' : 'Active'
+        : lang === 'ar' ? 'تمرين' : 'Workout',
       icon: Play,
       isCenter: true,
     },
-    { id: 'history', label: lang === 'ar' ? 'السجل' : 'History', icon: History },
-    { id: 'progress', label: lang === 'ar' ? 'التطور' : 'Progress', icon: TrendingUp },
+    {
+      id: 'calendar',
+      label: lang === 'ar' ? 'التقويم' : 'Calendar',
+      icon: CalendarIcon,
+    },
+    {
+      id: 'progress',
+      label: lang === 'ar' ? 'التطور' : 'Progress',
+      icon: TrendingUp,
+    },
   ];
 
   const toggleTheme = () => {
-    updateSettings({ theme: isDark ? 'light' : 'dark' });
+    updateSettings({
+      theme: isDark ? 'light' : 'dark',
+    });
   };
 
   const toggleLanguage = () => {
-    updateSettings({ language: lang === 'en' ? 'ar' : 'en' });
+    updateSettings({
+      language: lang === 'en' ? 'ar' : 'en',
+    });
   };
 
   return (
@@ -99,6 +117,7 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
           : 'bg-[hsl(40,20%,97.5%)] text-[hsl(240,10%,9%)]'
       }`}
     >
+
       {/* DESKTOP SIDEBAR */}
       <aside
         className={`hidden lg:flex lg:flex-col lg:w-[264px] lg:fixed lg:inset-y-0 z-30 border-e ${
@@ -107,51 +126,63 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
             : 'bg-white border-[hsl(40,10%,88%)] shadow-sm'
         }`}
       >
-        {/* Brand Header */}
+
+        {/* BRAND */}
         <div className="p-5 flex items-center justify-between border-b border-inherit">
           <button
             onClick={() => setCurrentSection('dashboard')}
-            className="flex items-center gap-3 text-start group focus:outline-none"
+            className="flex items-center gap-3 text-start group"
           >
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-              isDark
-                ? 'bg-[hsl(75,92%,56%)]/15 border border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)] group-hover:bg-[hsl(75,92%,56%)] group-hover:text-[hsl(240,6%,4%)]'
-                : 'bg-[hsl(76,78%,42%)]/10 border border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)] group-hover:bg-[hsl(76,78%,42%)] group-hover:text-white'
-            }`}>
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                isDark
+                  ? 'bg-[hsl(75,92%,56%)]/15 border border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]'
+                  : 'bg-[hsl(76,78%,42%)]/10 border border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)]'
+              }`}
+            >
               <Dumbbell className="w-5 h-5" />
             </div>
+
             <div>
               <div className="font-display font-bold text-lg tracking-tight leading-none flex items-center gap-1.5">
-                <span>IRONPULSE</span>
-                <span className={`w-2 h-2 rounded-full animate-pulse ${
-                  isDark ? 'bg-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]'
-                }`} />
+                IRONPULSE
+
+                <span
+                  className={`w-2 h-2 rounded-full animate-pulse ${
+                    isDark
+                      ? 'bg-[hsl(75,92%,56%)]'
+                      : 'bg-[hsl(76,78%,42%)]'
+                  }`}
+                />
               </div>
-              <p
-                className={`text-xs mt-0.5 ${
-                  isDark ? 'text-gray-400' : 'text-slate-500'
-                }`}
-              >
+
+              <p className={`text-xs mt-0.5 ${
+                isDark ? 'text-gray-400' : 'text-slate-500'
+              }`}>
                 {t.appTagline}
               </p>
             </div>
           </button>
         </div>
 
-        {/* Prominent Start / Resume Workout Button */}
+        {/* START / RESUME */}
         <div className="p-4">
           <button
             onClick={() => setCurrentSection('start-workout')}
-            className={`w-full py-3 px-4 rounded-xl font-display font-semibold text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer ${
+            className={`w-full py-3 px-4 rounded-xl font-display font-semibold text-sm flex items-center justify-center gap-2.5 shadow-lg ${
               activeWorkout
-                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/15'
+                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950'
                 : isDark
-                ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,62%)] text-[hsl(240,6%,4%)] shadow-[hsl(75,92%,56%)]/15'
-                : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,38%)] text-white shadow-[hsl(76,78%,42%)]/15'
+                  ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,62%)] text-[hsl(240,6%,4%)]'
+                  : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,38%)] text-white'
             }`}
           >
             <Play className="w-4 h-4 fill-current" />
-            <span>{activeWorkout ? t.resumeWorkout : t.startWorkout}</span>
+
+            <span>
+              {activeWorkout ? t.resumeWorkout : t.startWorkout}
+            </span>
+
             {activeWorkout && (
               <span className="text-xs px-2 py-0.5 rounded-md bg-slate-950/20 font-bold">
                 {lang === 'ar' ? 'نشط' : 'Active'}
@@ -160,39 +191,31 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
           </button>
         </div>
 
-        {/* Navigation Links */}
+        {/* NAVIGATION LINKS */}
         <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentSection === item.id;
+
             return (
               <button
                 key={item.id}
                 onClick={() => setCurrentSection(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all ${
                   isActive
                     ? isDark
                       ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/30 font-semibold'
                       : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border border-[hsl(76,78%,42%)]/25 font-semibold'
                     : isDark
-                    ? 'text-gray-400 hover:text-gray-100 hover:bg-[hsl(240,5%,11%)]'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-[hsl(40,15%,94%)]'
+                      ? 'text-gray-400 hover:text-gray-100 hover:bg-[hsl(240,5%,11%)]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-[hsl(40,15%,94%)]'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon
-                    className={`w-4 h-4 ${
-                      isActive
-                        ? isDark
-                          ? 'text-[hsl(75,92%,56%)]'
-                          : 'text-[hsl(76,78%,42%)]'
-                        : isDark
-                        ? 'text-gray-400'
-                        : 'text-slate-500'
-                    }`}
-                  />
+                  <Icon className="w-4 h-4" />
                   <span>{item.label}</span>
                 </div>
+
                 {item.id === 'start-workout' && activeWorkout && (
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                 )}
@@ -201,7 +224,7 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
           })}
         </nav>
 
-        {/* Bottom Quick Preferences Footer */}
+        {/* PREFERENCES */}
         <div
           className={`p-4 border-t space-y-3 ${
             isDark
@@ -213,11 +236,8 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
             <span className={isDark ? 'text-gray-400' : 'text-slate-500'}>
               {lang === 'ar' ? 'الوحدة الافتراضية:' : 'Default Unit:'}
             </span>
-            <span className={`font-mono-num font-semibold uppercase px-2 py-0.5 rounded border ${
-              isDark
-                ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
-                : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/25'
-            }`}>
+
+            <span className="font-mono-num font-semibold uppercase px-2 py-0.5 rounded border">
               {settings.preferredWeightUnit}
             </span>
           </div>
@@ -225,36 +245,30 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={toggleTheme}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
-                isDark
-                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300 hover:border-[hsl(240,4%,19%)]'
-                  : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-[hsl(40,15%,94%)]'
-              }`}
-              title="Toggle Dark / Light Theme"
+              className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-medium border"
             >
-              {isDark ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-700" />}
-              <span>{isDark ? (lang === 'ar' ? 'نهاري' : 'Light') : lang === 'ar' ? 'ليلي' : 'Dark'}</span>
+              {isDark
+                ? <Sun className="w-3.5 h-3.5 text-amber-400" />
+                : <Moon className="w-3.5 h-3.5" />}
+
+              {isDark
+                ? lang === 'ar' ? 'نهاري' : 'Light'
+                : lang === 'ar' ? 'ليلي' : 'Dark'}
             </button>
 
             <button
               onClick={toggleLanguage}
-              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
-                isDark
-                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300 hover:border-[hsl(240,4%,19%)]'
-                  : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-[hsl(40,15%,94%)]'
-              }`}
-              title="Switch Language (English / العربية)"
+              className="flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-medium border"
             >
-              <Globe className={`w-3.5 h-3.5 ${
-                isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
-              }`} />
-              <span>{lang === 'en' ? 'العربية' : 'English'}</span>
+              <Globe className="w-3.5 h-3.5" />
+
+              {lang === 'en' ? 'العربية' : 'English'}
             </button>
           </div>
         </div>
       </aside>
 
-      {/* MOBILE / TABLET TOP HEADER */}
+      {/* MOBILE HEADER */}
       <header
         className={`lg:hidden sticky top-0 z-30 border-b backdrop-blur-md ${
           isDark
@@ -263,18 +277,16 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
         }`}
       >
         <div className="px-4 h-14 flex items-center justify-between">
+
           <button
             onClick={() => setCurrentSection('dashboard')}
-            className="flex items-center gap-2.5 focus:outline-none"
+            className="flex items-center gap-2.5"
           >
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-              isDark
-                ? 'bg-[hsl(75,92%,56%)]/15 border border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]'
-                : 'bg-[hsl(76,78%,42%)]/10 border border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)]'
-            }`}>
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-600/10 text-indigo-500">
               <Dumbbell className="w-4 h-4" />
             </div>
-            <span className="font-display font-bold text-base tracking-tight">
+
+            <span className="font-display font-bold text-base">
               IRONPULSE
             </span>
           </button>
@@ -282,92 +294,87 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
           <div className="flex items-center gap-1.5">
             <button
               onClick={toggleLanguage}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border ${
-                isDark
-                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300'
-                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
-              }`}
+              className="px-2.5 py-1.5 rounded-lg text-xs font-medium border"
             >
               {lang === 'en' ? 'عربي' : 'EN'}
             </button>
+
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-lg border ${
-                isDark
-                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-amber-400'
-                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
-              }`}
+              className="p-2 rounded-lg border"
               aria-label="Toggle theme"
             >
-              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {isDark
+                ? <Sun className="w-4 h-4" />
+                : <Moon className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Quick-Access Pill Bar for All 8 Sections */}
+        {/* MOBILE SECTION PILLS */}
         <div className="px-3 pb-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentSection === item.id;
+
             return (
               <button
                 key={item.id}
                 onClick={() => setCurrentSection(item.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs whitespace-nowrap shrink-0 ${
                   isActive
-                    ? isDark
-                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)] font-semibold shadow-sm'
-                      : 'bg-[hsl(76,78%,42%)] text-white font-semibold shadow-sm'
+                    ? 'bg-indigo-600 text-white font-semibold'
                     : isDark
-                    ? 'bg-[hsl(240,5%,7.5%)] text-gray-400 border border-[hsl(240,4%,16%)]'
-                    : 'bg-[hsl(40,15%,94%)] text-slate-600 border border-[hsl(40,10%,88%)]'
+                      ? 'bg-[hsl(240,5%,7.5%)] text-gray-400 border border-gray-800'
+                      : 'bg-slate-100 text-slate-600 border border-slate-200'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
-                <span>{item.label}</span>
+                {item.label}
               </button>
             );
           })}
         </div>
       </header>
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTENT */}
       <div className="flex-1 lg:ps-[264px] flex flex-col min-w-0">
-        {/* Persistent Active Workout Banner when user navigates away from Start Workout */}
+
+        {/* ACTIVE WORKOUT BANNER */}
         {activeWorkout && currentSection !== 'start-workout' && (
-          <div className="sticky top-0 lg:top-0 z-20 bg-amber-500/15 border-b border-amber-500/40 backdrop-blur-md px-4 py-2.5">
+          <div className="sticky top-0 z-20 bg-amber-500/15 border-b border-amber-500/40 backdrop-blur-md px-4 py-2.5">
             <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 flex-wrap">
+
               <div className="flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
-                <Activity className="w-4 h-4 text-amber-400 shrink-0" />
+
+                <Activity className="w-4 h-4 text-amber-400" />
+
                 <div className="text-xs sm:text-sm font-medium">
-                  <span className="font-semibold text-amber-400">
+                  <strong className="text-amber-400">
                     {t.activeWorkout}:
-                  </span>{' '}
-                  <span>{activeWorkout.title}</span>
-                  <span className="ms-2 text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
-                    {lang === 'ar' ? 'جلسة نشطة' : 'In Progress'}
-                  </span>
+                  </strong>{' '}
+                  {activeWorkout.title}
                 </div>
               </div>
+
               <button
                 onClick={() => setCurrentSection('start-workout')}
-                className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                className="px-3.5 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-semibold text-xs flex items-center gap-1.5"
               >
                 <Play className="w-3.5 h-3.5 fill-current" />
-                <span>{t.resumeWorkout}</span>
+                {t.resumeWorkout}
               </button>
             </div>
           </div>
         )}
 
-        {/* Page Content Container */}
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-28 lg:pb-10">
           {children}
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION BAR */}
+      {/* MOBILE BOTTOM NAVIGATION */}
       <nav
         className={`lg:hidden fixed bottom-0 inset-x-0 z-30 h-[68px] border-t backdrop-blur-lg px-2 flex items-center justify-around ${
           isDark
@@ -384,32 +391,21 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
               <button
                 key={item.id}
                 onClick={() => setCurrentSection(item.id)}
-                className="flex flex-col items-center justify-center -mt-4 focus:outline-none"
+                className="flex flex-col items-center justify-center -mt-4"
               >
                 <div
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
+                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg ${
                     activeWorkout
-                      ? 'bg-amber-500 text-slate-950 shadow-amber-500/25'
+                      ? 'bg-amber-500 text-slate-950'
                       : isDark
-                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)] shadow-[hsl(75,92%,56%)]/25'
-                      : 'bg-[hsl(76,78%,42%)] text-white shadow-[hsl(76,78%,42%)]/25'
+                        ? 'bg-[hsl(75,92%,56%)] text-black'
+                        : 'bg-[hsl(76,78%,42%)] text-white'
                   }`}
                 >
                   <Icon className="w-5 h-5 fill-current" />
                 </div>
-                <span
-                  className={`text-[10px] font-semibold mt-1 ${
-                    activeWorkout
-                      ? 'text-amber-400'
-                      : isActive
-                      ? isDark
-                        ? 'text-[hsl(75,92%,56%)]'
-                        : 'text-[hsl(76,78%,42%)]'
-                      : isDark
-                      ? 'text-gray-300'
-                      : 'text-slate-700'
-                  }`}
-                >
+
+                <span className="text-[10px] font-semibold mt-1">
                   {item.label}
                 </span>
               </button>
@@ -420,24 +416,26 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
             <button
               key={item.id}
               onClick={() => setCurrentSection(item.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl min-w-[56px] transition-colors ${
+              className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl min-w-[56px] ${
                 isActive
                   ? isDark
                     ? 'text-[hsl(75,92%,56%)]'
                     : 'text-[hsl(76,78%,42%)]'
                   : isDark
-                  ? 'text-gray-400 hover:text-gray-200'
-                  : 'text-slate-500 hover:text-slate-900'
+                    ? 'text-gray-400'
+                    : 'text-slate-500'
               }`}
             >
               <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium mt-1">{item.label}</span>
+              <span className="text-[10px] font-medium mt-1">
+                {item.label}
+              </span>
             </button>
           );
         })}
       </nav>
 
-      {/* OFFLINE STATUS BADGE */}
+      {/* OFFLINE STATUS */}
       <OfflineBadge />
 
       {/* TOAST NOTIFICATIONS */}
@@ -445,33 +443,34 @@ export const AppNavigation: React.FC<{ children: React.ReactNode }> = ({ childre
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-md transition-all ${
+            className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-md ${
               toast.type === 'error'
                 ? 'bg-red-950/90 border-red-500/40 text-red-200'
                 : toast.type === 'info'
-                ? isDark
-                  ? 'bg-[hsl(240,5%,11%)]/95 border-[hsl(240,4%,19%)] text-gray-100'
-                  : 'bg-slate-900 text-white border-slate-700'
-                : isDark
-                ? 'bg-[hsl(240,5%,7.5%)]/95 border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]'
-                : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]/40'
+                  ? isDark
+                    ? 'bg-[hsl(240,5%,11%)]/95 border-gray-700 text-gray-100'
+                    : 'bg-slate-900 text-white border-slate-700'
+                  : isDark
+                    ? 'bg-[hsl(240,5%,7.5%)]/95 border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]'
+                    : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]/40'
             }`}
           >
             <div className="flex items-center gap-2.5 text-xs sm:text-sm font-medium">
+
               {toast.type === 'error' ? (
                 <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
               ) : toast.type === 'info' ? (
                 <Info className="w-4 h-4 text-cyan-400 shrink-0" />
               ) : (
-                <CheckCircle2 className={`w-4 h-4 shrink-0 ${
-                  isDark ? 'text-[hsl(75,92%,56%)]' : 'text-white'
-                }`} />
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
               )}
+
               <span>{toast.text}</span>
             </div>
+
             <button
               onClick={() => dismissToast(toast.id)}
-              className="p-1 rounded-lg hover:bg-white/10 transition-colors"
+              className="p-1 rounded-lg hover:bg-white/10"
             >
               <X className="w-3.5 h-3.5" />
             </button>
