@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Dumbbell } from 'lucide-react';
 import { AppNavigation } from './components/navigation/AppNavigation';
@@ -9,7 +10,6 @@ import { MyWorkout } from './pages/MyWorkout';
 import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StartWorkout } from './pages/StartWorkout';
-import { WorkoutHistory } from './pages/WorkoutHistory';
 
 const MainRouter: React.FC = () => {
   const { isInitialized, currentSection } = useGym();
@@ -24,6 +24,7 @@ const MainRouter: React.FC = () => {
         <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-400 flex items-center justify-center animate-pulse">
           <Dumbbell className="w-6 h-6" />
         </div>
+
         <div className="font-display font-bold text-sm tracking-wider text-gray-400">
           INITIALIZING LOCAL DATABASE...
         </div>
@@ -37,7 +38,6 @@ const MainRouter: React.FC = () => {
       {currentSection === 'schedule' && <MyWorkout />}
       {currentSection === 'exercises' && <ExerciseLibrary />}
       {currentSection === 'start-workout' && <StartWorkout />}
-      {currentSection === 'history' && <WorkoutHistory />}
       {currentSection === 'calendar' && <CalendarPage />}
       {currentSection === 'progress' && <ProgressPage />}
       {currentSection === 'settings' && <SettingsPage />}
