@@ -747,57 +747,6 @@ export const CalendarPage: React.FC = () => {
 
           </div>
 
-          {/* LOG WORKOUT BUTTONS */}
-          <div className="pt-4 border-t border-inherit space-y-2">
-
-            <button
-              onClick={() =>
-                openStartWorkoutForDate(
-                  selectedCalendarDate,
-                  'strength'
-                )
-              }
-              className={`w-full py-2.5 px-4 rounded-xl font-display font-bold text-xs flex items-center justify-center gap-1.5 shadow-md transition-all cursor-pointer ${
-                isDark
-                  ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,6%,4%)]'
-                  : 'bg-indigo-700 hover:bg-indigo-800 text-white'
-              }`}
-            >
-              <Plus className="w-4 h-4" />
-
-              <span>
-                {lang === 'ar'
-                  ? 'تسجيل تمرين حديد في هذا التاريخ'
-                  : 'Log Strength Workout on This Date'}
-              </span>
-
-            </button>
-
-            <button
-              onClick={() =>
-                openStartWorkoutForDate(
-                  selectedCalendarDate,
-                  'cardio'
-                )
-              }
-              className={`w-full py-2.5 px-4 rounded-xl font-display font-semibold text-xs border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                isDark
-                  ? 'bg-[hsl(240,5%,11%)] border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/15'
-                  : 'bg-cyan-50 border-cyan-200 text-cyan-800 hover:bg-cyan-100'
-              }`}
-            >
-              <Flame className="w-4 h-4" />
-
-              <span>
-                {lang === 'ar'
-                  ? 'تسجيل جلسة كارديو في هذا التاريخ'
-                  : 'Log Cardio Session on This Date'}
-              </span>
-
-            </button>
-
-          </div>
-
         </div>
       </div>
     </div>
