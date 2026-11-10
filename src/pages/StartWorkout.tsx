@@ -367,7 +367,7 @@ export const StartWorkout: React.FC = () => {
     }
 
     await finishActiveWorkout();
-    setCurrentSection('history');
+    setCurrentSection('calendar');
   };
 
   // Filtered library exercises for the Add Exercise modal
