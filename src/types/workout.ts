@@ -38,6 +38,7 @@ export interface SetEntry {
   weight: number | null; // null when weightType === 'none' (Bodyweight)
   reps: number;
   completed?: boolean;
+  restDurationSeconds?: number; // وقت الراحة المستغرق بعد هذه المجموعة (اختياري)
 }
 
 export interface ExerciseEntry {
@@ -47,6 +48,7 @@ export interface ExerciseEntry {
   muscleGroup: MuscleGroup;
   weightType: WeightUnit; // 'kg' | 'lbs' | 'none'
   sets: SetEntry[];
+  caloriesBurned?: number; // إجمالي السعرات الحرارية المحروقة لهذا التمرين
   notes: string;
 }
 
@@ -112,7 +114,7 @@ export interface BackupData {
   exportedAt: string;
   exportTimestamp: number;
   settings: UserSettings;
-  weeklySchedule: WeeklyScheduleDay[];
+  weeklySchedule:WeeklyScheduleDay[];
   exercises: Exercise[];
   workouts: WorkoutSession[];
 }
