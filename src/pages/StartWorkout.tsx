@@ -537,16 +537,17 @@ export const StartWorkout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2.5 self-stretch sm:self-auto">
-            <button
-              onClick={() => setIsCancelConfirmOpen(true)}
-              className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
-                isDark
-                  ? 'bg-[hsl(240,5%,11%)] border-red-500/30 text-red-400 hover:bg-red-500/10'
-                  : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
-              }`}
-            >
-              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
-            </button>
+            <button 
+  onClick={async () => { 
+    setIsCancelConfirmOpen(false); 
+    await cancelActiveWorkout(); 
+    setCurrentSection('home'); // <--- الانتقال للداشبورد الرئيسية
+  }} 
+  className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold text-xs cursor-pointer"
+>
+  {lang === 'ar' ? 'نعم، إلغاء التمرين' : 'Discard Workout'}
+</button>
+
             <button
               onClick={handleFinishSession}
               className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
