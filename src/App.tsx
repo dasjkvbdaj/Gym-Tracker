@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Dumbbell } from 'lucide-react';
 import { AppNavigation } from './components/navigation/AppNavigation';
@@ -10,6 +9,7 @@ import { MyWorkout } from './pages/MyWorkout';
 import { ProgressPage } from './pages/ProgressPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { StartWorkout } from './pages/StartWorkout';
+import { WeightPage } from './pages/WeightPage';
 
 const MainRouter: React.FC = () => {
   const { isInitialized, currentSection } = useGym();
@@ -37,6 +37,7 @@ const MainRouter: React.FC = () => {
       {currentSection === 'dashboard' && <Dashboard />}
       {currentSection === 'schedule' && <MyWorkout />}
       {currentSection === 'exercises' && <ExerciseLibrary />}
+      {currentSection === 'weight' && <WeightPage />}
       {currentSection === 'start-workout' && <StartWorkout />}
       {currentSection === 'calendar' && <CalendarPage />}
       {currentSection === 'progress' && <ProgressPage />}
