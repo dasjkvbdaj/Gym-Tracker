@@ -308,7 +308,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 4 KPI SUMMARY CARDS (INCLUDING THE NEW 4TH WEIGHT BOX) */}
+      {/* 4 KPI SUMMARY CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
 
         {/* TOTAL SESSIONS */}
