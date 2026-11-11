@@ -71,6 +71,7 @@ const MONTH_NAMES_AR = [
   'ديسمبر',
 ];
 
+// RELATIVE DATE LABEL
 const getRelativeDateLabel = (
   dateString: string,
   lang: string
@@ -133,6 +134,7 @@ const getRelativeDateLabel = (
   return isArabic ? `بعد ${daysUntil} أيام` : `In ${daysUntil} days`;
 };
 
+// دالة مساعدة للتحقق مما إذا كان التمرين كارديو
 const isCardioExercise = (exerciseName: string, muscleGroup: string) => {
   const name = exerciseName.toLowerCase();
   return (
@@ -145,62 +147,6 @@ const isCardioExercise = (exerciseName: string, muscleGroup: string) => {
     name.includes('rowing') ||
     name.includes('running')
   );
-};
-
-// دالة ذكية لتوزيع السعرات الحرارية نسبياً على التمارين والمجموعات بناءً على الجهد المبذول (Volume)
-const distributeCaloriesToWorkout = (workout: WorkoutSession): WorkoutSession => {
-  const totalSessionCalories = workout.exercises.reduce(
-    (acc, ex) => acc + (ex.caloriesBurned || 0),
-    0
-  );
-
-  if (totalSessionCalories <= 0) return workout;
-
-  let totalVolume = 0;
-  workout.exercises.forEach((ex) => {
-    if (!isCardioExercise(ex.exerciseNameSnapshot, ex.muscleGroup)) {
-      ex.sets.forEach((set) => {
-        const weightVal = set.weight || 0;
-        totalVolume += weightVal * set.reps;
-      });
-    }
-  });
-
-  // إذا لم يكن هناك أوزان مسجلة (أو تمارين كارديو بحتة)، يتم توزيعها بالتساوي
-  if (totalVolume <= 0) {
-    const totalSetsCount = workout.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
-    if (totalSetsCount === 0) return workout;
-    const caloriesPerSet = Math.round(totalSessionCalories / totalSetsCount);
-
-    const updatedExercises = workout.exercises.map((ex) => {
-      let exCalories = 0;
-      const updatedSets = ex.sets.map((set) => {
-        exCalories += caloriesPerSet;
-        return { ...set, caloriesBurned: caloriesPerSet };
-      });
-      return { ...ex, caloriesBurned: exCalories, sets: updatedSets };
-    });
-    return { ...workout, exercises: updatedExercises };
-  }
-
-  const updatedExercises = workout.exercises.map((ex) => {
-    let exCalories = 0;
-    const updatedSets = ex.sets.map((set) => {
-      const isCardio = isCardioExercise(ex.exerciseNameSnapshot, ex.muscleGroup);
-      let setCalories = 0;
-      if (!isCardio) {
-        const setVol = (set.weight || 0) * set.reps;
-        setCalories = Math.round((setVol / totalVolume) * totalSessionCalories);
-      } else {
-        setCalories = Math.round(totalSessionCalories / workout.exercises.length / ex.sets.length);
-      }
-      exCalories += setCalories;
-      return { ...set, caloriesBurned: setCalories };
-    });
-    return { ...ex, caloriesBurned: exCalories, sets: updatedSets };
-  });
-
-  return { ...workout, exercises: updatedExercises };
 };
 
 export const CalendarPage: React.FC = () => {
@@ -238,6 +184,7 @@ export const CalendarPage: React.FC = () => {
   const [expandedWorkoutId, setExpandedWorkoutId] =
     useState<string | null>(null);
 
+  // CALENDAR DATA
   const calendarCells = useMemo(
     () => getMonthCalendarGrid(viewYear, viewMonth),
     [viewYear, viewMonth]
@@ -247,11 +194,9 @@ export const CalendarPage: React.FC = () => {
     const map = new Map<string, typeof completedWorkouts>();
 
     for (const workout of completedWorkouts) {
-      // تطبيق حساب وتوزيع السعرات تلقائياً على التمارين والمجموعات
-      const processedWorkout = distributeCaloriesToWorkout(workout);
-      const existing = map.get(processedWorkout.actualDate) || [];
-      existing.push(processedWorkout);
-      map.set(processedWorkout.actualDate, existing);
+      const existing = map.get(workout.actualDate) || [];
+      existing.push(workout);
+      map.set(workout.actualDate, existing);
     }
     return map;
   }, [completedWorkouts]);
@@ -289,6 +234,7 @@ export const CalendarPage: React.FC = () => {
     [weeklySchedule, selectedDateMeta]
   );
 
+  // MONTH STATISTICS
   const monthStats = useMemo(() => {
     let strengthCount = 0;
     let cardioCount = 0;
@@ -382,6 +328,7 @@ export const CalendarPage: React.FC = () => {
     setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
   };
 
+  // تعديل السعرات الحرارية لتمرين كارديو معين أثناء التعديل
   const handleEditCaloriesChange = (entryId: string, calories: number) => {
     if (!editingWorkout) return;
     const updatedExercises = editingWorkout.exercises.map((ex) => {
@@ -451,7 +398,7 @@ export const CalendarPage: React.FC = () => {
     const exercise = exercises.find((item) => item.id === exerciseId);
     if (!exercise) return;
     const alreadyExists = editingWorkout.exercises.some(
-      (existing) => existing.exerciseId === exerciseId
+      (ex) => ex.exerciseId === exerciseId
     );
     if (alreadyExists) return;
 
@@ -508,8 +455,7 @@ export const CalendarPage: React.FC = () => {
   const handleSaveWorkout = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!editingWorkout) return;
-    const distributedWorkout = distributeCaloriesToWorkout(editingWorkout);
-    await saveHistoricalWorkout(distributedWorkout);
+    await saveHistoricalWorkout(editingWorkout);
     setEditingWorkout(null);
     setIsAddForgottenOpen(false);
     setForgottenMuscleFilter('ALL');
@@ -545,6 +491,7 @@ export const CalendarPage: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-display font-bold">
@@ -575,9 +522,11 @@ export const CalendarPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* LEFT: CALENDAR */}
         <div
           className={`lg:col-span-8 rounded-2xl border p-4 sm:p-6 space-y-5 ${panelClass}`}
         >
+          {/* MONTH NAVIGATION */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
@@ -640,6 +589,7 @@ export const CalendarPage: React.FC = () => {
               </button>
             </div>
 
+            {/* MONTH STATISTICS */}
             <div className="flex items-center gap-2 text-xs font-mono-num">
               <span
                 className={`px-2.5 py-1 rounded-lg border font-semibold ${
@@ -658,6 +608,7 @@ export const CalendarPage: React.FC = () => {
             </div>
           </div>
 
+          {/* WEEKDAYS */}
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center">
             {ORDERED_WEEK_DAYS.map((dayName) => (
               <div
@@ -671,6 +622,7 @@ export const CalendarPage: React.FC = () => {
             ))}
           </div>
 
+          {/* CALENDAR GRID */}
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {calendarCells.map((cell) => {
               const dayWorkouts = workoutsByDate.get(cell.dateStr) || [];
@@ -732,6 +684,7 @@ export const CalendarPage: React.FC = () => {
                     )}
                   </div>
 
+                  {/* ACTIVITY INDICATORS */}
                   <div className="space-y-1 mt-1 w-full">
                     {hasStrength && (
                       <div
@@ -765,6 +718,7 @@ export const CalendarPage: React.FC = () => {
             })}
           </div>
 
+          {/* LEGEND */}
           <div
             className={`pt-3 border-t flex flex-wrap items-center gap-4 text-xs ${
               isDark
@@ -801,10 +755,12 @@ export const CalendarPage: React.FC = () => {
           </div>
         </div>
 
+        {/* RIGHT: SELECTED DATE DETAILS */}
         <div
           className={`lg:col-span-4 rounded-2xl border p-5 flex flex-col justify-between gap-5 ${panelClass}`}
         >
           <div className="space-y-4">
+            {/* SELECTED DATE */}
             <div className="pb-4 border-b border-inherit">
               <span className="text-xs font-semibold uppercase tracking-wider text-[hsl(75,92%,56%)]">
                 {lang === 'ar' ? 'التاريخ المحدد' : 'Selected Date'}
@@ -833,6 +789,7 @@ export const CalendarPage: React.FC = () => {
               )}
             </div>
 
+            {/* SELECTED DATE WORKOUTS */}
             {selectedDateWorkouts.length === 0 ? (
               <div
                 className={`py-8 px-4 rounded-xl border border-dashed text-center space-y-2 ${
@@ -858,6 +815,7 @@ export const CalendarPage: React.FC = () => {
                 {selectedDateWorkouts.map((workout) => {
                   const expanded = expandedWorkoutId === workout.id;
                   
+                  // حساب إجمالي السعرات المحروقة لكل التمارين في هذه الجلسة
                   const totalSessionCalories = workout.exercises.reduce(
                     (acc, ex) => acc + (ex.caloriesBurned || 0),
                     0
@@ -921,6 +879,7 @@ export const CalendarPage: React.FC = () => {
                         </button>
                       </div>
 
+                      {/* TIME & TOTAL CALORIES */}
                       <div className="flex flex-wrap items-center justify-between text-[11px] text-gray-400 font-mono-num gap-2">
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -946,6 +905,7 @@ export const CalendarPage: React.FC = () => {
                         )}
                       </div>
 
+                      {/* MUSCLE GROUPS */}
                       {workout.muscleGroups.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {workout.muscleGroups.map((mg) => (
@@ -963,6 +923,7 @@ export const CalendarPage: React.FC = () => {
                         </div>
                       )}
 
+                      {/* EXERCISE SUMMARY / DETAILS */}
                       {expanded && (
                         <div className="space-y-3 pt-2 border-t border-inherit">
                           {workout.exercises.map((ex) => {
@@ -984,13 +945,13 @@ export const CalendarPage: React.FC = () => {
                                   }`}
                                 >
                                   <span>{ex.exerciseNameSnapshot}</span>
-                                  {ex.caloriesBurned ? (
+                                  {isCardio && ex.caloriesBurned ? (
                                     <span className="text-cyan-400 font-mono-num text-[11px] flex items-center gap-1">
                                       <Flame className="w-3 h-3" /> {ex.caloriesBurned} kcal
                                     </span>
                                   ) : null}
                                 </div>
-                                <div className="space-y-1 font-mono-num text-[11px]">
+                                <div className="flex flex-wrap gap-1.5 font-mono-num text-[11px]">
                                   {isCardio ? (
                                     <span
                                       className={`px-2 py-1 rounded flex items-center gap-1.5 text-xs font-semibold ${
@@ -1006,26 +967,37 @@ export const CalendarPage: React.FC = () => {
                                       </span>
                                     </span>
                                   ) : (
-                                    <div className="space-y-1">
-                                      {ex.sets.map((s) => (
-                                        <div key={s.id} className="flex items-center justify-between text-xs py-0.5 px-2 rounded bg-black/10 dark:bg-white/5">
-                                          <span>{formatSetPerformance(s.weight, ex.weightType, s.reps, lang)}</span>
-                                          {s.caloriesBurned !== undefined && s.caloriesBurned > 0 && (
-                                            <span className="text-[10px] text-orange-400 font-bold flex items-center gap-0.5">
-                                              <Flame className="w-2.5 h-2.5" /> {s.caloriesBurned} kcal
-                                            </span>
-                                          )}
-                                        </div>
-                                      ))}
-                                    </div>
+                                    ex.sets.map((s) => (
+                                      <span
+                                        key={s.id}
+                                        className={`px-1.5 py-0.5 rounded ${
+                                          isDark
+                                            ? 'bg-[hsl(240,6%,4%)]'
+                                            : 'bg-white'
+                                        }`}
+                                      >
+                                        {formatSetPerformance(
+                                          s.weight,
+                                          ex.weightType,
+                                          s.reps,
+                                          lang
+                                        )}
+                                      </span>
+                                    ))
                                   )}
                                 </div>
+                                {ex.notes && (
+                                  <p className="text-xs text-gray-400 italic">
+                                    {ex.notes}
+                                  </p>
+                                )}
                               </div>
                             );
                           })}
                         </div>
                       )}
 
+                      {/* EDIT / DELETE */}
                       <div className="flex gap-2 pt-2 border-t border-inherit">
                         <button
                           onClick={() => handleOpenEdit(workout)}
@@ -1051,6 +1023,7 @@ export const CalendarPage: React.FC = () => {
         </div>
       </div>
 
+      {/* EDIT WORKOUT MODAL */}
       {editingWorkout && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto">
           <form
@@ -1061,6 +1034,7 @@ export const CalendarPage: React.FC = () => {
                 : 'bg-white border-slate-200 text-slate-900'
             }`}
           >
+            {/* MODAL HEADER */}
             <div className="flex items-center justify-between border-b border-inherit pb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-lg">
@@ -1079,7 +1053,9 @@ export const CalendarPage: React.FC = () => {
               </button>
             </div>
 
+            {/* EDITABLE CONTENT */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {/* TITLE AND DATE */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold mb-1">
@@ -1116,6 +1092,7 @@ export const CalendarPage: React.FC = () => {
                 </div>
               </div>
 
+              {/* EXERCISES */}
               {editingWorkout.exercises.map((ex) => {
                 const isCardio = isCardioExercise(
                   ex.exerciseNameSnapshot,
@@ -1173,6 +1150,7 @@ export const CalendarPage: React.FC = () => {
                       </div>
                     </div>
 
+                    {/* CARDIO DURATION & CALORIES INPUT */}
                     {isCardio ? (
                       <div className="space-y-3 pt-2">
                         {ex.sets.map((set) => (
@@ -1212,6 +1190,7 @@ export const CalendarPage: React.FC = () => {
                               </span>
                             </div>
 
+                            {/* حقل السعرات الحرارية الخاص بالكارديو */}
                             <div className="flex items-center gap-2 flex-1">
                               <Flame className="w-4 h-4 text-orange-400 shrink-0" />
                               <label className="text-xs font-semibold text-orange-600 dark:text-orange-400 whitespace-nowrap">
@@ -1341,6 +1320,7 @@ export const CalendarPage: React.FC = () => {
                 );
               })}
 
+              {/* ADD FORGOTTEN EXERCISE */}
               <div className="space-y-3">
                 <button
                   type="button"
@@ -1422,6 +1402,7 @@ export const CalendarPage: React.FC = () => {
               </div>
             </div>
 
+            {/* MODAL FOOTER */}
             <div className="pt-3 border-t border-inherit flex justify-end gap-2 shrink-0">
               <button
                 type="button"
@@ -1441,6 +1422,7 @@ export const CalendarPage: React.FC = () => {
         </div>
       )}
 
+      {/* DELETE CONFIRMATION */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-[60] bg-black/75 flex items-center justify-center p-4">
           <div className={`w-full max-w-md p-5 rounded-2xl border space-y-4 ${panelClass}`}>
