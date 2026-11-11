@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import {
   Activity,
@@ -46,6 +45,7 @@ export const Dashboard: React.FC = () => {
     setCurrentSection,
     startNewWorkout,
     openProgressForExercise,
+    setSelectedCalendarDate,
   } = useGym();
 
   const lang = settings.language;
@@ -503,7 +503,10 @@ export const Dashboard: React.FC = () => {
           </div>
 
           <button
-            onClick={() => setCurrentSection('history')}
+            onClick={() => {
+              setSelectedCalendarDate(completedWorkouts[0].actualDate);
+              setCurrentSection('calendar');
+            }}
             className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border self-start sm:self-center transition-colors cursor-pointer ${
               isDark
                 ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200 hover:border-[hsl(75,92%,56%)]/40'
@@ -511,9 +514,7 @@ export const Dashboard: React.FC = () => {
             }`}
           >
             <span>
-              {lang === 'ar'
-                ? 'عرض السجل الكامل'
-                : 'View in History'}
+              {lang === 'ar' ? 'عرض التفاصيل' : 'View Details'}
             </span>
 
             <ArrowUpRight className="w-4 h-4" />
@@ -763,11 +764,11 @@ export const Dashboard: React.FC = () => {
 
             <button
               onClick={() => setCurrentSection('schedule')}
-              className={`text-xs font-semibold ${
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border ml-2 transition-colors cursor-pointer ${
                 isDark
-                  ? 'text-[hsl(75,92%,56%)]'
-                  : 'text-[hsl(76,78%,42%)]'
-              } hover:underline cursor-pointer`}
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-[hsl(75,92%,56%)] hover:bg-[hsl(240,5%,14%)]'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-[hsl(76,78%,42%)] hover:bg-[hsl(40,15%,92%)]'
+              }`}
             >
               {lang === 'ar' ? 'تعديل الجدول' : 'Customize'}
             </button>
@@ -829,34 +830,6 @@ export const Dashboard: React.FC = () => {
 
                   </div>
 
-                  {dayPlan.workoutType !== 'rest' && (
-
-                    <button
-                      onClick={() =>
-                        startNewWorkout({
-                          workoutType:
-                            dayPlan.workoutType === 'cardio'
-                              ? 'cardio'
-                              : 'strength',
-                          title: dayPlan.title,
-                          muscleGroups: dayPlan.muscleGroups,
-                          exerciseIds:
-                            dayPlan.assignedExerciseIds,
-                          actualDate: todayStr,
-                        })
-                      }
-                      className={`px-2 py-1 rounded text-[11px] font-semibold shrink-0 transition-colors cursor-pointer ${
-                        isDark
-                          ? 'bg-[hsl(240,5%,11%)] hover:bg-[hsl(75,92%,56%)] hover:text-slate-950 text-[hsl(75,92%,56%)]'
-                          : 'bg-[hsl(76,78%,42%)]/10 hover:bg-[hsl(76,78%,42%)] hover:text-white text-[hsl(76,78%,42%)]'
-                      }`}
-                      title={`Start ${dayPlan.title} today`}
-                    >
-                      {lang === 'ar' ? 'ابدأ' : 'Start'}
-                    </button>
-
-                  )}
-
                 </div>
               );
             })}
@@ -883,12 +856,12 @@ export const Dashboard: React.FC = () => {
             </h2>
 
             <button
-              onClick={() => setCurrentSection('history')}
-              className={`text-xs font-semibold ${
+              onClick={() => setCurrentSection('calendar')}
+              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
                 isDark
-                  ? 'text-[hsl(75,92%,56%)]'
-                  : 'text-[hsl(76,78%,42%)]'
-              } hover:underline cursor-pointer`}
+                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-[hsl(75,92%,56%)] hover:bg-[hsl(240,5%,14%)]'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-[hsl(76,78%,42%)] hover:bg-[hsl(40,15%,92%)]'
+              }`}
             >
               {lang === 'ar' ? 'عرض الكل' : 'View All'}
             </button>
@@ -924,9 +897,10 @@ export const Dashboard: React.FC = () => {
                 return (
                   <div
                     key={session.id}
-                    onClick={() =>
-                      setCurrentSection('history')
-                    }
+                    onClick={() => {
+                      setSelectedCalendarDate(session.actualDate);
+                      setCurrentSection('calendar');
+                    }}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer ${
                       isDark
                         ? 'bg-[hsl(240,5%,11%)]/70 border-[hsl(240,4%,16%)] hover:border-[hsl(75,92%,56%)]/40'
