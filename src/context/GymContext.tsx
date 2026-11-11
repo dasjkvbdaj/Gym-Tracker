@@ -33,7 +33,7 @@ interface StartWorkoutOptions {
   title?: string;
   muscleGroups?: MuscleGroup[];
   exerciseIds?: string[];
-  actualDate?: string; // YYYY-MM-DD (defaults to today's actual local date)
+  actualDate?: string; // YYYY-MM-DD
   notes?: string;
 }
 
@@ -46,7 +46,6 @@ interface GymContextValue {
   selectedCalendarDate: string;
   setSelectedCalendarDate: (dateStr: string) => void;
 
-  // Data from IndexedDB
   workouts: WorkoutSession[];
   completedWorkouts: WorkoutSession[];
   activeWorkout: WorkoutSession | null;
@@ -54,7 +53,6 @@ interface GymContextValue {
   weeklySchedule: WeeklyScheduleDay[];
   settings: UserSettings;
 
-  // Workout Session Actions
   startNewWorkout: (options?: StartWorkoutOptions) => Promise<WorkoutSession>;
   updateActiveWorkout: (updated: WorkoutSession) => Promise<void>;
   finishActiveWorkout: (customFinishTimestamp?: number) => Promise<WorkoutSession | null>;
@@ -62,7 +60,6 @@ interface GymContextValue {
   saveHistoricalWorkout: (workout: WorkoutSession) => Promise<void>;
   deleteWorkout: (workoutId: string) => Promise<void>;
 
-  // Exercise Library Actions
   addExercise: (data: {
     name: string;
     muscleGroup: MuscleGroup;
@@ -74,20 +71,16 @@ interface GymContextValue {
   updateExercise: (exercise: Exercise) => Promise<void>;
   deleteExercise: (exerciseId: string) => Promise<void>;
 
-  // Weekly Schedule Actions
   updateScheduleDay: (dayConfig: WeeklyScheduleDay) => Promise<void>;
   assignExerciseToDay: (day: DayName, exerciseId: string) => Promise<void>;
   removeExerciseFromDay: (day: DayName, exerciseId: string) => Promise<void>;
   resetScheduleToDefault: () => Promise<void>;
 
-  // Settings Actions
   updateSettings: (partial: Partial<UserSettings>) => Promise<void>;
 
-  // Navigation Shortcuts
   openProgressForExercise: (exerciseId: string) => void;
   openStartWorkoutForDate: (dateStr: string, workoutType?: 'strength' | 'cardio') => Promise<void>;
 
-  // Notifications
   toasts: ToastMessage[];
   showToast: (text: string, type?: 'success' | 'error' | 'info') => void;
   dismissToast: (id: string) => void;
@@ -129,7 +122,6 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const settings: UserSettings = rawSettings || DEFAULT_USER_SETTINGS;
 
-  // Apply theme & RTL direction to document root
   useEffect(() => {
     const htmlEl = document.documentElement;
     if (settings.theme === 'dark') {
@@ -192,10 +184,8 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return inProg[0] || null;
   }, [workouts]);
 
-  // Start a new workout (or overwrite/resume if needed)
   const startNewWorkout = async (options?: StartWorkoutOptions): Promise<WorkoutSession> => {
     const now = Date.now();
-    // Always use actual device date unless the user explicitly specified a historical date
     const dateStr = options?.actualDate || toLocalDateString(new Date(now));
     const meta = getDateMetadata(dateStr);
 
@@ -258,19 +248,8 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'in_progress',
       notes: options?.notes || '',
       exercises: exerciseEntries,
-      cardioDetails:
-        workoutType === 'cardio'
-          ? {
-              activityType: 'Treadmill Run / Walk',
-              durationMinutes: 60,
-              distance: null,
-              distanceUnit: 'km',
-              notes: '',
-            }
-          : undefined,
     };
 
-    // If there is already an in-progress workout, remove old draft before starting new one
     if (activeWorkout) {
       await db.workouts.delete(activeWorkout.id);
     }
@@ -300,20 +279,29 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (!activeWorkout) return null;
 
     const finishTs = customFinishTimestamp || Date.now();
+    const durationMins = Math.max(1, Math.round((finishTs - activeWorkout.startTimestamp) / 60000));
 
-    // Renumber sets cleanly
     const cleanedExercises: ExerciseEntry[] = (activeWorkout.exercises || []).map(
-      (ex) => ({
-        ...ex,
-        notes: '',
-        sets: (ex.sets || []).map((s, idx) => ({
-          ...s,
-          setNumber: idx + 1,
-          weight: ex.weightType === 'none' ? null : Math.max(0, Number(s.weight ?? 0)),
-          reps: Math.max(0, Math.round(Number(s.reps ?? 0))),
-          completed: true,
-        })),
-      })
+      (ex) => {
+        const completedSetsCount = (ex.sets || []).filter((s) => s.completed).length;
+        // حساب سعرات حرارية تقريبية لكل تمرين حديد بناءً على المجموعات والعدات وأوقات الراحة
+        const calculatedKcal = ex.caloriesBurned !== undefined && ex.caloriesBurned > 0
+          ? ex.caloriesBurned
+          : Math.round(completedSetsCount * 12 + durationMins * 4);
+
+        return {
+          ...ex,
+          caloriesBurned: calculatedKcal,
+          notes: '',
+          sets: (ex.sets || []).map((s, idx) => ({
+            ...s,
+            setNumber: idx + 1,
+            weight: ex.weightType === 'none' ? null : Math.max(0, Number(s.weight ?? 0)),
+            reps: Math.max(0, Math.round(Number(s.reps ?? 0))),
+            completed: true,
+          })),
+        };
+      }
     );
 
     const meta = getDateMetadata(activeWorkout.actualDate);
@@ -326,7 +314,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       dayOfMonth: meta.dayOfMonth,
       dayOfWeek: meta.dayOfWeek,
       finishTimestamp: finishTs,
-      durationMinutes: null,
+      durationMinutes: durationMins,
       notes: '',
       status: 'completed',
       exercises: cleanedExercises,
@@ -395,7 +383,6 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Exercise Library CRUD
   const addExercise = async (data: {
     name: string;
     muscleGroup: MuscleGroup;
@@ -455,7 +442,6 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const deleteExercise = async (exerciseId: string): Promise<void> => {
     await db.exercises.delete(exerciseId);
-    // Remove reference from weekly schedule days (historical workouts keep exerciseNameSnapshot!)
     for (const day of weeklySchedule) {
       if (day.assignedExerciseIds.includes(exerciseId)) {
         await db.weeklySchedule.put({
@@ -472,7 +458,6 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Weekly Schedule Actions
   const updateScheduleDay = async (dayConfig: WeeklyScheduleDay): Promise<void> => {
     await db.weeklySchedule.put(dayConfig);
     showToast(
@@ -514,7 +499,6 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  // Settings Actions
   const updateSettings = async (partial: Partial<UserSettings>): Promise<void> => {
     const merged: UserSettings = {
       ...settings,
@@ -525,7 +509,6 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await db.settings.put(merged);
   };
 
-  // Navigation Shortcuts
   const openProgressForExercise = (exerciseId: string) => {
     setSelectedProgressExerciseId(exerciseId);
     setCurrentSection('progress');
@@ -602,4 +585,4 @@ export function useGym(): GymContextValue {
     throw new Error('useGym must be used inside a GymProvider');
   }
   return ctx;
-}
+};
