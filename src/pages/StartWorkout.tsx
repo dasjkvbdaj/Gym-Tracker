@@ -3,7 +3,7 @@ import {
   Calendar as CalendarIcon,
   Check,
   CheckCircle2,
-  Flame,
+  Clock,
   History,
   Play,
   Plus,
@@ -33,17 +33,6 @@ import {
   translateMuscleGroup,
 } from '../utils/i18n';
 import { formatSetPerformance } from '../utils/unitConversion';
-
-const CARDIO_ACTIVITIES = [
-  'Treadmill Run / Incline Walk',
-  'Stationary Cycling Bike',
-  'Elliptical Cross-Trainer',
-  'Stair Climber / StairMaster',
-  'Outdoor Running / Jogging',
-  'Rowing Machine',
-  'Jump Rope',
-  'Brisk Walking',
-];
 
 export const StartWorkout: React.FC = () => {
   const {
@@ -75,7 +64,21 @@ export const StartWorkout: React.FC = () => {
   // Quick inline custom exercise creation inside Add Exercise modal
   const [showQuickCreateEx, setShowQuickCreateEx] = useState(false);
   const [newExName, setNewExName] = useState('');
-  const [newExMuscle, setNewExMuscle] = useState<MuscleGroup>('Back');
+  const [newExMuscle, setNewExMuscle] = useState<MuscleGroup>('Cardio');
+
+  // Helper check to determine if an exercise is Cardio-based
+  const isCardioExercise = (entry: ExerciseEntry) => {
+    return (
+      entry.muscleGroup === 'Cardio' ||
+      entry.exerciseNameSnapshot.toLowerCase().includes('cardio') ||
+      entry.exerciseNameSnapshot.toLowerCase().includes('treadmill') ||
+      entry.exerciseNameSnapshot.toLowerCase().includes('elliptical') ||
+      entry.exerciseNameSnapshot.toLowerCase().includes('bike') ||
+      entry.exerciseNameSnapshot.toLowerCase().includes('stair') ||
+      entry.exerciseNameSnapshot.toLowerCase().includes('rowing') ||
+      entry.exerciseNameSnapshot.toLowerCase().includes('running')
+    );
+  };
 
   // --- ACTIVE WORKOUT HANDLERS ---
 
@@ -115,36 +118,38 @@ export const StartWorkout: React.FC = () => {
     if (!libEx) return;
 
     const lastPerf = getLastPerformanceForExercise(libEx.id, completedWorkouts);
-
     const initialUnit: WeightUnit = libEx.isBodyweight
       ? 'none'
       : lastPerf
       ? lastPerf.weightType
       : libEx.defaultWeightUnit || settings.preferredWeightUnit;
 
-    const defaultFirstWeight =
-      initialUnit === 'none'
-        ? null
-        : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null
-        ? lastPerf.bestSet.weight
-        : 0;
+    const isCardio =
+      libEx.muscleGroup === 'Cardio' ||
+      libEx.name.toLowerCase().includes('treadmill') ||
+      libEx.name.toLowerCase().includes('elliptical') ||
+      libEx.name.toLowerCase().includes('bike') ||
+      libEx.name.toLowerCase().includes('running') ||
+      libEx.name.toLowerCase().includes('cardio');
 
-    const defaultFirstReps =
-      lastPerf && lastPerf.bestSet ? lastPerf.bestSet.reps : 10;
+    const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? null : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 0;
+    const defaultFirstReps = isCardio ? 30 : lastPerf && lastPerf.bestSet ? lastPerf.bestSet.reps : 10;
 
     const newEntry: ExerciseEntry = {
       id: generateId('ex_entry'),
       exerciseId: libEx.id,
       exerciseNameSnapshot: libEx.name,
       muscleGroup: libEx.muscleGroup,
-      weightType: initialUnit,
-      sets: [1, 2, 3].map((setNum) => ({
-        id: generateId('set'),
-        setNumber: setNum,
-        weight: defaultFirstWeight,
-        reps: defaultFirstReps,
-        completed: false,
-      })),
+      weightType: isCardio ? 'none' : initialUnit,
+      sets: [
+        {
+          id: generateId('set'),
+          setNumber: 1,
+          weight: defaultFirstWeight,
+          reps: defaultFirstReps, // Reps field holds Duration minutes for Cardio
+          completed: false,
+        },
+      ],
       notes: '',
     };
 
@@ -159,9 +164,7 @@ export const StartWorkout: React.FC = () => {
     });
 
     showToast(
-      lang === 'ar'
-        ? `تمت إضافة "${libEx.name}" للتمرين`
-        : `Added "${libEx.name}" to workout`,
+      lang === 'ar' ? `تمت إضافة "${libEx.name}" للتمرين` : `Added "${libEx.name}" to workout`,
       'success'
     );
   };
@@ -175,7 +178,6 @@ export const StartWorkout: React.FC = () => {
       name: newExName.trim(),
       muscleGroup: newExMuscle,
     });
-
     await handleAddExerciseToSession(created.id);
     setNewExName('');
     setShowQuickCreateEx(false);
@@ -184,7 +186,6 @@ export const StartWorkout: React.FC = () => {
   // Remove exercise card from active workout
   const handleRemoveExerciseEntry = async (entryId: string) => {
     if (!activeWorkout) return;
-
     await updateActiveWorkout({
       ...activeWorkout,
       exercises: activeWorkout.exercises.filter((e) => e.id !== entryId),
@@ -200,12 +201,10 @@ export const StartWorkout: React.FC = () => {
 
     const updatedExercises = activeWorkout.exercises.map((entry) => {
       if (entry.id !== entryId) return entry;
-
       const updatedSets = entry.sets.map((s) => ({
         ...s,
         weight: newUnit === 'none' ? null : s.weight ?? 0,
       }));
-
       return {
         ...entry,
         weightType: newUnit,
@@ -225,23 +224,15 @@ export const StartWorkout: React.FC = () => {
 
     const updatedExercises = activeWorkout.exercises.map((entry) => {
       if (entry.id !== entryId) return entry;
-
       const prevSet = entry.sets[entry.sets.length - 1];
       const nextSetNumber = entry.sets.length + 1;
-
       const newSet: SetEntry = {
         id: generateId('set'),
         setNumber: nextSetNumber,
-        weight:
-          entry.weightType === 'none'
-            ? null
-            : prevSet && prevSet.weight !== null
-            ? prevSet.weight
-            : 0,
+        weight: entry.weightType === 'none' ? null : prevSet && prevSet.weight !== null ? prevSet.weight : 0,
         reps: prevSet ? prevSet.reps : 10,
         completed: false,
       };
-
       return {
         ...entry,
         sets: [...entry.sets, newSet],
@@ -260,13 +251,11 @@ export const StartWorkout: React.FC = () => {
 
     const updatedExercises = activeWorkout.exercises.map((entry) => {
       if (entry.id !== entryId) return entry;
-
       const filtered = entry.sets.filter((s) => s.id !== setId);
       const renumbered = filtered.map((s, idx) => ({
         ...s,
         setNumber: idx + 1,
       }));
-
       return {
         ...entry,
         sets: renumbered,
@@ -279,7 +268,7 @@ export const StartWorkout: React.FC = () => {
     });
   };
 
-  // Update a set's weight, reps, or completed status
+  // Update a set's weight, reps/duration, or completed status
   const handleUpdateSet = async (
     entryId: string,
     setId: string,
@@ -290,33 +279,21 @@ export const StartWorkout: React.FC = () => {
 
     const updatedExercises = activeWorkout.exercises.map((entry) => {
       if (entry.id !== entryId) return entry;
-
       const updatedSets = entry.sets.map((s) => {
         if (s.id !== setId) return s;
-
         if (field === 'weight') {
-          const safeWeight =
-            entry.weightType === 'none'
-              ? null
-              : value === null
-              ? 0
-              : Math.max(0, Number(value));
-
+          const safeWeight = entry.weightType === 'none' ? null : value === null ? 0 : Math.max(0, Number(value));
           return { ...s, weight: safeWeight };
         }
-
         if (field === 'reps') {
           const safeReps = Math.max(0, Math.round(Number(value || 0)));
           return { ...s, reps: safeReps };
         }
-
         if (field === 'completed') {
           return { ...s, completed: Boolean(value) };
         }
-
         return s;
       });
-
       return { ...entry, sets: updatedSets };
     });
 
@@ -326,37 +303,11 @@ export const StartWorkout: React.FC = () => {
     });
   };
 
-  // Update Cardio details
-  const handleUpdateCardio = async (
-    partial: Partial<NonNullable<typeof activeWorkout>['cardioDetails']>
-  ) => {
-    if (!activeWorkout) return;
-
-    const currentCardio = activeWorkout.cardioDetails || {
-      activityType: 'Treadmill Run / Incline Walk',
-      durationMinutes: 60,
-      distance: null,
-      distanceUnit: 'km' as const,
-      notes: '',
-    };
-
-    const merged = { ...currentCardio, ...partial };
-
-    await updateActiveWorkout({
-      ...activeWorkout,
-      durationMinutes: merged.durationMinutes,
-      cardioDetails: merged,
-    });
-  };
-
   // Finish Workout handler
   const handleFinishSession = async () => {
     if (!activeWorkout) return;
 
-    if (
-      activeWorkout.workoutType === 'strength' &&
-      activeWorkout.exercises.length === 0
-    ) {
+    if (activeWorkout.exercises.length === 0) {
       showToast(
         lang === 'ar'
           ? 'يرجى إضافة تمرين واحد على الأقل قبل إنهاء الجلسة.'
@@ -365,7 +316,6 @@ export const StartWorkout: React.FC = () => {
       );
       return;
     }
-
     await finishActiveWorkout();
     setCurrentSection('calendar');
   };
@@ -373,49 +323,35 @@ export const StartWorkout: React.FC = () => {
   // Filtered library exercises for the Add Exercise modal
   const filteredLibraryExercises = useMemo(() => {
     return exercises.filter((ex) => {
-      if (
-        pickerMuscleFilter !== 'ALL' &&
-        ex.muscleGroup !== pickerMuscleFilter
-      ) {
+      if (pickerMuscleFilter !== 'ALL' && ex.muscleGroup !== pickerMuscleFilter) {
         return false;
       }
-
-      if (
-        pickerSearch.trim() &&
-        !ex.name.toLowerCase().includes(pickerSearch.trim().toLowerCase())
-      ) {
+      if (pickerSearch.trim() && !ex.name.toLowerCase().includes(pickerSearch.trim().toLowerCase())) {
         return false;
       }
-
       return true;
     });
   }, [exercises, pickerMuscleFilter, pickerSearch]);
 
   // ============================================================================
-  // RENDER 1: PRE-WORKOUT SETUP SCREEN
-  // ONLY WEEKLY SCHEDULE IS AVAILABLE
+  // RENDER 1: PRE-WORKOUT SETUP SCREEN (WEEKLY SCHEDULE)
   // ============================================================================
   if (!activeWorkout) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="space-y-6">
         {/* Header */}
         <div>
           <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">
             {lang === 'ar' ? 'بدء وتسجيل تمرين جديد' : 'Start a New Workout'}
           </h1>
-
-          <p
-            className={`text-sm mt-1 ${
-              isDark ? 'text-gray-400' : 'text-slate-600'
-            }`}
-          >
+          <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
             {lang === 'ar'
               ? 'اختر خطة جاهزة من جدولك الأسبوعي. يتم تسجيل التاريخ والوقت الفعليين لجهازك تلقائياً.'
               : 'Choose a workout from your weekly schedule. Your local date and time are recorded automatically.'}
           </p>
         </div>
 
-        {/* AUTOMATIC LOCAL DATE — NO DATE PICKER OR TIMEZONE */}
+        {/* AUTOMATIC LOCAL DATE */}
         <div
           className={`p-4 sm:p-5 rounded-2xl border ${
             isDark
@@ -425,11 +361,8 @@ export const StartWorkout: React.FC = () => {
         >
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 mb-2">
             <CalendarIcon className="w-4 h-4" />
-            <span>
-              {lang === 'ar' ? 'التاريخ المحلي اليوم' : 'Automatic Local Date'}
-            </span>
+            <span>{lang === 'ar' ? 'التاريخ المحلي اليوم' : 'Automatic Local Date'}</span>
           </div>
-
           <div className="font-display font-bold text-base sm:text-lg">
             {formatFullDate(todayStr, lang)}
           </div>
@@ -439,7 +372,6 @@ export const StartWorkout: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {weeklySchedule.map((dayPlan) => {
             const isTodayPlan = dayPlan.day === todayMeta.dayOfWeek;
-
             return (
               <div
                 key={dayPlan.day}
@@ -457,14 +389,11 @@ export const StartWorkout: React.FC = () => {
                   <div className="flex items-center justify-between">
                     <span
                       className={`text-xs font-display font-bold uppercase tracking-wider ${
-                        isDark
-                          ? 'text-[hsl(75,92%,56%)]'
-                          : 'text-[hsl(76,78%,42%)]'
+                        isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
                       }`}
                     >
                       {translateDayName(dayPlan.day, lang)}
                     </span>
-
                     {isTodayPlan && (
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -477,11 +406,9 @@ export const StartWorkout: React.FC = () => {
                       </span>
                     )}
                   </div>
-
                   <h3 className="text-base sm:text-lg font-display font-bold">
                     {dayPlan.title}
                   </h3>
-
                   {dayPlan.muscleGroups.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
                       {dayPlan.muscleGroups.map((mg) => (
@@ -502,52 +429,34 @@ export const StartWorkout: React.FC = () => {
 
                 <div className="flex items-center justify-between pt-2 border-t border-inherit">
                   {dayPlan.workoutType !== 'strength' && (
-                    <span
-                      className={`text-xs ${
-                        isDark ? 'text-gray-400' : 'text-slate-500'
-                      }`}
-                    >
+                    <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                       {dayPlan.workoutType === 'rest'
                         ? lang === 'ar'
                           ? 'يوم راحة مخطط'
                           : 'Scheduled rest day'
                         : lang === 'ar'
-                        ? 'كارديو — ساعة واحدة'
-                        : '60 min Cardio'}
+                        ? 'تمرين كارديو مخصص'
+                        : 'Custom Cardio Session'}
                     </span>
                   )}
-
                   <button
                     onClick={() =>
                       startNewWorkout({
-                        workoutType:
-                          dayPlan.workoutType === 'cardio'
-                            ? 'cardio'
-                            : 'strength',
-                        title:
-                          dayPlan.workoutType === 'rest'
-                            ? 'Bonus Strength Session'
-                            : dayPlan.title,
-                        muscleGroups:
-                          dayPlan.muscleGroups.length > 0
-                            ? dayPlan.muscleGroups
-                            : ['Back'],
+                        workoutType: dayPlan.workoutType === 'cardio' ? 'cardio' : 'strength',
+                        title: dayPlan.workoutType === 'rest' ? 'Bonus Session' : dayPlan.title,
+                        muscleGroups: dayPlan.muscleGroups.length > 0 ? dayPlan.muscleGroups : ['Cardio'],
                         exerciseIds: dayPlan.assignedExerciseIds,
                         actualDate: todayStr,
                       })
                     }
                     className={`px-4 py-2 rounded-xl font-display font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
-                      dayPlan.workoutType === 'cardio'
-                        ? 'bg-cyan-500 hover:bg-cyan-400 text-slate-950'
-                        : isDark
+                      isDark
                         ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
                         : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white'
                     }`}
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>
-                      {lang === 'ar' ? 'بدء التمرين' : 'Start Workout'}
-                    </span>
+                    <span>{lang === 'ar' ? 'بدء التمرين' : 'Start Workout'}</span>
                   </button>
                 </div>
               </div>
@@ -569,7 +478,7 @@ export const StartWorkout: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* STICKY ACTIVE WORKOUT HEADER */}
+      {/* ACTIVE WORKOUT HEADER */}
       <div
         className={`rounded-2xl p-4 sm:p-5 border shadow-lg ${
           isDark
@@ -577,9 +486,8 @@ export const StartWorkout: React.FC = () => {
             : 'bg-[hsl(0,0%,100%)] border-[hsl(76,78%,42%)]/50 shadow-sm'
         }`}
       >
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Workout Title, Live Date/Time & Manual Date Picker */}
-          <div className="space-y-2 flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1.5 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
@@ -590,23 +498,12 @@ export const StartWorkout: React.FC = () => {
               >
                 <span
                   className={`w-2 h-2 rounded-full animate-ping ${
-                    isDark
-                      ? 'bg-[hsl(75,92%,56%)]'
-                      : 'bg-[hsl(76,78%,42%)]'
+                    isDark ? 'bg-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]'
                   }`}
                 />
-                <span>
-                  {lang === 'ar'
-                    ? 'جلسة نشطة (حفظ تلقائي)'
-                    : 'LIVE SESSION • AUTOSAVED'}
-                </span>
+                {lang === 'ar' ? 'جلسة نشطة (حفظ تلقائي)' : 'LIVE SESSION • AUTOSAVED'}
               </span>
-
-              <span
-                className={`text-xs ${
-                  isDark ? 'text-gray-400' : 'text-slate-500'
-                }`}
-              >
+              <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                 {lang === 'ar' ? 'البدء:' : 'Started:'}{' '}
                 {formatTimeFromTimestamp(activeWorkout.startTimestamp, lang)} (
                 {activeWorkout.timezone})
@@ -628,25 +525,19 @@ export const StartWorkout: React.FC = () => {
             <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
               <div
                 className={`flex items-center gap-1.5 font-medium ${
-                  isDark
-                    ? 'text-[hsl(75,92%,56%)]'
-                    : 'text-[hsl(76,78%,42%)]'
+                  isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
                 }`}
               >
                 <CalendarIcon className="w-4 h-4" />
                 <span>{formatFullDate(activeWorkout.actualDate, lang)}</span>
               </div>
-
               <div className="flex items-center gap-1.5">
                 <label
                   htmlFor="active-workout-date"
-                  className={`text-xs ${
-                    isDark ? 'text-gray-400' : 'text-slate-500'
-                  }`}
+                  className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}
                 >
                   {lang === 'ar' ? 'تغيير التاريخ:' : 'Change Date:'}
                 </label>
-
                 <input
                   id="active-workout-date"
                   type="date"
@@ -674,7 +565,6 @@ export const StartWorkout: React.FC = () => {
             >
               {lang === 'ar' ? 'إلغاء' : 'Cancel'}
             </button>
-
             <button
               onClick={handleFinishSession}
               className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
@@ -684,26 +574,18 @@ export const StartWorkout: React.FC = () => {
               }`}
             >
               <CheckCircle2 className="w-4 h-4" />
-              <span>
-                {lang === 'ar' ? 'إنهاء وحفظ التمرين' : 'Finish Workout'}
-              </span>
+              <span>{lang === 'ar' ? 'إنهاء وحفظ التمرين' : 'Finish Workout'}</span>
             </button>
           </div>
         </div>
 
         {/* Muscle Group Pills Selector */}
         <div className="mt-4 pt-3 border-t border-inherit flex flex-wrap items-center gap-1.5">
-          <span
-            className={`text-xs me-1 ${
-              isDark ? 'text-gray-400' : 'text-slate-500'
-            }`}
-          >
+          <span className={`text-xs me-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
             {lang === 'ar' ? 'العضلات:' : 'Muscle Groups:'}
           </span>
-
           {MUSCLE_GROUPS.map((mg) => {
             const selected = activeWorkout.muscleGroups.includes(mg);
-
             return (
               <button
                 key={mg}
@@ -726,175 +608,42 @@ export const StartWorkout: React.FC = () => {
         </div>
       </div>
 
-      {/* CARDIO TRACKING PANEL */}
-      {(activeWorkout.workoutType === 'cardio' ||
-        activeWorkout.muscleGroups.includes('Cardio')) && (
-        <div
-          className={`rounded-2xl p-5 border space-y-4 ${
-            isDark
-              ? 'bg-[hsl(240,5%,7.5%)] border-cyan-500/40'
-              : 'bg-[hsl(0,0%,100%)] border-cyan-300 shadow-xs'
-          }`}
-        >
-          <div className="flex items-center gap-2.5 text-cyan-400">
-            <Flame className="w-5 h-5" />
-            <h2 className="font-display font-bold text-base">
-              {lang === 'ar' ? 'بيانات جلسة الكارديو' : 'Cardio Session Details'}
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {/* Cardio Activity Type */}
-            <div>
-              <label className="block text-xs font-semibold mb-1.5">
-                {lang === 'ar' ? 'نوع نشاط الكارديو' : 'Cardio Activity Type'}
-              </label>
-
-              <select
-                value={
-                  activeWorkout.cardioDetails?.activityType ||
-                  CARDIO_ACTIVITIES[0]
-                }
-                onChange={(e) =>
-                  handleUpdateCardio({ activityType: e.target.value })
-                }
-                className={`w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none focus:border-cyan-500 ${
-                  isDark
-                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-100'
-                    : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-slate-900'
-                }`}
-              >
-                {CARDIO_ACTIVITIES.map((act) => (
-                  <option key={act} value={act}>
-                    {act}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Duration */}
-            <div>
-              <label className="block text-xs font-semibold mb-1.5">
-                {lang === 'ar' ? 'المدة الزمنية (بالدقائق)' : 'Duration (Minutes)'}
-              </label>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  inputMode="numeric"
-                  min={1}
-                  value={activeWorkout.cardioDetails?.durationMinutes ?? 60}
-                  onChange={(e) =>
-                    handleUpdateCardio({
-                      durationMinutes: Math.max(1, Number(e.target.value || 0)),
-                    })
-                  }
-                  className={`w-full px-3.5 py-2.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-cyan-500 ${
-                    isDark
-                      ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-100'
-                      : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-slate-900'
-                  }`}
-                />
-
-                <div className="flex gap-1 shrink-0">
-                  {[30, 45, 60].map((m) => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => handleUpdateCardio({ durationMinutes: m })}
-                      className={`px-2 py-2 rounded-lg text-xs font-mono-num font-semibold border cursor-pointer ${
-                        activeWorkout.cardioDetails?.durationMinutes === m
-                          ? 'bg-cyan-500 text-slate-950 border-cyan-500'
-                          : isDark
-                          ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
-                          : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-700'
-                      }`}
-                    >
-                      {m}m
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Optional Distance */}
-            <div>
-              <label className="block text-xs font-semibold mb-1.5">
-                {lang === 'ar' ? 'المسافة (اختياري)' : 'Distance (Optional)'}
-              </label>
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  step="any"
-                  min={0}
-                  placeholder="e.g., 5.0"
-                  value={
-                    activeWorkout.cardioDetails?.distance === null ||
-                    activeWorkout.cardioDetails?.distance === undefined
-                      ? ''
-                      : activeWorkout.cardioDetails.distance
-                  }
-                  onChange={(e) =>
-                    handleUpdateCardio({
-                      distance:
-                        e.target.value === ''
-                          ? null
-                          : Math.max(0, Number(e.target.value)),
-                    })
-                  }
-                  className={`w-full px-3.5 py-2.5 rounded-xl font-mono-num text-sm border focus:outline-none focus:border-cyan-500 ${
-                    isDark
-                      ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-100'
-                      : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-slate-900'
-                  }`}
-                />
-
-                <select
-                  value={activeWorkout.cardioDetails?.distanceUnit || 'km'}
-                  onChange={(e) =>
-                    handleUpdateCardio({
-                      distanceUnit: e.target.value as 'km' | 'mi',
-                    })
-                  }
-                  className={`px-3 py-2.5 rounded-xl font-mono-num text-xs font-bold border ${
-                    isDark
-                      ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200'
-                      : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,85%)] text-slate-800'
-                  }`}
-                >
-                  <option value="km">km</option>
-                  <option value="mi">mi</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* INDIVIDUAL EXERCISE CARDS */}
       <div className="space-y-6">
         {(() => {
           const groups = new Map<MuscleGroup, ExerciseEntry[]>();
-
           for (const entry of activeWorkout.exercises) {
             if (!groups.has(entry.muscleGroup)) {
               groups.set(entry.muscleGroup, []);
             }
             groups.get(entry.muscleGroup)!.push(entry);
           }
-
           const groupEntries = [...groups.entries()];
+
+          if (groupEntries.length === 0) {
+            return (
+              <div
+                className={`p-10 rounded-2xl border border-dashed text-center space-y-3 ${
+                  isDark
+                    ? 'border-[hsl(240,4%,19%)] bg-[hsl(240,5%,7.5%)] text-gray-400'
+                    : 'border-[hsl(40,10%,85%)] bg-white text-slate-500'
+                }`}
+              >
+                <p className="text-sm font-medium">
+                  {lang === 'ar'
+                    ? 'لم تقم بإضافة أي تمارين لهذه الجلسة بعد. اضغط على الزر أدناه لاختيار أو إنشاء التمارين.'
+                    : 'No exercises added to this session yet. Click below to add exercises.'}
+                </p>
+              </div>
+            );
+          }
 
           return groupEntries.map(([muscleGroup, groupExercises], groupIdx) => (
             <div key={muscleGroup}>
               {groupIdx > 0 && (
                 <hr
                   className={`mb-6 ${
-                    isDark
-                      ? 'border-[hsl(240,4%,19%)]'
-                      : 'border-[hsl(40,10%,88%)]'
+                    isDark ? 'border-[hsl(240,4%,19%)]' : 'border-[hsl(40,10%,88%)]'
                   }`}
                 />
               )}
@@ -907,18 +656,16 @@ export const StartWorkout: React.FC = () => {
                 >
                   {translateMuscleGroup(muscleGroup, lang)}
                 </h2>
-
                 <div
                   className={`flex-1 h-px ${
-                    isDark
-                      ? 'bg-[hsl(240,4%,19%)]/50'
-                      : 'bg-[hsl(40,10%,88%)]'
+                    isDark ? 'bg-[hsl(240,4%,19%)]/50' : 'bg-[hsl(40,10%,88%)]'
                   }`}
                 />
               </div>
 
               <div className="space-y-4">
                 {groupExercises.map((entry) => {
+                  const isCardio = isCardioExercise(entry);
                   const lastPerf = getLastPerformanceForExercise(
                     entry.exerciseId,
                     completedWorkouts
@@ -950,75 +697,72 @@ export const StartWorkout: React.FC = () => {
                               }`}
                             >
                               <History className="w-3.5 h-3.5 text-[hsl(75,92%,56%)]" />
-
                               <span>
                                 {lang === 'ar' ? 'آخر أداء مسجل' : 'Last recorded'} (
                                 {formatShortDate(lastPerf.actualDate, lang)}):
                               </span>
-
                               <strong
                                 className={`font-mono-num ${
-                                  isDark
-                                    ? 'text-[hsl(75,92%,56%)]'
-                                    : 'text-[hsl(76,78%,42%)]'
+                                  isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
                                 }`}
                               >
-                                {formatSetPerformance(
-                                  lastPerf.bestSet.weight,
-                                  lastPerf.weightType,
-                                  lastPerf.bestSet.reps,
-                                  lang
-                                )}
+                                {isCardio
+                                  ? `${lastPerf.bestSet.reps} ${lang === 'ar' ? 'دقيقة' : 'mins'}`
+                                  : formatSetPerformance(
+                                      lastPerf.bestSet.weight,
+                                      lastPerf.weightType,
+                                      lastPerf.bestSet.reps,
+                                      lang
+                                    )}
                               </strong>
                             </div>
                           )}
                         </div>
 
-                        {/* Unit Selector + Remove Button */}
+                        {/* Unit Selector or Remove Button */}
                         <div className="flex items-center justify-between sm:justify-end gap-2">
-                          <div
-                            className={`inline-flex rounded-xl p-1 border ${
-                              isDark
-                                ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)]'
-                                : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)]'
-                            }`}
-                            role="group"
-                            aria-label="Weight unit selector"
-                          >
-                            {(
-                              [
-                                { id: 'kg', label: 'KG' },
-                                { id: 'lbs', label: 'LB' },
-                                {
-                                  id: 'none',
-                                  label: lang === 'ar' ? 'وزن الجسم' : 'Bodyweight',
-                                },
-                              ] as const
-                            ).map((u) => {
-                              const isSelected = entry.weightType === u.id;
-
-                              return (
-                                <button
-                                  key={u.id}
-                                  type="button"
-                                  onClick={() =>
-                                    handleExerciseUnitChange(entry.id, u.id)
-                                  }
-                                  className={`px-3 py-1.5 rounded-lg text-xs font-mono-num font-bold transition-all cursor-pointer ${
-                                    isSelected
-                                      ? isDark
-                                        ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] shadow-xs'
-                                        : 'bg-[hsl(76,78%,42%)] text-white shadow-xs'
-                                      : isDark
-                                      ? 'text-gray-400 hover:text-gray-200'
-                                      : 'text-slate-600 hover:text-slate-900'
-                                  }`}
-                                >
-                                  {u.label}
-                                </button>
-                              );
-                            })}
-                          </div>
+                          {!isCardio && (
+                            <div
+                              className={`inline-flex rounded-xl p-1 border ${
+                                isDark
+                                  ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)]'
+                                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)]'
+                              }`}
+                              role="group"
+                              aria-label="Weight unit selector"
+                            >
+                              {(
+                                [
+                                  { id: 'kg', label: 'KG' },
+                                  { id: 'lbs', label: 'LB' },
+                                  {
+                                    id: 'none',
+                                    label: lang === 'ar' ? 'وزن الجسم' : 'Bodyweight',
+                                  },
+                                ] as const
+                              ).map((u) => {
+                                const isSelected = entry.weightType === u.id;
+                                return (
+                                  <button
+                                    key={u.id}
+                                    type="button"
+                                    onClick={() => handleExerciseUnitChange(entry.id, u.id)}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-mono-num font-bold transition-all cursor-pointer ${
+                                      isSelected
+                                        ? isDark
+                                          ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] shadow-xs'
+                                          : 'bg-[hsl(76,78%,42%)] text-white shadow-xs'
+                                        : isDark
+                                        ? 'text-gray-400 hover:text-gray-200'
+                                        : 'text-slate-600 hover:text-slate-900'
+                                    }`}
+                                  >
+                                    {u.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
 
                           <button
                             type="button"
@@ -1035,238 +779,286 @@ export const StartWorkout: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* SETS TABLE */}
-                      <div className="space-y-2">
-                        <div
-                          className={`grid grid-cols-12 gap-2 px-2 text-[11px] font-semibold uppercase tracking-wider ${
-                            isDark ? 'text-gray-400' : 'text-slate-500'
-                          }`}
-                        >
-                          <div className="col-span-2 sm:col-span-1 text-center">
-                            {lang === 'ar' ? 'مجموعة' : 'Set'}
-                          </div>
-
-                          <div className="col-span-4 sm:col-span-5">
-                            {entry.weightType === 'none'
-                              ? lang === 'ar'
-                                ? 'الوزن (وزن الجسم)'
-                                : 'Weight (Bodyweight)'
-                              : `${lang === 'ar' ? 'الوزن' : 'Weight'} (${
-                                  entry.weightType === 'lbs' ? 'LB' : 'KG'
-                                })`}
-                          </div>
-
-                          <div className="col-span-4 sm:col-span-4">
-                            {lang === 'ar' ? 'العدات (Reps)' : 'Repetitions (Reps)'}
-                          </div>
-
-                          <div className="col-span-2 text-end">
-                            {lang === 'ar' ? 'إجراء' : 'Action'}
-                          </div>
-                        </div>
-
-                        {/* Empty Sets State */}
-                        {entry.sets.length === 0 && (
-                          <div
-                            className={`p-4 rounded-xl border border-dashed text-center text-xs ${
-                              isDark
-                                ? 'border-[hsl(240,4%,19%)] text-gray-400'
-                                : 'border-[hsl(40,10%,85%)] text-slate-500'
-                            }`}
-                          >
-                            {lang === 'ar'
-                              ? 'تم حذف جميع المجموعات. اضغط على "+ إضافة مجموعة" لإضافة مجموعة جديدة.'
-                              : 'No sets remaining. Click "+ Add Set" to add one.'}
-                          </div>
-                        )}
-
-                        {/* Individual Set Rows */}
-                        {entry.sets.map((setItem) => (
-                          <div
-                            key={setItem.id}
-                            className={`grid grid-cols-12 gap-2 items-center p-2 rounded-xl border transition-colors ${
-                              setItem.completed
-                                ? isDark
-                                  ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/30'
-                                  : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30'
-                                : isDark
-                                ? 'bg-[hsl(240,5%,11%)]/80 border-[hsl(240,4%,19%)]'
-                                : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
-                            }`}
-                          >
-                            {/* Set Number */}
-                            <div className="col-span-2 sm:col-span-1 flex justify-center">
-                              <span
-                                className={`w-7 h-7 rounded-lg font-mono-num text-xs font-bold flex items-center justify-center ${
-                                  isDark
-                                    ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
-                                    : 'bg-[hsl(76,78%,42%)]/15 text-[hsl(76,78%,42%)]'
-                                }`}
-                              >
-                                {setItem.setNumber}
-                              </span>
-                            </div>
-
-                            {/* Weight Input */}
-                            <div className="col-span-4 sm:col-span-5">
-                              {entry.weightType === 'none' ? (
-                                <div
-                                  className={`h-11 px-3 rounded-xl border flex items-center justify-center text-xs font-semibold ${
-                                    isDark
-                                      ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-[hsl(75,92%,56%)]'
-                                      : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)] text-[hsl(76,78%,42%)]'
-                                  }`}
-                                >
+                      {/* CARDIO DURATION VIEW OR STRENGTH SETS TABLE */}
+                      {isCardio ? (
+                        <div className="space-y-3 py-2">
+                          {entry.sets.map((setItem) => (
+                            <div
+                              key={setItem.id}
+                              className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                                isDark
+                                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]'
+                                  : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 flex-1">
+                                <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
+                                <label className="text-xs font-semibold">
                                   {lang === 'ar'
-                                    ? 'وزن الجسم (Bodyweight)'
-                                    : 'Bodyweight'}
-                                </div>
-                              ) : (
-                                <div className="relative">
-                                  <input
-                                    type="number"
-                                    inputMode="decimal"
-                                    step="any"
-                                    min={0}
-                                    aria-label={`Set ${setItem.setNumber} weight in ${entry.weightType}`}
-                                    value={
-                                      setItem.weight === null ||
-                                      setItem.weight === undefined
-                                        ? ''
-                                        : setItem.weight
-                                    }
-                                    onChange={(e) =>
-                                      handleUpdateSet(
-                                        entry.id,
-                                        setItem.id,
-                                        'weight',
-                                        e.target.value === ''
-                                          ? 0
-                                          : Number(e.target.value)
-                                      )
-                                    }
-                                    onFocus={(e) => e.target.select()}
-                                    className={`w-full h-11 px-3 pe-10 rounded-xl font-mono-num text-base font-bold border focus:outline-none focus:border-[hsl(75,92%,56%)] ${
-                                      isDark
-                                        ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
-                                        : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
-                                    }`}
-                                  />
-
-                                  <span
-                                    className={`absolute top-1/2 -translate-y-1/2 end-3 text-xs font-mono-num font-semibold pointer-events-none uppercase ${
-                                      isDark ? 'text-gray-400' : 'text-slate-400'
-                                    }`}
-                                  >
-                                    {entry.weightType === 'lbs' ? 'lb' : 'kg'}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Repetitions Input */}
-                            <div className="col-span-4 sm:col-span-4">
-                              <div className="relative">
+                                    ? 'المدة الزمنية (بالدقائق):'
+                                    : 'Duration (Minutes):'}
+                                </label>
                                 <input
                                   type="number"
                                   inputMode="numeric"
-                                  min={0}
-                                  aria-label={`Set ${setItem.setNumber} repetitions`}
-                                  value={setItem.reps}
+                                  min={1}
+                                  value={setItem.reps || 30}
                                   onChange={(e) =>
                                     handleUpdateSet(
                                       entry.id,
                                       setItem.id,
                                       'reps',
-                                      e.target.value === ''
-                                        ? 0
-                                        : Number(e.target.value)
+                                      e.target.value === '' ? 0 : Number(e.target.value)
                                     )
                                   }
-                                  onFocus={(e) => e.target.select()}
-                                  className={`w-full h-11 px-3 pe-12 rounded-xl font-mono-num text-base font-bold border focus:outline-none focus:border-[hsl(75,92%,56%)] ${
+                                  className={`w-24 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-cyan-500 ${
                                     isDark
                                       ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
-                                      : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
+                                      : 'bg-white border-[hsl(40,10%,85%)] text-slate-900'
                                   }`}
                                 />
-
-                                <span
-                                  className={`absolute top-1/2 -translate-y-1/2 end-3 text-xs font-mono-num pointer-events-none ${
-                                    isDark ? 'text-gray-400' : 'text-slate-400'
-                                  }`}
-                                >
-                                  {lang === 'ar' ? 'عدات' : 'reps'}
+                                <span className="text-xs font-semibold text-gray-400">
+                                  {lang === 'ar' ? 'دقيقة' : 'mins'}
                                 </span>
                               </div>
+
+                              {/* Quick Minutes Buttons */}
+                              <div className="flex items-center gap-1.5">
+                                {[15, 30, 45, 60].map((m) => (
+                                  <button
+                                    key={m}
+                                    type="button"
+                                    onClick={() =>
+                                      handleUpdateSet(entry.id, setItem.id, 'reps', m)
+                                    }
+                                    className={`px-2.5 py-1 rounded-lg text-xs font-mono-num font-semibold border cursor-pointer ${
+                                      setItem.reps === m
+                                        ? 'bg-cyan-500 text-slate-950 border-cyan-500'
+                                        : isDark
+                                        ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-gray-300'
+                                        : 'bg-white border-[hsl(40,10%,85%)] text-slate-700'
+                                    }`}
+                                  >
+                                    {m}m
+                                  </button>
+                                ))}
+                              </div>
                             </div>
-
-                            {/* Complete & Delete Set */}
-                            <div className="col-span-2 flex items-center justify-end gap-1">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleUpdateSet(
-                                    entry.id,
-                                    setItem.id,
-                                    'completed',
-                                    !setItem.completed
-                                  )
-                                }
-                                className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all cursor-pointer ${
-                                  setItem.completed
-                                    ? isDark
-                                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
-                                      : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]'
-                                    : isDark
-                                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-gray-400 hover:text-[hsl(75,92%,56%)]'
-                                    : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-slate-400 hover:text-[hsl(76,78%,42%)]'
-                                }`}
-                                title="Mark set complete"
-                              >
-                                <Check className="w-4 h-4" />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  handleRemoveSet(entry.id, setItem.id)
-                                }
-                                className={`w-8 h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
-                                  isDark
-                                    ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'
-                                    : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
-                                }`}
-                                title={
-                                  lang === 'ar' ? 'حذف المجموعة' : 'Delete set'
-                                }
-                              >
-                                <X className="w-4 h-4" />
-                              </button>
+                          ))}
+                        </div>
+                      ) : (
+                        /* STRENGTH SETS TABLE */
+                        <div className="space-y-2">
+                          <div
+                            className={`grid grid-cols-12 gap-2 px-2 text-[11px] font-semibold uppercase tracking-wider ${
+                              isDark ? 'text-gray-400' : 'text-slate-500'
+                            }`}
+                          >
+                            <div className="col-span-2 sm:col-span-1 text-center">
+                              {lang === 'ar' ? 'مجموعة' : 'Set'}
+                            </div>
+                            <div className="col-span-4 sm:col-span-5">
+                              {entry.weightType === 'none'
+                                ? lang === 'ar'
+                                  ? 'الوزن (وزن الجسم)'
+                                  : 'Weight (Bodyweight)'
+                                : `${lang === 'ar' ? 'الوزن' : 'Weight'} (${
+                                    entry.weightType === 'lbs' ? 'LB' : 'KG'
+                                  })`}
+                            </div>
+                            <div className="col-span-4 sm:col-span-4">
+                              {lang === 'ar' ? 'العدات (Reps)' : 'Repetitions (Reps)'}
+                            </div>
+                            <div className="col-span-2 text-end">
+                              {lang === 'ar' ? 'إجراء' : 'Action'}
                             </div>
                           </div>
-                        ))}
-                      </div>
 
-                      {/* Add Set */}
-                      <div className="pt-2">
-                        <button
-                          type="button"
-                          onClick={() => handleAddSet(entry.id)}
-                          className={`py-2.5 px-4 rounded-xl text-xs font-display font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                            isDark
-                              ? 'bg-[hsl(240,5%,11%)] border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,56%)] hover:text-[hsl(240,10%,9%)]'
-                              : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/40 text-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,42%)] hover:text-white'
-                          }`}
-                        >
-                          <Plus className="w-4 h-4" />
-                          <span>
-                            {lang === 'ar'
-                              ? 'إضافة مجموعة (+ Set)'
-                              : 'Add Set'}
-                          </span>
-                        </button>
-                      </div>
+                          {/* Empty Sets State */}
+                          {entry.sets.length === 0 && (
+                            <div
+                              className={`p-4 rounded-xl border border-dashed text-center text-xs ${
+                                isDark
+                                  ? 'border-[hsl(240,4%,19%)] text-gray-400'
+                                  : 'border-[hsl(40,10%,85%)] text-slate-500'
+                              }`}
+                            >
+                              {lang === 'ar'
+                                ? 'تم حذف جميع المجموعات. اضغط على "+ إضافة مجموعة" لإضافة مجموعة جديدة.'
+                                : 'No sets remaining. Click "+ Add Set" to add one.'}
+                            </div>
+                          )}
+
+                          {/* Individual Set Rows */}
+                          {entry.sets.map((setItem) => (
+                            <div
+                              key={setItem.id}
+                              className={`grid grid-cols-12 gap-2 items-center p-2 rounded-xl border transition-colors ${
+                                setItem.completed
+                                  ? isDark
+                                    ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/30'
+                                    : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30'
+                                  : isDark
+                                  ? 'bg-[hsl(240,5%,11%)]/80 border-[hsl(240,4%,19%)]'
+                                  : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
+                              }`}
+                            >
+                              {/* Set Number */}
+                              <div className="col-span-2 sm:col-span-1 flex justify-center">
+                                <span
+                                  className={`w-7 h-7 rounded-lg font-mono-num text-xs font-bold flex items-center justify-center ${
+                                    isDark
+                                      ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
+                                      : 'bg-[hsl(76,78%,42%)]/15 text-[hsl(76,78%,42%)]'
+                                  }`}
+                                >
+                                  {setItem.setNumber}
+                                </span>
+                              </div>
+
+                              {/* Weight Input */}
+                              <div className="col-span-4 sm:col-span-5">
+                                {entry.weightType === 'none' ? (
+                                  <div
+                                    className={`h-11 px-3 rounded-xl border flex items-center justify-center text-xs font-semibold ${
+                                      isDark
+                                        ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-[hsl(75,92%,56%)]'
+                                        : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)] text-[hsl(76,78%,42%)]'
+                                    }`}
+                                  >
+                                    {lang === 'ar' ? 'وزن الجسم (Bodyweight)' : 'Bodyweight'}
+                                  </div>
+                                ) : (
+                                  <div className="relative">
+                                    <input
+                                      type="number"
+                                      inputMode="decimal"
+                                      step="any"
+                                      min={0}
+                                      aria-label={`Set ${setItem.setNumber} weight in ${entry.weightType}`}
+                                      value={
+                                        setItem.weight === null || setItem.weight === undefined
+                                          ? ''
+                                          : setItem.weight
+                                      }
+                                      onChange={(e) =>
+                                        handleUpdateSet(
+                                          entry.id,
+                                          setItem.id,
+                                          'weight',
+                                          e.target.value === '' ? 0 : Number(e.target.value)
+                                        )
+                                      }
+                                      onFocus={(e) => e.target.select()}
+                                      className={`w-full h-11 px-3 pe-10 rounded-xl font-mono-num text-base font-bold border focus:outline-none focus:border-[hsl(75,92%,56%)] ${
+                                        isDark
+                                          ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
+                                          : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
+                                      }`}
+                                    />
+                                    <span
+                                      className={`absolute top-1/2 -translate-y-1/2 end-3 text-xs font-mono-num font-semibold pointer-events-none uppercase ${
+                                        isDark ? 'text-gray-400' : 'text-slate-400'
+                                      }`}
+                                    >
+                                      {entry.weightType === 'lbs' ? 'lb' : 'kg'}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Repetitions Input */}
+                              <div className="col-span-4 sm:col-span-4">
+                                <div className="relative">
+                                  <input
+                                    type="number"
+                                    inputMode="numeric"
+                                    min={0}
+                                    aria-label={`Set ${setItem.setNumber} repetitions`}
+                                    value={setItem.reps}
+                                    onChange={(e) =>
+                                      handleUpdateSet(
+                                        entry.id,
+                                        setItem.id,
+                                        'reps',
+                                        e.target.value === '' ? 0 : Number(e.target.value)
+                                      )
+                                    }
+                                    onFocus={(e) => e.target.select()}
+                                    className={`w-full h-11 px-3 pe-12 rounded-xl font-mono-num text-base font-bold border focus:outline-none focus:border-[hsl(75,92%,56%)] ${
+                                      isDark
+                                        ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
+                                        : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
+                                    }`}
+                                  />
+                                  <span
+                                    className={`absolute top-1/2 -translate-y-1/2 end-3 text-xs font-mono-num pointer-events-none ${
+                                      isDark ? 'text-gray-400' : 'text-slate-400'
+                                    }`}
+                                  >
+                                    {lang === 'ar' ? 'عدات' : 'reps'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* Complete & Delete Set */}
+                              <div className="col-span-2 flex items-center justify-end gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleUpdateSet(
+                                      entry.id,
+                                      setItem.id,
+                                      'completed',
+                                      !setItem.completed
+                                    )
+                                  }
+                                  className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all cursor-pointer ${
+                                    setItem.completed
+                                      ? isDark
+                                        ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
+                                        : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]'
+                                      : isDark
+                                      ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-gray-400 hover:text-[hsl(75,92%,56%)]'
+                                      : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-slate-400 hover:text-[hsl(76,78%,42%)]'
+                                  }`}
+                                  title="Mark set complete"
+                                >
+                                  <Check className="w-4 h-4" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSet(entry.id, setItem.id)}
+                                  className={`w-8 h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+                                    isDark
+                                      ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'
+                                      : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                                  }`}
+                                  title={lang === 'ar' ? 'حذف المجموعة' : 'Delete set'}
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+
+                          {/* Add Set Button */}
+                          <div className="pt-2">
+                            <button
+                              type="button"
+                              onClick={() => handleAddSet(entry.id)}
+                              className={`py-2.5 px-4 rounded-xl text-xs font-display font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                                isDark
+                                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,56%)] hover:text-[hsl(240,10%,9%)]'
+                                  : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/40 text-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,42%)] hover:text-white'
+                              }`}
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>{lang === 'ar' ? 'إضافة مجموعة (+ Set)' : 'Add Set'}</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -1289,11 +1081,7 @@ export const StartWorkout: React.FC = () => {
           }`}
         >
           <Plus className="w-5 h-5" />
-          <span>
-            {lang === 'ar'
-              ? 'إضافة تمرين للجلسة الحالية'
-              : 'Add Exercise to Workout'}
-          </span>
+          <span>{lang === 'ar' ? 'إضافة تمرين للجلسة الحالية' : 'Add Exercise to Workout'}</span>
         </button>
       </div>
 
@@ -1306,18 +1094,12 @@ export const StartWorkout: React.FC = () => {
         }`}
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div
-            className={`text-xs ${
-              isDark ? 'text-gray-400' : 'text-slate-500'
-            }`}
-          >
+          <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
             <span>
-              {activeWorkout.exercises.length}{' '}
-              {lang === 'ar' ? 'تمارين' : 'exercises'} • {totalCompletedSets}{' '}
-              {lang === 'ar' ? 'مجموعات' : 'sets'}
+              {activeWorkout.exercises.length} {lang === 'ar' ? 'تمارين' : 'exercises'} •{' '}
+              {totalCompletedSets} {lang === 'ar' ? 'مجموعات' : 'sets'}
             </span>
           </div>
-
           <button
             type="button"
             onClick={handleFinishSession}
@@ -1350,22 +1132,14 @@ export const StartWorkout: React.FC = () => {
             <div className="flex items-center justify-between border-b border-inherit pb-3">
               <div>
                 <h3 className="font-display font-bold text-base">
-                  {lang === 'ar'
-                    ? 'اختر تمريناً لإضافته'
-                    : 'Select Exercise to Add'}
+                  {lang === 'ar' ? 'اختر تمريناً لإضافته' : 'Select Exercise to Add'}
                 </h3>
-
-                <p
-                  className={`text-xs ${
-                    isDark ? 'text-gray-400' : 'text-slate-500'
-                  }`}
-                >
+                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                   {lang === 'ar'
                     ? 'اختر من المكتبة أو أنشئ تمريناً مخصصاً جديداً فوراً'
                     : 'Choose from your library or create a new custom exercise'}
                 </p>
               </div>
-
               <button
                 onClick={() => setIsAddExerciseOpen(false)}
                 className="p-1.5 rounded-lg hover:bg-white/10"
@@ -1378,14 +1152,11 @@ export const StartWorkout: React.FC = () => {
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-gray-400" />
-
                 <input
                   type="text"
                   value={pickerSearch}
                   onChange={(e) => setPickerSearch(e.target.value)}
-                  placeholder={
-                    lang === 'ar' ? 'بحث عن تمرين...' : 'Search exercise...'
-                  }
+                  placeholder={lang === 'ar' ? 'بحث عن تمرين...' : 'Search exercise...'}
                   className={`w-full ps-9 pe-3 py-2 rounded-xl text-xs sm:text-sm border focus:outline-none focus:border-[hsl(75,92%,56%)] ${
                     isDark
                       ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-100'
@@ -1393,7 +1164,6 @@ export const StartWorkout: React.FC = () => {
                   }`}
                 />
               </div>
-
               <button
                 type="button"
                 onClick={() => setShowQuickCreateEx(!showQuickCreateEx)}
@@ -1421,16 +1191,13 @@ export const StartWorkout: React.FC = () => {
               >
                 <div
                   className={`text-xs font-bold ${
-                    isDark
-                      ? 'text-[hsl(75,92%,56%)]'
-                      : 'text-[hsl(76,78%,42%)]'
+                    isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
                   }`}
                 >
                   {lang === 'ar'
                     ? 'إنشاء تمرين جديد وإضافته فوراً'
                     : 'Create & Add Custom Exercise'}
                 </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <input
                     type="text"
@@ -1438,7 +1205,7 @@ export const StartWorkout: React.FC = () => {
                     value={newExName}
                     onChange={(e) => setNewExName(e.target.value)}
                     placeholder={
-                      lang === 'ar' ? 'اسم التمرين...' : 'Exercise Name...'
+                      lang === 'ar' ? 'اسم التمرين (مثال: Treadmill)...' : 'Exercise Name...'
                     }
                     className={`sm:col-span-2 px-3 py-2 rounded-lg text-xs border ${
                       isDark
@@ -1446,12 +1213,9 @@ export const StartWorkout: React.FC = () => {
                         : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
                     }`}
                   />
-
                   <select
                     value={newExMuscle}
-                    onChange={(e) =>
-                      setNewExMuscle(e.target.value as MuscleGroup)
-                    }
+                    onChange={(e) => setNewExMuscle(e.target.value as MuscleGroup)}
                     className={`px-2.5 py-2 rounded-lg text-xs border ${
                       isDark
                         ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
@@ -1465,7 +1229,6 @@ export const StartWorkout: React.FC = () => {
                     ))}
                   </select>
                 </div>
-
                 <div className="flex items-center justify-end gap-2">
                   <button
                     type="submit"
@@ -1497,7 +1260,6 @@ export const StartWorkout: React.FC = () => {
               >
                 {lang === 'ar' ? 'الكل' : 'All'}
               </button>
-
               {MUSCLE_GROUPS.map((mg) => (
                 <button
                   key={mg}
@@ -1523,7 +1285,6 @@ export const StartWorkout: React.FC = () => {
                 const alreadyInSession = activeWorkout.exercises.some(
                   (e) => e.exerciseId === ex.id
                 );
-
                 return (
                   <div
                     key={ex.id}
@@ -1534,26 +1295,15 @@ export const StartWorkout: React.FC = () => {
                     }`}
                   >
                     <div>
-                      <div className="font-display font-semibold text-sm">
-                        {ex.name}
-                      </div>
-
+                      <div className="font-display font-semibold text-sm">{ex.name}</div>
                       <div
                         className={`text-xs ${
-                          isDark
-                            ? 'text-[hsl(75,92%,56%)]'
-                            : 'text-[hsl(76,78%,42%)]'
+                          isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
                         }`}
                       >
-                        {translateMuscleGroup(ex.muscleGroup, lang)} •{' '}
-                        <span className="font-mono-num uppercase text-gray-400">
-                          {ex.defaultWeightUnit === 'none'
-                            ? 'Bodyweight'
-                            : ex.defaultWeightUnit}
-                        </span>
+                        {translateMuscleGroup(ex.muscleGroup, lang)}
                       </div>
                     </div>
-
                     <button
                       onClick={() => handleAddExerciseToSession(ex.id)}
                       className={`px-3.5 py-1.5 rounded-xl font-semibold text-xs flex items-center gap-1 cursor-pointer ${
@@ -1567,7 +1317,6 @@ export const StartWorkout: React.FC = () => {
                       }`}
                     >
                       <Plus className="w-3.5 h-3.5" />
-
                       <span>
                         {alreadyInSession
                           ? lang === 'ar'
@@ -1614,17 +1363,11 @@ export const StartWorkout: React.FC = () => {
                 ? 'هل أنت متأكد من إلغاء التمرين الحالي؟'
                 : 'Cancel Active Workout?'}
             </h3>
-
-            <p
-              className={`text-xs sm:text-sm ${
-                isDark ? 'text-gray-300' : 'text-slate-600'
-              }`}
-            >
+            <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
               {lang === 'ar'
                 ? 'سيتم حذف هذه الجلسة غير المكتملة ولن يتم حفظها في سجل التمارين.'
                 : 'This unfinished workout session will be discarded and will not be saved to your workout history.'}
             </p>
-
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
                 onClick={() => setIsCancelConfirmOpen(false)}
@@ -1636,7 +1379,6 @@ export const StartWorkout: React.FC = () => {
               >
                 {lang === 'ar' ? 'العودة للتمرين' : 'Keep Training'}
               </button>
-
               <button
                 onClick={async () => {
                   setIsCancelConfirmOpen(false);
