@@ -815,7 +815,7 @@ export const CalendarPage: React.FC = () => {
                 {selectedDateWorkouts.map((workout) => {
                   const expanded = expandedWorkoutId === workout.id;
                   
-                  // حساب إجمالي السعرات المحروقة لكل التمارين في هذه الجلسة
+                  // حساب إجمالي السعرات الحرارية المحروقة لكل التمارين في هذه الجلسة
                   const totalSessionCalories = workout.exercises.reduce(
                     (acc, ex) => acc + (ex.caloriesBurned || 0),
                     0
@@ -970,18 +970,21 @@ export const CalendarPage: React.FC = () => {
                                     ex.sets.map((s) => (
                                       <span
                                         key={s.id}
-                                        className={`px-1.5 py-0.5 rounded ${
+                                        className={`px-1.5 py-0.5 rounded flex items-center gap-1 ${
                                           isDark
-                                            ? 'bg-[hsl(240,6%,4%)]'
-                                            : 'bg-white'
+                                            ? 'bg-[hsl(240,6%,4%)] text-gray-200'
+                                            : 'bg-white text-slate-800'
                                         }`}
                                       >
-                                        {formatSetPerformance(
-                                          s.weight,
-                                          ex.weightType,
-                                          s.reps,
-                                          lang
-                                        )}
+                                        <span className="text-[9px] opacity-60">#{s.setNumber}:</span>
+                                        <span>
+                                          {formatSetPerformance(
+                                            s.weight,
+                                            ex.weightType,
+                                            s.reps,
+                                            lang
+                                          )}
+                                        </span>
                                       </span>
                                     ))
                                   )}
