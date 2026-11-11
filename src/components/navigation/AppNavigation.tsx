@@ -383,7 +383,7 @@ export const AppNavigation: React.FC<{
                 currentSection === 'settings'
                   ? isDark
                     ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]'
-                    : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)]'
+                    : 'bg-[hsl(76,78%,42%)]/10 border border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)]'
                   : isDark
                   ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300'
                   : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
@@ -433,9 +433,9 @@ export const AppNavigation: React.FC<{
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
+      {/* MOBILE BOTTOM NAVIGATION - FIXED SPACING & ALIGNMENT */}
       <nav
-        className={`lg:hidden fixed bottom-0 inset-x-0 z-30 h-[68px] border-t backdrop-blur-lg px-1 flex items-center justify-around overflow-x-auto no-scrollbar ${
+        className={`lg:hidden fixed bottom-0 inset-x-0 z-30 h-16 border-t backdrop-blur-lg px-2 flex items-center justify-between ${
           isDark
             ? 'bg-[hsl(240,5%,7.5%)]/95 border-[hsl(240,4%,16%)]'
             : 'bg-white/95 border-[hsl(40,10%,88%)]'
@@ -450,22 +450,22 @@ export const AppNavigation: React.FC<{
               <button
                 key={item.id}
                 onClick={() => setCurrentSection(item.id)}
-                className="flex flex-col items-center justify-center -mt-4 focus:outline-none cursor-pointer shrink-0 px-1"
+                className="flex flex-col items-center justify-center -mt-5 focus:outline-none cursor-pointer shrink-0 px-1 group"
               >
                 <div
                   className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
                     activeWorkout
-                      ? 'bg-amber-500 text-slate-950 shadow-amber-500/25'
+                      ? 'bg-amber-500 text-slate-950 shadow-amber-500/30 ring-4 ring-amber-500/20'
                       : isDark
-                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)] shadow-[hsl(75,92%,56%)]/25'
-                      : 'bg-[hsl(76,78%,42%)] text-white shadow-[hsl(76,78%,42%)]/25'
+                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)] shadow-[hsl(75,92%,56%)]/30'
+                      : 'bg-[hsl(76,78%,42%)] text-white shadow-[hsl(76,78%,42%)]/30'
                   }`}
                 >
                   <Icon className="w-5 h-5 fill-current" />
                 </div>
 
                 <span
-                  className={`text-[10px] font-semibold mt-1 ${
+                  className={`text-[10px] font-bold mt-1 tracking-tight ${
                     activeWorkout
                       ? 'text-amber-400'
                       : isActive
@@ -487,19 +487,18 @@ export const AppNavigation: React.FC<{
             <button
               key={item.id}
               onClick={() => setCurrentSection(item.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-1.5 rounded-xl min-w-[48px] shrink-0 transition-colors cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1 px-1 rounded-xl flex-1 transition-colors cursor-pointer ${
                 isActive
                   ? isDark
-                    ? 'text-[hsl(75,92%,56%)]'
-                    : 'text-[hsl(76,78%,42%)]'
+                    ? 'text-[hsl(75,92%,56%)] font-bold'
+                    : 'text-[hsl(76,78%,42%)] font-bold'
                   : isDark
                   ? 'text-gray-400 hover:text-gray-200'
                   : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               <Icon className="w-5 h-5" />
-
-              <span className="text-[10px] font-medium mt-1 truncate max-w-[56px]">
+              <span className="text-[10px] font-medium mt-1 truncate max-w-[52px]">
                 {item.label}
               </span>
             </button>
