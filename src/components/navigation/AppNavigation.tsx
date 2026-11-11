@@ -72,7 +72,7 @@ export const AppNavigation: React.FC<{
     ? [...baseNavItems, activeWorkoutNavItem, ...endNavItems]
     : [...baseNavItems, ...endNavItems];
 
-  // MOBILE BOTTOM NAVIGATION (Without Settings)
+  // MOBILE BOTTOM NAVIGATION (Placed Active Workout between Exercises and Weight)
   const mobileBottomItems: {
     id: AppSection;
     label: string;
@@ -94,11 +94,6 @@ export const AppNavigation: React.FC<{
       label: lang === 'ar' ? 'التمارين' : 'Exercises',
       icon: Dumbbell,
     },
-    {
-      id: 'weight' as AppSection,
-      label: lang === 'ar' ? 'الوزن' : 'Weight',
-      icon: Scale,
-    },
     ...(activeWorkout
       ? [
           {
@@ -109,6 +104,11 @@ export const AppNavigation: React.FC<{
           },
         ]
       : []),
+    {
+      id: 'weight' as AppSection,
+      label: lang === 'ar' ? 'الوزن' : 'Weight',
+      icon: Scale,
+    },
     {
       id: 'calendar',
       label: lang === 'ar' ? 'التقويم' : 'Calendar',
