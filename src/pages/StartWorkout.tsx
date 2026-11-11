@@ -113,30 +113,11 @@ export const StartWorkout: React.FC = () => {
     if (!libEx) return;
 
     const lastPerf = getLastPerformanceForExercise(libEx.id, completedWorkouts);
-    const initialUnit: WeightUnit = libEx.isBodyweight
-      ? 'none'
-      : lastPerf
-      ? lastPerf.weightType
-      : libEx.defaultWeightUnit || settings.preferredWeightUnit;
-
-    const isCardio =
-      libEx.muscleGroup === 'Cardio' ||
-      libEx.name.toLowerCase().includes('treadmill') ||
-      libEx.name.toLowerCase().includes('elliptical') ||
-      libEx.name.toLowerCase().includes('bike') ||
-      libEx.name.toLowerCase().includes('running') ||
-      libEx.name.toLowerCase().includes('cardio');
-
-    const defaultFirstWeight = isCardio
-      ? null
-      : initialUnit === 'none'
-      ? null
-      : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null
-      ? lastPerf.bestSet.weight
-      : 0;
-
+    const initialUnit: WeightUnit = libEx.isBodyweight ? 'none' : lastPerf ? lastPerf.weightType : libEx.defaultWeightUnit || settings.preferredWeightUnit;
+    const isCardio = libEx.muscleGroup === 'Cardio' || libEx.name.toLowerCase().includes('treadmill') || libEx.name.toLowerCase().includes('elliptical') || libEx.name.toLowerCase().includes('bike') || libEx.name.toLowerCase().includes('running') || libEx.name.toLowerCase().includes('cardio');
+    const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? null : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 0;
     const defaultFirstReps = isCardio ? 30 : lastPerf && lastPerf.bestSet ? lastPerf.bestSet.reps : 10;
-
+    
     const newEntry: ExerciseEntry = {
       id: generateId('ex_entry'),
       exerciseId: libEx.id,
@@ -214,7 +195,6 @@ export const StartWorkout: React.FC = () => {
     await updateActiveWorkout({ ...activeWorkout, exercises: updatedExercises });
   };
 
-  // دالة تحديث السعرات الحرارية المحروقة في التمرين الحالي
   const handleUpdateCalories = async (entryId: string, calories: number) => {
     if (!activeWorkout) return;
     const updatedExercises = activeWorkout.exercises.map((entry) => {
@@ -290,15 +270,13 @@ export const StartWorkout: React.FC = () => {
 
     if (activeWorkout.exercises.length === 0) {
       showToast(
-        lang === 'ar'
-          ? 'يرجى إضافة تمرين واحد على الأقل قبل إنهاء الجلسة.'
-          : 'Please add at least one exercise before finishing the workout.',
+        lang === 'ar' ? 'يرجى إضافة تمرين واحد على الأقل قبل إنهاء الجلسة.' : 'Please add at least one exercise before finishing the workout.',
         'error'
       );
       return;
     }
     await finishActiveWorkout();
-    setCurrentSection('calendar');
+    setCurrentSection('dashboard');
   };
 
   const filteredLibraryExercises = useMemo(() => {
@@ -315,25 +293,21 @@ export const StartWorkout: React.FC = () => {
 
   if (!activeWorkout) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-display font-bold">
+      <div className="space-y-6 pb-24">
+        <div className="space-y-1">
+          <h1 className="font-display font-extrabold text-2xl sm:text-3xl tracking-tight">
             {lang === 'ar' ? 'بدء وتسجيل تمرين جديد' : 'Start a New Workout'}
           </h1>
-          <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+          <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
             {lang === 'ar'
               ? 'اختر خطة جاهزة من جدولك الأسبوعي. يتم تسجيل التاريخ والوقت الفعليين لجهازك تلقائياً.'
               : 'Choose a workout from your weekly schedule. Your local date and time are recorded automatically.'}
           </p>
         </div>
 
-        <div
-          className={`p-4 sm:p-5 rounded-2xl border ${
-            isDark
-              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
-              : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)] shadow-xs'
-          }`}
-        >
+        <div className={`p-4 sm:p-5 rounded-2xl border ${
+          isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)] shadow-xs'
+        }`}>
           <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400 mb-2">
             <CalendarIcon className="w-4 h-4" />
             <span>{lang === 'ar' ? 'التاريخ المحلي اليوم' : 'Automatic Local Date'}</span>
@@ -361,21 +335,15 @@ export const StartWorkout: React.FC = () => {
               >
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <span
-                      className={`text-xs font-display font-bold uppercase tracking-wider ${
-                        isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
-                      }`}
-                    >
+                    <span className={`text-xs font-display font-bold uppercase tracking-wider ${
+                      isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                    }`}>
                       {translateDayName(dayPlan.day, lang)}
                     </span>
                     {isTodayPlan && (
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          isDark
-                            ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]'
-                            : 'bg-[hsl(76,78%,42%)] text-white'
-                        }`}
-                      >
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
+                      }`}>
                         {lang === 'ar' ? 'خطة اليوم المقترحة' : 'Suggested Today'}
                       </span>
                     )}
@@ -400,6 +368,7 @@ export const StartWorkout: React.FC = () => {
                     </div>
                   )}
                 </div>
+
                 <div className="flex items-center justify-between pt-2 border-t border-inherit">
                   {dayPlan.workoutType !== 'strength' && (
                     <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
@@ -445,14 +414,13 @@ export const StartWorkout: React.FC = () => {
     0
   );
 
-  // إجمالي السعرات الحرارية المحروقة في كل تمارين الجلسة الحالية
   const totalSessionCalories = activeWorkout.exercises.reduce(
     (sum, ex) => sum + (ex.caloriesBurned || 0),
     0
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-28">
       <div
         className={`rounded-2xl p-4 sm:p-5 border shadow-lg ${
           isDark
@@ -462,7 +430,7 @@ export const StartWorkout: React.FC = () => {
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-inherit">
           <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
               <span
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
                   isDark
@@ -484,7 +452,6 @@ export const StartWorkout: React.FC = () => {
               </span>
             </div>
 
-            {/* Editable Workout Title */}
             <input
               type="text"
               value={activeWorkout.title}
@@ -524,7 +491,6 @@ export const StartWorkout: React.FC = () => {
                 />
               </div>
 
-              {/* إجمالي السعرات المحروقة للجلسة إذا وجدت */}
               {totalSessionCalories > 0 && (
                 <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 text-xs font-bold font-mono-num">
                   <Flame className="w-3.5 h-3.5" />
@@ -537,17 +503,16 @@ export const StartWorkout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2.5 self-stretch sm:self-auto">
-            <button 
-  onClick={async () => { 
-    setIsCancelConfirmOpen(false); 
-    await cancelActiveWorkout(); 
-    setCurrentSection('home'); // <--- الانتقال للداشبورد الرئيسية
-  }} 
-  className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold text-xs cursor-pointer"
->
-  {lang === 'ar' ? 'نعم، إلغاء التمرين' : 'Discard Workout'}
-</button>
-
+            <button
+              onClick={() => setIsCancelConfirmOpen(true)}
+              className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
+                isDark
+                  ? 'bg-[hsl(240,5%,11%)] border-red-500/30 text-red-400 hover:bg-red-500/10'
+                  : 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
+              }`}
+            >
+              {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+            </button>
             <button
               onClick={handleFinishSession}
               className={`flex-1 sm:flex-initial px-5 py-2.5 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
@@ -600,6 +565,7 @@ export const StartWorkout: React.FC = () => {
             groups.get(entry.muscleGroup)!.push(entry);
           }
           const groupEntries = [...groups.entries()];
+
           if (groupEntries.length === 0) {
             return (
               <div
@@ -617,6 +583,7 @@ export const StartWorkout: React.FC = () => {
               </div>
             );
           }
+
           return groupEntries.map(([muscleGroup, groupExercises], groupIdx) => (
             <div key={muscleGroup}>
               {groupIdx > 0 && (
@@ -722,9 +689,7 @@ export const StartWorkout: React.FC = () => {
                                   <button
                                     key={u.id}
                                     type="button"
-                                    onClick={() =>
-                                      handleExerciseUnitChange(entry.id, u.id)
-                                    }
+                                    onClick={() => handleExerciseUnitChange(entry.id, u.id)}
                                     className={`px-3 py-1.5 rounded-lg text-xs font-mono-num font-bold transition-all cursor-pointer ${
                                       isSelected
                                         ? isDark
@@ -756,7 +721,6 @@ export const StartWorkout: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* CARDIO INPUTS (MINUTES + CALORIES) */}
                       {isCardio ? (
                         <div className="space-y-3 py-2">
                           {entry.sets.map((setItem) => (
@@ -797,7 +761,6 @@ export const StartWorkout: React.FC = () => {
                                 </span>
                               </div>
 
-                              {/* حقل إدخال السعرات الحرارية المحروقة للكارديو */}
                               <div className="flex items-center gap-2 flex-1">
                                 <Flame className="w-4 h-4 text-orange-400 shrink-0" />
                                 <label className="text-xs font-semibold whitespace-nowrap text-orange-500">
@@ -829,9 +792,7 @@ export const StartWorkout: React.FC = () => {
                                   <button
                                     key={m}
                                     type="button"
-                                    onClick={() =>
-                                      handleUpdateSet(entry.id, setItem.id, 'reps', m)
-                                    }
+                                    onClick={() => handleUpdateSet(entry.id, setItem.id, 'reps', m)}
                                     className={`px-2.5 py-1 rounded-lg text-xs font-mono-num font-semibold border cursor-pointer ${
                                       setItem.reps === m
                                         ? 'bg-cyan-500 text-slate-950 border-cyan-500'
@@ -848,7 +809,6 @@ export const StartWorkout: React.FC = () => {
                           ))}
                         </div>
                       ) : (
-                        /* STRENGTH SETS TABLE */
                         <div className="space-y-2">
                           <div
                             className={`grid grid-cols-12 gap-2 px-2 text-[11px] font-semibold uppercase tracking-wider ${
@@ -913,7 +873,6 @@ export const StartWorkout: React.FC = () => {
                                   {setItem.setNumber}
                                 </span>
                               </div>
-
                               <div className="col-span-4 sm:col-span-5">
                                 {entry.weightType === 'none' ? (
                                   <div
@@ -962,7 +921,6 @@ export const StartWorkout: React.FC = () => {
                                   </div>
                                 )}
                               </div>
-
                               <div className="col-span-4 sm:col-span-4">
                                 <div className="relative">
                                   <input
@@ -994,7 +952,6 @@ export const StartWorkout: React.FC = () => {
                                   </span>
                                 </div>
                               </div>
-
                               <div className="col-span-2 flex items-center justify-end gap-1">
                                 <button
                                   type="button"
@@ -1112,9 +1069,7 @@ export const StartWorkout: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div
             className={`w-full max-w-xl rounded-2xl border p-5 space-y-4 max-h-[88vh] flex flex-col ${
-              isDark
-                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
-                : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)]'
+              isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]' : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)]'
             }`}
           >
             <div className="flex items-center justify-between border-b border-inherit pb-3">
@@ -1212,9 +1167,7 @@ export const StartWorkout: React.FC = () => {
                   <button
                     type="submit"
                     className={`px-4 py-1.5 rounded-lg font-bold text-xs cursor-pointer ${
-                      isDark
-                        ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]'
-                        : 'bg-[hsl(76,78%,42%)] text-white'
+                      isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
                     }`}
                   >
                     {lang === 'ar' ? 'حفظ وإضافة' : 'Create & Add'}
@@ -1313,9 +1266,7 @@ export const StartWorkout: React.FC = () => {
               <button
                 onClick={() => setIsAddExerciseOpen(false)}
                 className={`px-5 py-2 rounded-xl font-bold text-xs cursor-pointer ${
-                  isDark
-                    ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]'
-                    : 'bg-[hsl(76,78%,42%)] text-white'
+                  isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
                 }`}
               >
                 {lang === 'ar' ? 'إغلاق' : 'Done'}
@@ -1329,13 +1280,11 @@ export const StartWorkout: React.FC = () => {
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div
             className={`w-full max-w-md rounded-2xl border p-5 space-y-4 ${
-              isDark
-                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
-                : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)]'
+              isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]' : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)]'
             }`}
           >
             <h3 className="font-display font-bold text-base text-red-400">
-              {lang === 'ar' ? 'هل أنت متأكد من إلغاء التمرين الحالي؟' : 'Cancel Active Workout?'}
+              {lang === 'ar' ? 'هل أنت متأكد من إلغاء التمرين الحالي؟ ؟' : 'Cancel Active Workout? ?'}
             </h3>
             <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
               {lang === 'ar'
@@ -1357,10 +1306,11 @@ export const StartWorkout: React.FC = () => {
                 onClick={async () => {
                   setIsCancelConfirmOpen(false);
                   await cancelActiveWorkout();
+                  setCurrentSection('dashboard');
                 }}
                 className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold text-xs cursor-pointer"
               >
-                {lang === 'ar' ? 'نعم، إلغاء التمرين' : 'Discard Workout'}
+                {lang === 'ar' ? 'إلغاء التمرين' : 'Discard Workout'}
               </button>
             </div>
           </div>
