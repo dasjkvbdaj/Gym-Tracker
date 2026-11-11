@@ -38,9 +38,6 @@ export interface SetEntry {
   weight: number | null; // null when weightType === 'none' (Bodyweight)
   reps: number;
   completed?: boolean;
-  startedAt?: number;        // تم الإضافة: وقت بداية المجموعة بالـ Timestamp
-  completedAt?: number;      // تم الإضافة: وقت إنهاء المجموعة بالـ Timestamp
-  restSecondsBefore?: number;// تم الإضافة: وقت الراحة المحسوب بدقة قبل هذه المجموعة
 }
 
 export interface ExerciseEntry {
@@ -51,7 +48,6 @@ export interface ExerciseEntry {
   weightType: WeightUnit; // 'kg' | 'lbs' | 'none'
   sets: SetEntry[];
   notes: string;
-  caloriesBurned?: number; // تم الإضافة لدعم سعرات الكارديو
 }
 
 export interface CardioDetails {
@@ -80,12 +76,6 @@ export interface WorkoutSession {
   notes: string;
   exercises: ExerciseEntry[];
   cardioDetails?: CardioDetails;
-  
-  // الحقول الجديدة الإضافية للإحصائيات والسعرات:
-  activeLiftingSeconds?: number;
-  totalRestSeconds?: number;
-  caloriesBurned?: number;
-  userWeightAtWorkout?: number;
 }
 
 export interface Exercise {
@@ -113,7 +103,6 @@ export interface UserSettings {
   theme: 'dark' | 'light';
   language: 'en' | 'ar';
   preferredWeightUnit: PreferredWeightUnit;
-  bodyWeightKg: number; // تم الإضافة: لتخزين وزن الجسم الحالي ديناميكياً
   updatedAt: number;
 }
 
