@@ -15,6 +15,7 @@ import {
   AlertCircle,
   Info,
   Globe,
+  Scale,
 } from 'lucide-react';
 
 import { useGym } from '../../context/GymContext';
@@ -48,6 +49,7 @@ export const AppNavigation: React.FC<{
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
     { id: 'schedule', label: t.myWorkout, icon: ClipboardList },
     { id: 'exercises', label: t.exercises, icon: Dumbbell },
+    { id: 'weight' as AppSection, label: lang === 'ar' ? 'وزن الجسم' : 'Body Weight', icon: Scale },
   ];
 
   const activeWorkoutNavItem = {
@@ -91,6 +93,11 @@ export const AppNavigation: React.FC<{
       id: 'exercises',
       label: lang === 'ar' ? 'التمارين' : 'Exercises',
       icon: Dumbbell,
+    },
+    {
+      id: 'weight' as AppSection,
+      label: lang === 'ar' ? 'الوزن' : 'Weight',
+      icon: Scale,
     },
     ...(activeWorkout
       ? [
