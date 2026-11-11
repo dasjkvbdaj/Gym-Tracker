@@ -38,10 +38,6 @@ export interface SetEntry {
   weight: number | null; // null when weightType === 'none' (Bodyweight)
   reps: number;
   completed?: boolean;
-  startedAt?: number | null;        // Timestamp in ms when "Start Set" is pressed
-  completedAt?: number | null;      // Timestamp in ms when "Complete Set" is pressed
-  restDurationSeconds?: number | null; // Calculated rest duration before this set
-  caloriesBurned?: number | null;   // Estimated or manually recorded calories for this specific set
 }
 
 export interface ExerciseEntry {
@@ -51,7 +47,6 @@ export interface ExerciseEntry {
   muscleGroup: MuscleGroup;
   weightType: WeightUnit; // 'kg' | 'lbs' | 'none'
   sets: SetEntry[];
-  caloriesBurned?: number; // Total calories burned for cardio or strength exercise
   notes: string;
 }
 
