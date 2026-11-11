@@ -30,15 +30,17 @@ export type AppSection =
   | 'start-workout'
   | 'calendar'
   | 'progress'
-  | 'settings';
+  | 'settings'
+  | 'weight';
 
 export interface SetEntry {
   id: string;
   setNumber: number;
-  weight: number | null; // null when weightType === 'none' (Bodyweight)
+  weight: number | null;
   reps: number;
   completed?: boolean;
-  restDurationSeconds?: number; // وقت الراحة المستغرق بعد هذه المجموعة (اختياري)
+  restDurationSeconds?: number; // وقت الراحة المستغرق بعد هذه المجموعة
+  activeDurationSeconds?: number; // وقت التمرين الفعلي في هذه المجموعة
 }
 
 export interface ExerciseEntry {
@@ -46,9 +48,9 @@ export interface ExerciseEntry {
   exerciseId: string;
   exerciseNameSnapshot: string;
   muscleGroup: MuscleGroup;
-  weightType: WeightUnit; // 'kg' | 'lbs' | 'none'
+  weightType: WeightUnit;
   sets: SetEntry[];
-  caloriesBurned?: number; // إجمالي السعرات الحرارية المحروقة لهذا التمرين
+  caloriesBurned?: number;
   notes: string;
 }
 
@@ -65,10 +67,10 @@ export interface WorkoutSession {
   workoutType: 'strength' | 'cardio';
   title: string;
   muscleGroups: MuscleGroup[];
-  actualDate: string; // YYYY-MM-DD in local timezone
+  actualDate: string;
   year: number;
-  month: number; // 1 - 12
-  dayOfMonth: number; // 1 - 31
+  month: number;
+  dayOfMonth: number;
   dayOfWeek: DayName;
   startTimestamp: number;
   finishTimestamp: number | null;
@@ -101,20 +103,9 @@ export interface WeeklyScheduleDay {
 }
 
 export interface UserSettings {
-  id: string; // 'user_settings'
+  id: string;
   theme: 'dark' | 'light';
   language: 'en' | 'ar';
   preferredWeightUnit: PreferredWeightUnit;
   updatedAt: number;
-}
-
-export interface BackupData {
-  appIdentifier: 'IRONPULSE_GYM_TRACKER';
-  backupVersion: number;
-  exportedAt: string;
-  exportTimestamp: number;
-  settings: UserSettings;
-  weeklySchedule:WeeklyScheduleDay[];
-  exercises: Exercise[];
-  workouts: WorkoutSession[];
 }
