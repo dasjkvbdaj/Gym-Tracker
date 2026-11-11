@@ -70,7 +70,7 @@ export const AppNavigation: React.FC<{
     ? [...baseNavItems, activeWorkoutNavItem, ...endNavItems]
     : [...baseNavItems, ...endNavItems];
 
-  // MOBILE BOTTOM NAVIGATION (يشمل كل الأقسام الستة + التمرين النشط إن وجد)
+  // MOBILE BOTTOM NAVIGATION
   const mobileBottomItems: {
     id: AppSection;
     label: string;
@@ -92,7 +92,6 @@ export const AppNavigation: React.FC<{
       label: lang === 'ar' ? 'التمارين' : 'Exercises',
       icon: Dumbbell,
     },
-    // زر التمرين النشط في المنتصف إذا وجد تمرين نشط
     ...(activeWorkout
       ? [
           {
@@ -163,15 +162,19 @@ export const AppNavigation: React.FC<{
             >
               <Dumbbell className="w-5 h-5" />
             </div>
+
             <div>
               <div className="font-display font-bold text-lg tracking-tight leading-none flex items-center gap-1.5">
-                IRONPULSE
+                Gym Tracker
                 <span
                   className={`w-2 h-2 rounded-full animate-pulse ${
-                    isDark ? 'bg-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]'
+                    isDark
+                      ? 'bg-[hsl(75,92%,56%)]'
+                      : 'bg-[hsl(76,78%,42%)]'
                   }`}
                 />
               </div>
+
               <p
                 className={`text-xs mt-0.5 ${
                   isDark ? 'text-gray-400' : 'text-slate-500'
@@ -204,6 +207,7 @@ export const AppNavigation: React.FC<{
           {navItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentSection === item.id;
+
             return (
               <button
                 key={item.id}
@@ -232,6 +236,7 @@ export const AppNavigation: React.FC<{
                   />
                   <span>{item.label}</span>
                 </div>
+
                 {item.id === 'start-workout' && activeWorkout && (
                   <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
                 )}
@@ -252,6 +257,7 @@ export const AppNavigation: React.FC<{
             <span className={isDark ? 'text-gray-400' : 'text-slate-500'}>
               {lang === 'ar' ? 'الوحدة الافتراضية:' : 'Default Unit:'}
             </span>
+
             <span
               className={`font-mono-num font-semibold uppercase px-2 py-0.5 rounded border ${
                 isDark
@@ -262,6 +268,7 @@ export const AppNavigation: React.FC<{
               {settings.preferredWeightUnit}
             </span>
           </div>
+
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={toggleTheme}
@@ -277,12 +284,18 @@ export const AppNavigation: React.FC<{
               ) : (
                 <Moon className="w-3.5 h-3.5 text-slate-700" />
               )}
+
               <span>
                 {isDark
-                  ? lang === 'ar' ? 'نهاري' : 'Light'
-                  : lang === 'ar' ? 'ليلي' : 'Dark'}
+                  ? lang === 'ar'
+                    ? 'نهاري'
+                    : 'Light'
+                  : lang === 'ar'
+                  ? 'ليلي'
+                  : 'Dark'}
               </span>
             </button>
+
             <button
               onClick={toggleLanguage}
               className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
@@ -305,7 +318,7 @@ export const AppNavigation: React.FC<{
         </div>
       </aside>
 
-      {/* MOBILE HEADER (بدون شريط الأزرار العلوي) */}
+      {/* MOBILE HEADER */}
       <header
         className={`lg:hidden sticky top-0 z-30 border-b backdrop-blur-md ${
           isDark
@@ -327,10 +340,12 @@ export const AppNavigation: React.FC<{
             >
               <Dumbbell className="w-4 h-4" />
             </div>
+
             <span className="font-display font-bold text-base tracking-tight">
-              IRONPULSE
+              Gym Tracker
             </span>
           </button>
+
           <div className="flex items-center gap-1.5">
             <button
               onClick={toggleLanguage}
@@ -342,6 +357,7 @@ export const AppNavigation: React.FC<{
             >
               {lang === 'en' ? 'عربي' : 'EN'}
             </button>
+
             <button
               onClick={toggleTheme}
               className={`p-2 rounded-lg border cursor-pointer ${
@@ -351,7 +367,11 @@ export const AppNavigation: React.FC<{
               }`}
               aria-label="Toggle theme"
             >
-              {isDark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {isDark ? (
+                <Sun className="w-4 h-4" />
+              ) : (
+                <Moon className="w-4 h-4" />
+              )}
             </button>
           </div>
         </div>
@@ -365,16 +385,19 @@ export const AppNavigation: React.FC<{
               <div className="flex items-center gap-2.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-ping" />
                 <Activity className="w-4 h-4 text-amber-400 shrink-0" />
+
                 <div className="text-xs sm:text-sm font-medium">
                   <span className="font-semibold text-amber-400">
                     {t.activeWorkout}:
                   </span>{' '}
                   <span>{activeWorkout.title}</span>
+
                   <span className="ms-2 text-xs px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">
                     {lang === 'ar' ? 'جلسة نشطة' : 'In Progress'}
                   </span>
                 </div>
               </div>
+
               <button
                 onClick={() => setCurrentSection('start-workout')}
                 className="px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
@@ -385,12 +408,13 @@ export const AppNavigation: React.FC<{
             </div>
           </div>
         )}
+
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 pb-28 lg:pb-10">
           {children}
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION (الشريط السفلي المحدث ليشمل جميع الأقسام) */}
+      {/* MOBILE BOTTOM NAVIGATION */}
       <nav
         className={`lg:hidden fixed bottom-0 inset-x-0 z-30 h-[68px] border-t backdrop-blur-lg px-1 flex items-center justify-around overflow-x-auto no-scrollbar ${
           isDark
@@ -401,6 +425,7 @@ export const AppNavigation: React.FC<{
         {mobileBottomItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentSection === item.id;
+
           if (item.isCenter) {
             return (
               <button
@@ -419,6 +444,7 @@ export const AppNavigation: React.FC<{
                 >
                   <Icon className="w-5 h-5 fill-current" />
                 </div>
+
                 <span
                   className={`text-[10px] font-semibold mt-1 ${
                     activeWorkout
@@ -437,6 +463,7 @@ export const AppNavigation: React.FC<{
               </button>
             );
           }
+
           return (
             <button
               key={item.id}
@@ -452,6 +479,7 @@ export const AppNavigation: React.FC<{
               }`}
             >
               <Icon className="w-5 h-5" />
+
               <span className="text-[10px] font-medium mt-1 truncate max-w-[56px]">
                 {item.label}
               </span>
@@ -492,8 +520,10 @@ export const AppNavigation: React.FC<{
                   }`}
                 />
               )}
+
               <span>{toast.text}</span>
             </div>
+
             <button
               onClick={() => dismissToast(toast.id)}
               className="p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
