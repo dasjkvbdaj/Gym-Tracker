@@ -40,7 +40,8 @@ export const AppNavigation: React.FC<{
   const isDark = settings.theme === 'dark';
 
   // DESKTOP NAVIGATION
-  const navItems: {
+  // إذا وجد تمرين نشط، نقوم بإضافة رابط start-workout للقائمة، وإلا نخفيه تماماً
+  const baseNavItems: {
     id: AppSection;
     label: string;
     icon: React.FC<{ className?: string }>;
@@ -48,15 +49,28 @@ export const AppNavigation: React.FC<{
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
     { id: 'schedule', label: t.myWorkout, icon: ClipboardList },
     { id: 'exercises', label: t.exercises, icon: Dumbbell },
-    {
-      id: 'start-workout',
-      label: activeWorkout ? t.resumeWorkout : t.startWorkout,
-      icon: Play,
-    },
+  ];
+
+  const activeWorkoutNavItem = {
+    id: 'start-workout' as AppSection,
+    label: activeWorkout ? t.resumeWorkout : t.startWorkout,
+    icon: Play,
+  };
+
+  const endNavItems: {
+    id: AppSection;
+    label: string;
+    icon: React.FC<{ className?: string }>;
+  }[] = [
     { id: 'calendar', label: t.calendar, icon: CalendarIcon },
     { id: 'progress', label: t.progress, icon: TrendingUp },
     { id: 'settings', label: t.settings, icon: SettingsIcon },
   ];
+
+  // دمج القوائم بناءً على حالة التمرين النشط
+  const navItems = activeWorkout
+    ? [...baseNavItems, activeWorkoutNavItem, ...endNavItems]
+    : [...baseNavItems, ...endNavItems];
 
   // MOBILE BOTTOM NAVIGATION
   const mobileBottomItems: {
@@ -75,14 +89,16 @@ export const AppNavigation: React.FC<{
       label: lang === 'ar' ? 'جدولي' : 'Schedule',
       icon: ClipboardList,
     },
-    {
-      id: 'start-workout',
-      label: activeWorkout
-        ? lang === 'ar' ? 'متابعة' : 'Active'
-        : lang === 'ar' ? 'تمرين' : 'Workout',
-      icon: Play,
-      isCenter: true,
-    },
+    ...(activeWorkout
+      ? [
+          {
+            id: 'start-workout' as AppSection,
+            label: lang === 'ar' ? 'متابعة' : 'Active',
+            icon: Play,
+            isCenter: true,
+          },
+        ]
+      : []),
     {
       id: 'calendar',
       label: lang === 'ar' ? 'التقويم' : 'Calendar',
@@ -127,7 +143,7 @@ export const AppNavigation: React.FC<{
         <div className="p-5 flex items-center justify-between border-b border-inherit">
           <button
             onClick={() => setCurrentSection('dashboard')}
-            className="flex items-center gap-3 text-start group focus:outline-none"
+            className="flex items-center gap-3 text-start group focus:outline-none cursor-pointer"
           >
             <div
               className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
@@ -158,27 +174,21 @@ export const AppNavigation: React.FC<{
           </button>
         </div>
 
-        {/* START / RESUME */}
-        <div className="p-4">
-          <button
-            onClick={() => setCurrentSection('start-workout')}
-            className={`w-full py-3 px-4 rounded-xl font-display font-semibold text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer ${
-              activeWorkout
-                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/15'
-                : isDark
-                ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,62%)] text-[hsl(240,6%,4%)] shadow-[hsl(75,92%,56%)]/15'
-                : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,38%)] text-white shadow-[hsl(76,78%,42%)]/15'
-            }`}
-          >
-            <Play className="w-4 h-4 fill-current" />
-            <span>{activeWorkout ? t.resumeWorkout : t.startWorkout}</span>
-            {activeWorkout && (
+        {/* START / RESUME (يظهر فقط إذا كان هناك تمرين نشط) */}
+        {activeWorkout && (
+          <div className="p-4">
+            <button
+              onClick={() => setCurrentSection('start-workout')}
+              className="w-full py-3 px-4 rounded-xl font-display font-semibold text-sm flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-amber-500/15"
+            >
+              <Play className="w-4 h-4 fill-current" />
+              <span>{t.resumeWorkout}</span>
               <span className="text-xs px-2 py-0.5 rounded-md bg-slate-950/20 font-bold">
                 {lang === 'ar' ? 'نشط' : 'Active'}
               </span>
-            )}
-          </button>
-        </div>
+            </button>
+          </div>
+        )}
 
         {/* NAVIGATION LINKS */}
         <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
@@ -297,7 +307,7 @@ export const AppNavigation: React.FC<{
         <div className="px-4 h-14 flex items-center justify-between">
           <button
             onClick={() => setCurrentSection('dashboard')}
-            className="flex items-center gap-2.5 focus:outline-none"
+            className="flex items-center gap-2.5 focus:outline-none cursor-pointer"
           >
             <div
               className={`w-8 h-8 rounded-lg flex items-center justify-center ${
@@ -315,7 +325,7 @@ export const AppNavigation: React.FC<{
           <div className="flex items-center gap-1.5">
             <button
               onClick={toggleLanguage}
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border ${
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium border cursor-pointer ${
                 isDark
                   ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300'
                   : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
@@ -325,7 +335,7 @@ export const AppNavigation: React.FC<{
             </button>
             <button
               onClick={toggleTheme}
-              className={`p-2 rounded-lg border ${
+              className={`p-2 rounded-lg border cursor-pointer ${
                 isDark
                   ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-amber-400'
                   : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
@@ -346,7 +356,7 @@ export const AppNavigation: React.FC<{
               <button
                 key={item.id}
                 onClick={() => setCurrentSection(item.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0 ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0 cursor-pointer ${
                   isActive
                     ? isDark
                       ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)] font-semibold shadow-sm'
@@ -414,7 +424,7 @@ export const AppNavigation: React.FC<{
               <button
                 key={item.id}
                 onClick={() => setCurrentSection(item.id)}
-                className="flex flex-col items-center justify-center -mt-4 focus:outline-none"
+                className="flex flex-col items-center justify-center -mt-4 focus:outline-none cursor-pointer"
               >
                 <div
                   className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
@@ -449,7 +459,7 @@ export const AppNavigation: React.FC<{
             <button
               key={item.id}
               onClick={() => setCurrentSection(item.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl min-w-[56px] transition-colors ${
+              className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl min-w-[56px] transition-colors cursor-pointer ${
                 isActive
                   ? isDark
                     ? 'text-[hsl(75,92%,56%)]'
@@ -504,7 +514,7 @@ export const AppNavigation: React.FC<{
             </div>
             <button
               onClick={() => dismissToast(toast.id)}
-              className="p-1 rounded-lg hover:bg-white/10 transition-colors"
+              className="p-1 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
