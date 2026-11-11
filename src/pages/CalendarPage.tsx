@@ -71,6 +71,88 @@ const MONTH_NAMES_AR = [
   'ديسمبر',
 ];
 
+// RELATIVE DATE LABEL
+const getRelativeDateLabel = (
+  dateString: string,
+  lang: string
+): string => {
+  // Parse as a local date to avoid UTC timezone shifts.
+  const [year, month, day] = dateString.split('-').map(Number);
+
+  if (!year || !month || !day) {
+    return dateString;
+  }
+
+  const selectedDate = new Date(year, month - 1, day);
+  const today = new Date();
+
+  today.setHours(0, 0, 0, 0);
+  selectedDate.setHours(0, 0, 0, 0);
+
+  const diffDays = Math.round(
+    (today.getTime() - selectedDate.getTime()) /
+      (1000 * 60 * 60 * 24)
+  );
+
+  const isArabic = lang === 'ar';
+
+  if (diffDays === 0) {
+    return isArabic ? 'اليوم' : 'Today';
+  }
+
+  if (diffDays === 1) {
+    return isArabic ? 'أمس' : 'Yesterday';
+  }
+
+  if (diffDays === -1) {
+    return isArabic ? 'غداً' : 'Tomorrow';
+  }
+
+  if (diffDays > 1) {
+    if (diffDays < 7) {
+      return isArabic
+        ? `منذ ${diffDays} أيام`
+        : `${diffDays} days ago`;
+    }
+
+    if (diffDays < 14) {
+      return isArabic ? 'منذ أسبوع' : '1 week ago';
+    }
+
+    if (diffDays < 21) {
+      return isArabic ? 'منذ أسبوعين' : '2 weeks ago';
+    }
+
+    if (diffDays < 30) {
+      const weeks = Math.floor(diffDays / 7);
+
+      return isArabic
+        ? `منذ ${weeks} أسابيع`
+        : `${weeks} weeks ago`;
+    }
+
+    if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30);
+
+      return isArabic
+        ? `منذ ${months} ${months === 1 ? 'شهر' : 'أشهر'}`
+        : `${months} ${months === 1 ? 'month' : 'months'} ago`;
+    }
+
+    const years = Math.floor(diffDays / 365);
+
+    return isArabic
+      ? `منذ ${years} ${years === 1 ? 'سنة' : 'سنوات'}`
+      : `${years} ${years === 1 ? 'year' : 'years'} ago`;
+  }
+
+  const daysUntil = Math.abs(diffDays);
+
+  return isArabic
+    ? `بعد ${daysUntil} أيام`
+    : `In ${daysUntil} days`;
+};
+
 // دالة مساعدة للتحقق مما إذا كان التمرين كارديو
 const isCardioExercise = (exerciseName: string, muscleGroup: string) => {
   const name = exerciseName.toLowerCase();
@@ -159,6 +241,12 @@ export const CalendarPage: React.FC = () => {
   const selectedDateMeta = useMemo(
     () => getDateMetadata(selectedCalendarDate),
     [selectedCalendarDate]
+  );
+
+  // RELATIVE DATE FOR SELECTED DATE
+  const selectedDateRelativeLabel = useMemo(
+    () => getRelativeDateLabel(selectedCalendarDate, lang),
+    [selectedCalendarDate, lang]
   );
 
   const selectedDaySchedule = useMemo(
@@ -781,12 +869,25 @@ export const CalendarPage: React.FC = () => {
               <span className="text-xs font-semibold uppercase tracking-wider text-[hsl(75,92%,56%)]">
                 {lang === 'ar' ? 'التاريخ المحدد' : 'Selected Date'}
               </span>
+
               <h2 className="text-lg font-display font-bold mt-0.5">
                 {formatFullDate(selectedCalendarDate, lang)}
               </h2>
+
+              {/* RELATIVE DATE LABEL */}
+              <span
+                className={`inline-flex items-center mt-2 px-2.5 py-1 rounded-lg text-xs font-bold border ${
+                  isDark
+                    ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
+                    : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                }`}
+              >
+                {selectedDateRelativeLabel}
+              </span>
+
               {selectedDaySchedule && (
                 <p
-                  className={`text-xs mt-1 ${
+                  className={`text-xs mt-2 ${
                     isDark ? 'text-gray-400' : 'text-slate-500'
                   }`}
                 >
