@@ -72,7 +72,7 @@ export const AppNavigation: React.FC<{
     ? [...baseNavItems, activeWorkoutNavItem, ...endNavItems]
     : [...baseNavItems, ...endNavItems];
 
-  // MOBILE BOTTOM NAVIGATION
+  // MOBILE BOTTOM NAVIGATION (Without Settings)
   const mobileBottomItems: {
     id: AppSection;
     label: string;
@@ -118,11 +118,6 @@ export const AppNavigation: React.FC<{
       id: 'progress',
       label: lang === 'ar' ? 'التطور' : 'Progress',
       icon: TrendingUp,
-    },
-    {
-      id: 'settings',
-      label: lang === 'ar' ? 'الإعدادات' : 'Settings',
-      icon: SettingsIcon,
     },
   ];
 
@@ -379,6 +374,23 @@ export const AppNavigation: React.FC<{
               ) : (
                 <Moon className="w-4 h-4" />
               )}
+            </button>
+
+            {/* SETTINGS ICON BUTTON (TOP HEADER) */}
+            <button
+              onClick={() => setCurrentSection('settings')}
+              className={`p-2 rounded-lg border cursor-pointer ${
+                currentSection === 'settings'
+                  ? isDark
+                    ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]'
+                    : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)]'
+                  : isDark
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300'
+                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
+              }`}
+              aria-label="Settings"
+            >
+              <SettingsIcon className="w-4 h-4" />
             </button>
           </div>
         </div>
