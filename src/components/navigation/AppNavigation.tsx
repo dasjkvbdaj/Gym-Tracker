@@ -40,7 +40,6 @@ export const AppNavigation: React.FC<{
   const isDark = settings.theme === 'dark';
 
   // DESKTOP NAVIGATION
-  // إذا وجد تمرين نشط، نقوم بإضافة رابط start-workout للقائمة، وإلا نخفيه تماماً
   const baseNavItems: {
     id: AppSection;
     label: string;
@@ -67,12 +66,11 @@ export const AppNavigation: React.FC<{
     { id: 'settings', label: t.settings, icon: SettingsIcon },
   ];
 
-  // دمج القوائم بناءً على حالة التمرين النشط
   const navItems = activeWorkout
     ? [...baseNavItems, activeWorkoutNavItem, ...endNavItems]
     : [...baseNavItems, ...endNavItems];
 
-  // MOBILE BOTTOM NAVIGATION
+  // MOBILE BOTTOM NAVIGATION (يشمل كل الأقسام الستة + التمرين النشط إن وجد)
   const mobileBottomItems: {
     id: AppSection;
     label: string;
@@ -81,19 +79,25 @@ export const AppNavigation: React.FC<{
   }[] = [
     {
       id: 'dashboard',
-      label: lang === 'ar' ? 'الرئيسية' : 'Dashboard',
+      label: lang === 'ar' ? 'الرئيسية' : 'Home',
       icon: LayoutDashboard,
     },
     {
       id: 'schedule',
-      label: lang === 'ar' ? 'جدولي' : 'Schedule',
+      label: lang === 'ar' ? 'تماريني' : 'Workout',
       icon: ClipboardList,
     },
+    {
+      id: 'exercises',
+      label: lang === 'ar' ? 'التمارين' : 'Exercises',
+      icon: Dumbbell,
+    },
+    // زر التمرين النشط في المنتصف إذا وجد تمرين نشط
     ...(activeWorkout
       ? [
           {
             id: 'start-workout' as AppSection,
-            label: lang === 'ar' ? 'متابعة' : 'Active',
+            label: lang === 'ar' ? 'نشط' : 'Active',
             icon: Play,
             isCenter: true,
           },
@@ -108,6 +112,11 @@ export const AppNavigation: React.FC<{
       id: 'progress',
       label: lang === 'ar' ? 'التطور' : 'Progress',
       icon: TrendingUp,
+    },
+    {
+      id: 'settings',
+      label: lang === 'ar' ? 'الإعدادات' : 'Settings',
+      icon: SettingsIcon,
     },
   ];
 
@@ -174,7 +183,7 @@ export const AppNavigation: React.FC<{
           </button>
         </div>
 
-        {/* START / RESUME (يظهر فقط إذا كان هناك تمرين نشط) */}
+        {/* START / RESUME */}
         {activeWorkout && (
           <div className="p-4">
             <button
@@ -296,7 +305,7 @@ export const AppNavigation: React.FC<{
         </div>
       </aside>
 
-      {/* MOBILE HEADER */}
+      {/* MOBILE HEADER (بدون شريط الأزرار العلوي) */}
       <header
         className={`lg:hidden sticky top-0 z-30 border-b backdrop-blur-md ${
           isDark
@@ -346,37 +355,10 @@ export const AppNavigation: React.FC<{
             </button>
           </div>
         </div>
-
-        {/* MOBILE SECTION PILLS */}
-        <div className="px-3 pb-2.5 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentSection === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setCurrentSection(item.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all shrink-0 cursor-pointer ${
-                  isActive
-                    ? isDark
-                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)] font-semibold shadow-sm'
-                      : 'bg-[hsl(76,78%,42%)] text-white font-semibold shadow-sm'
-                    : isDark
-                    ? 'bg-[hsl(240,5%,7.5%)] text-gray-400 border border-[hsl(240,4%,16%)]'
-                    : 'bg-[hsl(40,15%,94%)] text-slate-600 border border-[hsl(40,10%,88%)]'
-                }`}
-              >
-                <Icon className="w-3.5 h-3.5" />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
       </header>
 
       {/* MAIN CONTENT */}
       <div className="flex-1 lg:ps-[264px] flex flex-col min-w-0">
-        {/* ACTIVE WORKOUT BANNER */}
         {activeWorkout && currentSection !== 'start-workout' && (
           <div className="sticky top-0 z-20 bg-amber-500/15 border-b border-amber-500/40 backdrop-blur-md px-4 py-2.5">
             <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 flex-wrap">
@@ -408,9 +390,9 @@ export const AppNavigation: React.FC<{
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
+      {/* MOBILE BOTTOM NAVIGATION (الشريط السفلي المحدث ليشمل جميع الأقسام) */}
       <nav
-        className={`lg:hidden fixed bottom-0 inset-x-0 z-30 h-[68px] border-t backdrop-blur-lg px-2 flex items-center justify-around ${
+        className={`lg:hidden fixed bottom-0 inset-x-0 z-30 h-[68px] border-t backdrop-blur-lg px-1 flex items-center justify-around overflow-x-auto no-scrollbar ${
           isDark
             ? 'bg-[hsl(240,5%,7.5%)]/95 border-[hsl(240,4%,16%)]'
             : 'bg-white/95 border-[hsl(40,10%,88%)]'
@@ -424,7 +406,7 @@ export const AppNavigation: React.FC<{
               <button
                 key={item.id}
                 onClick={() => setCurrentSection(item.id)}
-                className="flex flex-col items-center justify-center -mt-4 focus:outline-none cursor-pointer"
+                className="flex flex-col items-center justify-center -mt-4 focus:outline-none cursor-pointer shrink-0 px-1"
               >
                 <div
                   className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-transform active:scale-95 ${
@@ -459,7 +441,7 @@ export const AppNavigation: React.FC<{
             <button
               key={item.id}
               onClick={() => setCurrentSection(item.id)}
-              className={`flex flex-col items-center justify-center py-1.5 px-2 rounded-xl min-w-[56px] transition-colors cursor-pointer ${
+              className={`flex flex-col items-center justify-center py-1.5 px-1.5 rounded-xl min-w-[48px] shrink-0 transition-colors cursor-pointer ${
                 isActive
                   ? isDark
                     ? 'text-[hsl(75,92%,56%)]'
@@ -470,7 +452,7 @@ export const AppNavigation: React.FC<{
               }`}
             >
               <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium mt-1">
+              <span className="text-[10px] font-medium mt-1 truncate max-w-[56px]">
                 {item.label}
               </span>
             </button>
