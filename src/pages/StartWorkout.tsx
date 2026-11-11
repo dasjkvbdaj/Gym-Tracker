@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   Calendar as CalendarIcon,
   Check,
@@ -11,6 +11,8 @@ import {
   Search,
   Trash2,
   X,
+  Pause,
+  RotateCcw,
 } from 'lucide-react';
 import { useGym } from '../context/GymContext';
 import { generateId } from '../database/db';
@@ -64,6 +66,27 @@ export const StartWorkout: React.FC = () => {
   const [showQuickCreateEx, setShowQuickCreateEx] = useState(false);
   const [newExName, setNewExName] = useState('');
   const [newExMuscle, setNewExMuscle] = useState('Cardio');
+
+  // Rest Timer State between sets
+  const [restSecondsRemaining, setRestSecondsRemaining] = useState<number | null>(null);
+  const [isResting, setIsResting] = useState(false);
+
+  useEffect(() => {
+    let interval: any = null;
+    if (isResting && restSecondsRemaining !== null && restSecondsRemaining > 0) {
+      interval = setInterval(() => {
+        setRestSecondsRemaining((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    } else if (restSecondsRemaining === 0) {
+      setIsResting(false);
+    }
+    return () => clearInterval(interval);
+  }, [isResting, restSecondsRemaining]);
+
+  const startRestTimer = (seconds: number = 60) => {
+    setRestSecondsRemaining(seconds);
+    setIsResting(true);
+  };
 
   const isCardioExercise = (entry: ExerciseEntry) => {
     return (
@@ -243,6 +266,11 @@ export const StartWorkout: React.FC = () => {
   ) => {
     if (!activeWorkout) return;
 
+    // إذا تم إكمال المجموعة، نقوم بتشغيل مؤقت الراحة تلقائياً لمدة 60 ثانية
+    if (field === 'completed' && value === true) {
+      startRestTimer(60);
+    }
+
     const updatedExercises = activeWorkout.exercises.map((entry) => {
       if (entry.id !== entryId) return entry;
       const updatedSets = entry.sets.map((s) => {
@@ -421,6 +449,38 @@ export const StartWorkout: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-28">
+      {/* REST TIMER WIDGET BAR */}
+      {isResting && restSecondsRemaining !== null && (
+        <div className={`p-3 rounded-2xl border flex items-center justify-between shadow-lg animate-pulse ${
+          isDark ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)]/50 text-[hsl(75,92%,56%)]' : 'bg-amber-100 border-amber-300 text-amber-950'
+        }`}>
+          <div className="flex items-center gap-2">
+            <Clock className="w-5 h-5 animate-spin" />
+            <span className="font-bold text-sm">
+              {lang === 'ar' ? 'فترة الراحة بين المجموعات (Rest):' : 'Rest Period:'}
+            </span>
+            <span className="font-mono-num text-lg font-extrabold">
+              {Math.floor(restSecondsRemaining / 60)}:
+              {String(restSecondsRemaining % 60).padStart(2, '0')}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setRestSecondsRemaining((prev) => (prev || 0) + 30)}
+              className="px-2.5 py-1 rounded-lg bg-black/20 text-xs font-bold cursor-pointer"
+            >
+              +30s
+            </button>
+            <button
+              onClick={() => setIsResting(false)}
+              className="px-3 py-1 rounded-lg bg-red-500/20 text-red-400 text-xs font-bold cursor-pointer"
+            >
+              {lang === 'ar' ? 'تخطي' : 'Skip'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div
         className={`rounded-2xl p-4 sm:p-5 border shadow-lg ${
           isDark
