@@ -4,6 +4,7 @@ import {
   Check,
   CheckCircle2,
   Clock,
+  Flame,
   History,
   Play,
   Plus,
@@ -55,18 +56,15 @@ export const StartWorkout: React.FC = () => {
   const todayStr = toLocalDateString(new Date());
   const todayMeta = getDateMetadata(todayStr);
 
-  // Active workout UI modals & states
   const [isAddExerciseOpen, setIsAddExerciseOpen] = useState(false);
   const [pickerMuscleFilter, setPickerMuscleFilter] = useState<MuscleGroup | 'ALL'>('ALL');
   const [pickerSearch, setPickerSearch] = useState('');
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
 
-  // Quick inline custom exercise creation inside Add Exercise modal
   const [showQuickCreateEx, setShowQuickCreateEx] = useState(false);
   const [newExName, setNewExName] = useState('');
-  const [newExMuscle, setNewExMuscle] = useState<MuscleGroup>('Cardio');
+  const [newExMuscle, setNewExMuscle] = useState('Cardio');
 
-  // Helper check to determine if an exercise is Cardio-based
   const isCardioExercise = (entry: ExerciseEntry) => {
     return (
       entry.muscleGroup === 'Cardio' ||
@@ -79,8 +77,6 @@ export const StartWorkout: React.FC = () => {
       entry.exerciseNameSnapshot.toLowerCase().includes('running')
     );
   };
-
-  // --- ACTIVE WORKOUT HANDLERS ---
 
   const handleDateChange = async (newDateStr: string) => {
     if (!activeWorkout || !newDateStr) return;
@@ -111,7 +107,6 @@ export const StartWorkout: React.FC = () => {
     });
   };
 
-  // Add an exercise from library to active workout
   const handleAddExerciseToSession = async (exerciseId: string) => {
     if (!activeWorkout) return;
     const libEx = exercises.find((e) => e.id === exerciseId);
@@ -132,7 +127,14 @@ export const StartWorkout: React.FC = () => {
       libEx.name.toLowerCase().includes('running') ||
       libEx.name.toLowerCase().includes('cardio');
 
-    const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? null : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 0;
+    const defaultFirstWeight = isCardio
+      ? null
+      : initialUnit === 'none'
+      ? null
+      : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null
+      ? lastPerf.bestSet.weight
+      : 0;
+
     const defaultFirstReps = isCardio ? 30 : lastPerf && lastPerf.bestSet ? lastPerf.bestSet.reps : 10;
 
     const newEntry: ExerciseEntry = {
@@ -146,10 +148,11 @@ export const StartWorkout: React.FC = () => {
           id: generateId('set'),
           setNumber: 1,
           weight: defaultFirstWeight,
-          reps: defaultFirstReps, // Reps field holds Duration minutes for Cardio
+          reps: defaultFirstReps,
           completed: false,
         },
       ],
+      caloriesBurned: isCardio ? 0 : undefined,
       notes: '',
     };
 
@@ -169,7 +172,6 @@ export const StartWorkout: React.FC = () => {
     );
   };
 
-  // Create custom exercise & immediately add to active workout
   const handleQuickCreateAndAddExercise = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newExName.trim()) return;
@@ -183,7 +185,6 @@ export const StartWorkout: React.FC = () => {
     setShowQuickCreateEx(false);
   };
 
-  // Remove exercise card from active workout
   const handleRemoveExerciseEntry = async (entryId: string) => {
     if (!activeWorkout) return;
     await updateActiveWorkout({
@@ -192,7 +193,6 @@ export const StartWorkout: React.FC = () => {
     });
   };
 
-  // Change weight unit for a specific exercise card independently
   const handleExerciseUnitChange = async (
     entryId: string,
     newUnit: WeightUnit
@@ -211,14 +211,19 @@ export const StartWorkout: React.FC = () => {
         sets: updatedSets,
       };
     });
-
-    await updateActiveWorkout({
-      ...activeWorkout,
-      exercises: updatedExercises,
-    });
+    await updateActiveWorkout({ ...activeWorkout, exercises: updatedExercises });
   };
 
-  // Add a set to an exercise card
+  // دالة تحديث السعرات الحرارية المحروقة في التمرين الحالي
+  const handleUpdateCalories = async (entryId: string, calories: number) => {
+    if (!activeWorkout) return;
+    const updatedExercises = activeWorkout.exercises.map((entry) => {
+      if (entry.id !== entryId) return entry;
+      return { ...entry, caloriesBurned: Math.max(0, calories) };
+    });
+    await updateActiveWorkout({ ...activeWorkout, exercises: updatedExercises });
+  };
+
   const handleAddSet = async (entryId: string) => {
     if (!activeWorkout) return;
 
@@ -233,42 +238,23 @@ export const StartWorkout: React.FC = () => {
         reps: prevSet ? prevSet.reps : 10,
         completed: false,
       };
-      return {
-        ...entry,
-        sets: [...entry.sets, newSet],
-      };
+      return { ...entry, sets: [...entry.sets, newSet] };
     });
-
-    await updateActiveWorkout({
-      ...activeWorkout,
-      exercises: updatedExercises,
-    });
+    await updateActiveWorkout({ ...activeWorkout, exercises: updatedExercises });
   };
 
-  // Remove a set and maintain automatic set numbering
   const handleRemoveSet = async (entryId: string, setId: string) => {
     if (!activeWorkout) return;
 
     const updatedExercises = activeWorkout.exercises.map((entry) => {
       if (entry.id !== entryId) return entry;
       const filtered = entry.sets.filter((s) => s.id !== setId);
-      const renumbered = filtered.map((s, idx) => ({
-        ...s,
-        setNumber: idx + 1,
-      }));
-      return {
-        ...entry,
-        sets: renumbered,
-      };
+      const renumbered = filtered.map((s, idx) => ({ ...s, setNumber: idx + 1 }));
+      return { ...entry, sets: renumbered };
     });
-
-    await updateActiveWorkout({
-      ...activeWorkout,
-      exercises: updatedExercises,
-    });
+    await updateActiveWorkout({ ...activeWorkout, exercises: updatedExercises });
   };
 
-  // Update a set's weight, reps/duration, or completed status
   const handleUpdateSet = async (
     entryId: string,
     setId: string,
@@ -296,14 +282,9 @@ export const StartWorkout: React.FC = () => {
       });
       return { ...entry, sets: updatedSets };
     });
-
-    await updateActiveWorkout({
-      ...activeWorkout,
-      exercises: updatedExercises,
-    });
+    await updateActiveWorkout({ ...activeWorkout, exercises: updatedExercises });
   };
 
-  // Finish Workout handler
   const handleFinishSession = async () => {
     if (!activeWorkout) return;
 
@@ -320,7 +301,6 @@ export const StartWorkout: React.FC = () => {
     setCurrentSection('calendar');
   };
 
-  // Filtered library exercises for the Add Exercise modal
   const filteredLibraryExercises = useMemo(() => {
     return exercises.filter((ex) => {
       if (pickerMuscleFilter !== 'ALL' && ex.muscleGroup !== pickerMuscleFilter) {
@@ -333,15 +313,11 @@ export const StartWorkout: React.FC = () => {
     });
   }, [exercises, pickerMuscleFilter, pickerSearch]);
 
-  // ============================================================================
-  // RENDER 1: PRE-WORKOUT SETUP SCREEN (WEEKLY SCHEDULE)
-  // ============================================================================
   if (!activeWorkout) {
     return (
       <div className="space-y-6">
-        {/* Header */}
         <div>
-          <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-display font-bold">
             {lang === 'ar' ? 'بدء وتسجيل تمرين جديد' : 'Start a New Workout'}
           </h1>
           <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
@@ -351,7 +327,6 @@ export const StartWorkout: React.FC = () => {
           </p>
         </div>
 
-        {/* AUTOMATIC LOCAL DATE */}
         <div
           className={`p-4 sm:p-5 rounded-2xl border ${
             isDark
@@ -368,7 +343,6 @@ export const StartWorkout: React.FC = () => {
           </div>
         </div>
 
-        {/* WEEKLY SCHEDULE */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {weeklySchedule.map((dayPlan) => {
             const isTodayPlan = dayPlan.day === todayMeta.dayOfWeek;
@@ -426,7 +400,6 @@ export const StartWorkout: React.FC = () => {
                     </div>
                   )}
                 </div>
-
                 <div className="flex items-center justify-between pt-2 border-t border-inherit">
                   {dayPlan.workoutType !== 'strength' && (
                     <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
@@ -467,18 +440,19 @@ export const StartWorkout: React.FC = () => {
     );
   }
 
-  // ============================================================================
-  // RENDER 2: ACTIVE WORKOUT RECORDING WORKSPACE
-  // ============================================================================
-
   const totalCompletedSets = activeWorkout.exercises.reduce(
     (sum, ex) => sum + ex.sets.length,
     0
   );
 
+  // إجمالي السعرات الحرارية المحروقة في كل تمارين الجلسة الحالية
+  const totalSessionCalories = activeWorkout.exercises.reduce(
+    (sum, ex) => sum + (ex.caloriesBurned || 0),
+    0
+  );
+
   return (
     <div className="space-y-6">
-      {/* ACTIVE WORKOUT HEADER */}
       <div
         className={`rounded-2xl p-4 sm:p-5 border shadow-lg ${
           isDark
@@ -486,8 +460,8 @@ export const StartWorkout: React.FC = () => {
             : 'bg-[hsl(0,0%,100%)] border-[hsl(76,78%,42%)]/50 shadow-sm'
         }`}
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5 flex-1">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-inherit">
+          <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border ${
@@ -521,7 +495,6 @@ export const StartWorkout: React.FC = () => {
               }`}
             />
 
-            {/* Full Date Display + Manual Date Picker */}
             <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
               <div
                 className={`flex items-center gap-1.5 font-medium ${
@@ -550,10 +523,19 @@ export const StartWorkout: React.FC = () => {
                   }`}
                 />
               </div>
+
+              {/* إجمالي السعرات المحروقة للجلسة إذا وجدت */}
+              {totalSessionCalories > 0 && (
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 text-xs font-bold font-mono-num">
+                  <Flame className="w-3.5 h-3.5" />
+                  <span>
+                    {totalSessionCalories} {lang === 'ar' ? 'سعرة حرارية محروقة' : 'Total kcal'}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Finish & Cancel Controls */}
           <div className="flex items-center gap-2.5 self-stretch sm:self-auto">
             <button
               onClick={() => setIsCancelConfirmOpen(true)}
@@ -579,7 +561,6 @@ export const StartWorkout: React.FC = () => {
           </div>
         </div>
 
-        {/* Muscle Group Pills Selector */}
         <div className="mt-4 pt-3 border-t border-inherit flex flex-wrap items-center gap-1.5">
           <span className={`text-xs me-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
             {lang === 'ar' ? 'العضلات:' : 'Muscle Groups:'}
@@ -608,7 +589,6 @@ export const StartWorkout: React.FC = () => {
         </div>
       </div>
 
-      {/* INDIVIDUAL EXERCISE CARDS */}
       <div className="space-y-6">
         {(() => {
           const groups = new Map<MuscleGroup, ExerciseEntry[]>();
@@ -619,7 +599,6 @@ export const StartWorkout: React.FC = () => {
             groups.get(entry.muscleGroup)!.push(entry);
           }
           const groupEntries = [...groups.entries()];
-
           if (groupEntries.length === 0) {
             return (
               <div
@@ -637,7 +616,6 @@ export const StartWorkout: React.FC = () => {
               </div>
             );
           }
-
           return groupEntries.map(([muscleGroup, groupExercises], groupIdx) => (
             <div key={muscleGroup}>
               {groupIdx > 0 && (
@@ -647,7 +625,6 @@ export const StartWorkout: React.FC = () => {
                   }`}
                 />
               )}
-
               <div className="flex items-center gap-3 mb-4">
                 <h2
                   className={`text-xs font-bold uppercase tracking-widest ${
@@ -680,7 +657,6 @@ export const StartWorkout: React.FC = () => {
                           : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)] shadow-xs'
                       }`}
                     >
-                      {/* Exercise Card Header */}
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-inherit">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2.5">
@@ -688,8 +664,6 @@ export const StartWorkout: React.FC = () => {
                               {entry.exerciseNameSnapshot}
                             </h3>
                           </div>
-
-                          {/* Last Session Performance */}
                           {lastPerf && lastPerf.bestSet && (
                             <div
                               className={`flex items-center gap-1.5 text-xs ${
@@ -703,7 +677,9 @@ export const StartWorkout: React.FC = () => {
                               </span>
                               <strong
                                 className={`font-mono-num ${
-                                  isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                                  isDark
+                                    ? 'text-[hsl(75,92%,56%)]'
+                                    : 'text-[hsl(76,78%,42%)]'
                                 }`}
                               >
                                 {isCardio
@@ -719,7 +695,6 @@ export const StartWorkout: React.FC = () => {
                           )}
                         </div>
 
-                        {/* Unit Selector or Remove Button */}
                         <div className="flex items-center justify-between sm:justify-end gap-2">
                           {!isCardio && (
                             <div
@@ -746,7 +721,9 @@ export const StartWorkout: React.FC = () => {
                                   <button
                                     key={u.id}
                                     type="button"
-                                    onClick={() => handleExerciseUnitChange(entry.id, u.id)}
+                                    onClick={() =>
+                                      handleExerciseUnitChange(entry.id, u.id)
+                                    }
                                     className={`px-3 py-1.5 rounded-lg text-xs font-mono-num font-bold transition-all cursor-pointer ${
                                       isSelected
                                         ? isDark
@@ -763,7 +740,6 @@ export const StartWorkout: React.FC = () => {
                               })}
                             </div>
                           )}
-
                           <button
                             type="button"
                             onClick={() => handleRemoveExerciseEntry(entry.id)}
@@ -779,13 +755,13 @@ export const StartWorkout: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* CARDIO DURATION VIEW OR STRENGTH SETS TABLE */}
+                      {/* CARDIO INPUTS (MINUTES + CALORIES) */}
                       {isCardio ? (
                         <div className="space-y-3 py-2">
                           {entry.sets.map((setItem) => (
                             <div
                               key={setItem.id}
-                              className={`p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                              className={`p-3.5 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
                                 isDark
                                   ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]'
                                   : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
@@ -793,10 +769,8 @@ export const StartWorkout: React.FC = () => {
                             >
                               <div className="flex items-center gap-2 flex-1">
                                 <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
-                                <label className="text-xs font-semibold">
-                                  {lang === 'ar'
-                                    ? 'المدة الزمنية (بالدقائق):'
-                                    : 'Duration (Minutes):'}
+                                <label className="text-xs font-semibold whitespace-nowrap">
+                                  {lang === 'ar' ? 'المدة (دقائق):' : 'Duration (Mins):'}
                                 </label>
                                 <input
                                   type="number"
@@ -818,12 +792,38 @@ export const StartWorkout: React.FC = () => {
                                   }`}
                                 />
                                 <span className="text-xs font-semibold text-gray-400">
-                                  {lang === 'ar' ? 'دقيقة' : 'mins'}
+                                  {lang === 'ar' ? 'دقيقة' : 'min'}
                                 </span>
                               </div>
 
-                              {/* Quick Minutes Buttons */}
-                              <div className="flex items-center gap-1.5">
+                              {/* حقل إدخال السعرات الحرارية المحروقة للكارديو */}
+                              <div className="flex items-center gap-2 flex-1">
+                                <Flame className="w-4 h-4 text-orange-400 shrink-0" />
+                                <label className="text-xs font-semibold whitespace-nowrap text-orange-500">
+                                  {lang === 'ar' ? 'السعرات الحرارية:' : 'Calories Burned:'}
+                                </label>
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  placeholder="e.g. 300"
+                                  value={entry.caloriesBurned ?? ''}
+                                  onChange={(e) =>
+                                    handleUpdateCalories(
+                                      entry.id,
+                                      e.target.value === '' ? 0 : Number(e.target.value)
+                                    )
+                                  }
+                                  className={`w-28 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-orange-500 ${
+                                    isDark
+                                      ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-orange-300'
+                                      : 'bg-white border-orange-200 text-orange-900'
+                                  }`}
+                                />
+                                <span className="text-xs font-semibold text-orange-400">kcal</span>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 overflow-x-auto">
                                 {[15, 30, 45, 60].map((m) => (
                                   <button
                                     key={m}
@@ -874,7 +874,6 @@ export const StartWorkout: React.FC = () => {
                             </div>
                           </div>
 
-                          {/* Empty Sets State */}
                           {entry.sets.length === 0 && (
                             <div
                               className={`p-4 rounded-xl border border-dashed text-center text-xs ${
@@ -889,7 +888,6 @@ export const StartWorkout: React.FC = () => {
                             </div>
                           )}
 
-                          {/* Individual Set Rows */}
                           {entry.sets.map((setItem) => (
                             <div
                               key={setItem.id}
@@ -903,7 +901,6 @@ export const StartWorkout: React.FC = () => {
                                   : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
                               }`}
                             >
-                              {/* Set Number */}
                               <div className="col-span-2 sm:col-span-1 flex justify-center">
                                 <span
                                   className={`w-7 h-7 rounded-lg font-mono-num text-xs font-bold flex items-center justify-center ${
@@ -916,7 +913,6 @@ export const StartWorkout: React.FC = () => {
                                 </span>
                               </div>
 
-                              {/* Weight Input */}
                               <div className="col-span-4 sm:col-span-5">
                                 {entry.weightType === 'none' ? (
                                   <div
@@ -926,7 +922,7 @@ export const StartWorkout: React.FC = () => {
                                         : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)] text-[hsl(76,78%,42%)]'
                                     }`}
                                   >
-                                    {lang === 'ar' ? 'وزن الجسم (Bodyweight)' : 'Bodyweight'}
+                                    {lang === 'ar' ? 'وزن الجسم' : 'Bodyweight'}
                                   </div>
                                 ) : (
                                   <div className="relative">
@@ -935,7 +931,6 @@ export const StartWorkout: React.FC = () => {
                                       inputMode="decimal"
                                       step="any"
                                       min={0}
-                                      aria-label={`Set ${setItem.setNumber} weight in ${entry.weightType}`}
                                       value={
                                         setItem.weight === null || setItem.weight === undefined
                                           ? ''
@@ -967,14 +962,12 @@ export const StartWorkout: React.FC = () => {
                                 )}
                               </div>
 
-                              {/* Repetitions Input */}
                               <div className="col-span-4 sm:col-span-4">
                                 <div className="relative">
                                   <input
                                     type="number"
                                     inputMode="numeric"
                                     min={0}
-                                    aria-label={`Set ${setItem.setNumber} repetitions`}
                                     value={setItem.reps}
                                     onChange={(e) =>
                                       handleUpdateSet(
@@ -1001,7 +994,6 @@ export const StartWorkout: React.FC = () => {
                                 </div>
                               </div>
 
-                              {/* Complete & Delete Set */}
                               <div className="col-span-2 flex items-center justify-end gap-1">
                                 <button
                                   type="button"
@@ -1042,7 +1034,6 @@ export const StartWorkout: React.FC = () => {
                             </div>
                           ))}
 
-                          {/* Add Set Button */}
                           <div className="pt-2">
                             <button
                               type="button"
@@ -1067,7 +1058,6 @@ export const StartWorkout: React.FC = () => {
           ));
         })()}
 
-        {/* ADD EXERCISE BUTTON */}
         <button
           type="button"
           onClick={() => {
@@ -1085,7 +1075,6 @@ export const StartWorkout: React.FC = () => {
         </button>
       </div>
 
-      {/* BOTTOM FINISH BAR */}
       <div
         className={`rounded-2xl p-5 border ${
           isDark
@@ -1098,6 +1087,7 @@ export const StartWorkout: React.FC = () => {
             <span>
               {activeWorkout.exercises.length} {lang === 'ar' ? 'تمارين' : 'exercises'} •{' '}
               {totalCompletedSets} {lang === 'ar' ? 'مجموعات' : 'sets'}
+              {totalSessionCalories > 0 && ` • ${totalSessionCalories} kcal`}
             </span>
           </div>
           <button
@@ -1111,15 +1101,12 @@ export const StartWorkout: React.FC = () => {
           >
             <CheckCircle2 className="w-5 h-5" />
             <span>
-              {lang === 'ar'
-                ? 'إنهاء التمرين وحفظه في السجل'
-                : 'Finish & Save Completed Workout'}
+              {lang === 'ar' ? 'إنهاء التمرين وحفظه في السجل' : 'Finish & Save Completed Workout'}
             </span>
           </button>
         </div>
       </div>
 
-      {/* ADD EXERCISE MODAL */}
       {isAddExerciseOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div
@@ -1135,20 +1122,14 @@ export const StartWorkout: React.FC = () => {
                   {lang === 'ar' ? 'اختر تمريناً لإضافته' : 'Select Exercise to Add'}
                 </h3>
                 <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                  {lang === 'ar'
-                    ? 'اختر من المكتبة أو أنشئ تمريناً مخصصاً جديداً فوراً'
-                    : 'Choose from your library or create a new custom exercise'}
+                  {lang === 'ar' ? 'اختر من المكتبة أو أنشئ تمريناً مخصصاً جديداً فوراً' : 'Choose from your library or create a new custom exercise'}
                 </p>
               </div>
-              <button
-                onClick={() => setIsAddExerciseOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-white/10"
-              >
+              <button onClick={() => setIsAddExerciseOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Search + Quick Create */}
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-gray-400" />
@@ -1179,7 +1160,6 @@ export const StartWorkout: React.FC = () => {
               </button>
             </div>
 
-            {/* Quick Create Exercise Form */}
             {showQuickCreateEx && (
               <form
                 onSubmit={handleQuickCreateAndAddExercise}
@@ -1194,9 +1174,7 @@ export const StartWorkout: React.FC = () => {
                     isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
                   }`}
                 >
-                  {lang === 'ar'
-                    ? 'إنشاء تمرين جديد وإضافته فوراً'
-                    : 'Create & Add Custom Exercise'}
+                  {lang === 'ar' ? 'إنشاء تمرين جديد وإضافته فوراً' : 'Create & Add Custom Exercise'}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <input
@@ -1244,7 +1222,6 @@ export const StartWorkout: React.FC = () => {
               </form>
             )}
 
-            {/* Muscle Group Filter */}
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
               <button
                 onClick={() => setPickerMuscleFilter('ALL')}
@@ -1279,7 +1256,6 @@ export const StartWorkout: React.FC = () => {
               ))}
             </div>
 
-            {/* Exercise List */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1">
               {filteredLibraryExercises.map((ex) => {
                 const alreadyInSession = activeWorkout.exercises.some(
@@ -1348,7 +1324,6 @@ export const StartWorkout: React.FC = () => {
         </div>
       )}
 
-      {/* CANCEL WORKOUT CONFIRMATION MODAL */}
       {isCancelConfirmOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
           <div
@@ -1359,9 +1334,7 @@ export const StartWorkout: React.FC = () => {
             }`}
           >
             <h3 className="font-display font-bold text-base text-red-400">
-              {lang === 'ar'
-                ? 'هل أنت متأكد من إلغاء التمرين الحالي؟'
-                : 'Cancel Active Workout?'}
+              {lang === 'ar' ? 'هل أنت متأكد من إلغاء التمرين الحالي؟' : 'Cancel Active Workout?'}
             </h3>
             <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
               {lang === 'ar'
