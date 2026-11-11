@@ -147,10 +147,8 @@ const isCardioExercise = (exerciseName: string, muscleGroup: string) => {
   );
 };
 
-/**
- * دالة ذكية تسحب أحدث وزن شخصي مسجل وتوزع السعرات الحرارية بناءً عليه وعلى شدة الحركات
- */
-const distributeCaloriesWithLatestWeight = (workout: WorkoutSession, latestUserWeightKg: number = 75): WorkoutSession => {
+// دالة ذكية لتوزيع السعرات الحرارية نسبياً على التمارين والمجموعات بناءً على الجهد المبذول (Volume)
+const distributeCaloriesToWorkout = (workout: WorkoutSession): WorkoutSession => {
   const totalSessionCalories = workout.exercises.reduce(
     (acc, ex) => acc + (ex.caloriesBurned || 0),
     0
@@ -158,53 +156,51 @@ const distributeCaloriesWithLatestWeight = (workout: WorkoutSession, latestUserW
 
   if (totalSessionCalories <= 0) return workout;
 
-  let totalTrainingVolume = 0;
-
+  let totalVolume = 0;
   workout.exercises.forEach((ex) => {
-    const isCardio = isCardioExercise(ex.exerciseNameSnapshot, ex.muscleGroup);
-    ex.sets.forEach((set) => {
-      if (!isCardio) {
-        // إذا كان وزن الجسم مشمولاً أو تمرين بدون وزن خارجي، يعتمد على أحدث وزن شخصي
-        const effectiveWeight = ex.weightType === 'none' ? latestUserWeightKg * 0.4 : (set.weight || 0);
-        totalTrainingVolume += effectiveWeight * set.reps;
-      } else {
-        totalTrainingVolume += (set.reps || 30) * latestUserWeightKg * 0.1;
-      }
-    });
+    if (!isCardioExercise(ex.exerciseNameSnapshot, ex.muscleGroup)) {
+      ex.sets.forEach((set) => {
+        const weightVal = set.weight || 0;
+        totalVolume += weightVal * set.reps;
+      });
+    }
   });
 
-  if (totalTrainingVolume <= 0) return workout;
+  // إذا لم يكن هناك أوزان مسجلة (أو تمارين كارديو بحتة)، يتم توزيعها بالتساوي
+  if (totalVolume <= 0) {
+    const totalSetsCount = workout.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+    if (totalSetsCount === 0) return workout;
+    const caloriesPerSet = Math.round(totalSessionCalories / totalSetsCount);
+
+    const updatedExercises = workout.exercises.map((ex) => {
+      let exCalories = 0;
+      const updatedSets = ex.sets.map((set) => {
+        exCalories += caloriesPerSet;
+        return { ...set, caloriesBurned: caloriesPerSet };
+      });
+      return { ...ex, caloriesBurned: exCalories, sets: updatedSets };
+    });
+    return { ...workout, exercises: updatedExercises };
+  }
 
   const updatedExercises = workout.exercises.map((ex) => {
-    let exerciseCalories = 0;
-    const isCardio = isCardioExercise(ex.exerciseNameSnapshot, ex.muscleGroup);
-
+    let exCalories = 0;
     const updatedSets = ex.sets.map((set) => {
-      const effectiveWeight = isCardio
-        ? (set.reps || 30) * latestUserWeightKg * 0.1
-        : (ex.weightType === 'none' ? latestUserWeightKg * 0.4 : (set.weight || 0));
-      
-      const setVolume = effectiveWeight * set.reps;
-      const setCalories = Math.round((setVolume / totalTrainingVolume) * totalSessionCalories);
-      exerciseCalories += setCalories;
-
-      return {
-        ...set,
-        caloriesBurned: Math.max(1, setCalories),
-      };
+      const isCardio = isCardioExercise(ex.exerciseNameSnapshot, ex.muscleGroup);
+      let setCalories = 0;
+      if (!isCardio) {
+        const setVol = (set.weight || 0) * set.reps;
+        setCalories = Math.round((setVol / totalVolume) * totalSessionCalories);
+      } else {
+        setCalories = Math.round(totalSessionCalories / workout.exercises.length / ex.sets.length);
+      }
+      exCalories += setCalories;
+      return { ...set, caloriesBurned: setCalories };
     });
-
-    return {
-      ...ex,
-      caloriesBurned: exerciseCalories,
-      sets: updatedSets,
-    };
+    return { ...ex, caloriesBurned: exCalories, sets: updatedSets };
   });
 
-  return {
-    ...workout,
-    exercises: updatedExercises,
-  };
+  return { ...workout, exercises: updatedExercises };
 };
 
 export const CalendarPage: React.FC = () => {
@@ -217,21 +213,10 @@ export const CalendarPage: React.FC = () => {
     setSelectedCalendarDate,
     saveHistoricalWorkout,
     deleteWorkout,
-    weightLogs, // جلب سجلات الأوزان المحفوظة تلقائياً من التطبيق
-  } = useGym() as any;
+  } = useGym();
 
   const lang = settings.language;
   const isDark = settings.theme === 'dark';
-
-  // التقاط أحدث وزن مسجل تلقائياً من صفحة الوزن (weightLogs) أو من الإعدادات، وإن لم يوجد فالافتراضي 75 كغ
-  const latestUserWeight = useMemo(() => {
-    if (weightLogs && weightLogs.length > 0) {
-      // ترتيب السجلات حسب التاريخ للحصول على أحدث وزن تم إدخاله
-      const sortedLogs = [...weightLogs].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      return sortedLogs[0].weight;
-    }
-    return settings.bodyWeight || 75;
-  }, [weightLogs, settings.bodyWeight]);
 
   const now = new Date();
 
@@ -262,14 +247,14 @@ export const CalendarPage: React.FC = () => {
     const map = new Map<string, typeof completedWorkouts>();
 
     for (const workout of completedWorkouts) {
-      // استخدام أحدث وزن مسجل في النظام تلقائياً لإعادة حساب الفورمولا
-      const processedWorkout = distributeCaloriesWithLatestWeight(workout, latestUserWeight);
+      // تطبيق حساب وتوزيع السعرات تلقائياً على التمارين والمجموعات
+      const processedWorkout = distributeCaloriesToWorkout(workout);
       const existing = map.get(processedWorkout.actualDate) || [];
       existing.push(processedWorkout);
       map.set(processedWorkout.actualDate, existing);
     }
     return map;
-  }, [completedWorkouts, latestUserWeight]);
+  }, [completedWorkouts]);
 
   const scheduledRestDays = useMemo(
     () =>
@@ -523,8 +508,8 @@ export const CalendarPage: React.FC = () => {
   const handleSaveWorkout = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!editingWorkout) return;
-    const processedWorkout = distributeCaloriesWithLatestWeight(editingWorkout, latestUserWeight);
-    await saveHistoricalWorkout(processedWorkout);
+    const distributedWorkout = distributeCaloriesToWorkout(editingWorkout);
+    await saveHistoricalWorkout(distributedWorkout);
     setEditingWorkout(null);
     setIsAddForgottenOpen(false);
     setForgottenMuscleFilter('ALL');
