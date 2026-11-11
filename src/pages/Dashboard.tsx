@@ -8,6 +8,7 @@ import {
   Flame,
   History,
   Play,
+  Scale,
 } from 'lucide-react';
 import {
   Bar,
@@ -64,6 +65,22 @@ export const Dashboard: React.FC = () => {
     () => getCurrentWeekRange(new Date()),
     []
   );
+
+  // Get Latest Recorded Body Weight from localStorage
+  const latestWeightRecord = useMemo(() => {
+    try {
+      const saved = localStorage.getItem('gym_tracker_weight_history');
+      if (saved) {
+        const history = JSON.parse(saved);
+        if (Array.isArray(history) && history.length > 0) {
+          return history[0]; // أحدث وزن مسجل
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return null;
+  }, []);
 
   // Core KPI Calculations from actual saved workouts
   const stats = useMemo(() => {
@@ -168,19 +185,16 @@ export const Dashboard: React.FC = () => {
     lang,
   ]);
 
-  // Start today's scheduled workout
   const handleStartTodayPlan = async () => {
     if (activeWorkout) {
       setCurrentSection('start-workout');
       return;
     }
 
-    // Do not start a workout on a scheduled rest day.
     if (isRestDay) {
       return;
     }
 
-    // Start the workout according to today's schedule.
     if (todayPlan) {
       await startNewWorkout({
         workoutType: todayPlan.workoutType,
@@ -193,7 +207,6 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    // Fallback when no schedule is configured.
     await startNewWorkout({
       workoutType: 'strength',
       actualDate: todayStr,
@@ -212,10 +225,7 @@ export const Dashboard: React.FC = () => {
         }`}
       >
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-
           <div className="space-y-1.5">
-
-            {/* DATE BADGE */}
             <div
               className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold border ${
                 isDark
@@ -261,14 +271,10 @@ export const Dashboard: React.FC = () => {
                 </>
               ) : null}
             </p>
-
           </div>
 
-          {/* MAIN WORKOUT BUTTON */}
           <div className="flex flex-wrap items-center gap-3">
-
             {activeWorkout ? (
-
               <button
                 onClick={() =>
                   setCurrentSection('start-workout')
@@ -276,12 +282,9 @@ export const Dashboard: React.FC = () => {
                 className="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-current" />
-
                 <span>{t.resumeWorkout}</span>
               </button>
-
             ) : (
-
               <button
                 onClick={handleStartTodayPlan}
                 disabled={isRestDay}
@@ -292,7 +295,6 @@ export const Dashboard: React.FC = () => {
                 }`}
               >
                 <Play className="w-4 h-4 fill-current" />
-
                 <span>
                   {isRestDay
                     ? lang === 'ar'
@@ -301,16 +303,13 @@ export const Dashboard: React.FC = () => {
                     : t.startWorkout}
                 </span>
               </button>
-
             )}
-
           </div>
-
         </div>
       </div>
 
-      {/* 3 KPI SUMMARY CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+      {/* 4 KPI SUMMARY CARDS (INCLUDING THE NEW 4TH WEIGHT BOX) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
 
         {/* TOTAL SESSIONS */}
         <div
@@ -321,7 +320,6 @@ export const Dashboard: React.FC = () => {
           }`}
         >
           <div className="flex items-center justify-between">
-
             <span
               className={`text-xs font-medium ${
                 isDark ? 'text-gray-400' : 'text-slate-500'
@@ -329,25 +327,19 @@ export const Dashboard: React.FC = () => {
             >
               {t.totalSessions}
             </span>
-
             <div className="w-8 h-8 rounded-lg bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)] flex items-center justify-center">
               <CheckCircle2 className="w-4 h-4" />
             </div>
-
           </div>
-
           <div className="mt-2 font-mono-num text-2xl sm:text-3xl font-bold">
             {stats.totalSessions}
           </div>
-
           <p
             className={`text-xs mt-1 ${
               isDark ? 'text-gray-500' : 'text-slate-400'
             }`}
           >
-            {lang === 'ar'
-              ? 'جلسات مكتملة ومسجلة'
-              : 'Completed workouts saved'}
+            {lang === 'ar' ? 'جلسات مكتملة ومسجلة' : 'Completed workouts saved'}
           </p>
         </div>
 
@@ -360,7 +352,6 @@ export const Dashboard: React.FC = () => {
           }`}
         >
           <div className="flex items-center justify-between">
-
             <span
               className={`text-xs font-medium ${
                 isDark ? 'text-gray-400' : 'text-slate-500'
@@ -368,25 +359,19 @@ export const Dashboard: React.FC = () => {
             >
               {t.thisWeek}
             </span>
-
             <div className="w-8 h-8 rounded-lg bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)] flex items-center justify-center">
               <Activity className="w-4 h-4" />
             </div>
-
           </div>
-
           <div className="mt-2 font-mono-num text-2xl sm:text-3xl font-bold">
             {stats.workoutsThisWeek}
           </div>
-
           <p
             className={`text-xs mt-1 ${
               isDark ? 'text-gray-500' : 'text-slate-400'
             }`}
           >
-            {lang === 'ar'
-              ? 'خلال الأسبوع الحالي'
-              : 'Recorded this week'}
+            {lang === 'ar' ? 'خلال الأسبوع الحالي' : 'Recorded this week'}
           </p>
         </div>
 
@@ -399,7 +384,6 @@ export const Dashboard: React.FC = () => {
           }`}
         >
           <div className="flex items-center justify-between">
-
             <span
               className={`text-xs font-medium ${
                 isDark ? 'text-gray-400' : 'text-slate-500'
@@ -407,25 +391,67 @@ export const Dashboard: React.FC = () => {
             >
               {t.cardioSessions}
             </span>
-
             <div className="w-8 h-8 rounded-lg bg-cyan-500/15 text-cyan-400 flex items-center justify-center">
               <Flame className="w-4 h-4" />
             </div>
-
           </div>
-
           <div className="mt-2 font-mono-num text-2xl sm:text-3xl font-bold">
             {stats.cardioSessions}
           </div>
-
           <p
             className={`text-xs mt-1 ${
               isDark ? 'text-gray-500' : 'text-slate-400'
             }`}
           >
-            {lang === 'ar'
-              ? 'إجمالي جلسات الكارديو'
-              : 'Total cardio sessions'}
+            {lang === 'ar' ? 'إجمالي جلسات الكارديو' : 'Total cardio sessions'}
+          </p>
+        </div>
+
+        {/* 4TH BOX: CURRENT BODY WEIGHT */}
+        <div
+          onClick={() => setCurrentSection('weight')}
+          className={`p-4 sm:p-5 rounded-xl border cursor-pointer transition-all hover:border-[hsl(75,92%,56%)]/50 ${
+            isDark
+              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+              : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span
+              className={`text-xs font-medium ${
+                isDark ? 'text-gray-400' : 'text-slate-500'
+              }`}
+            >
+              {lang === 'ar' ? 'وزن الجسم الحالي' : 'Current Body Weight'}
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center">
+              <Scale className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="mt-2 font-mono-num text-2xl sm:text-3xl font-bold flex items-baseline gap-1.5">
+            {latestWeightRecord ? (
+              <>
+                <span>{latestWeightRecord.weight}</span>
+                <span className="text-xs uppercase font-normal text-gray-400">
+                  {latestWeightRecord.unit}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm font-normal text-gray-400 italic">
+                {lang === 'ar' ? 'لم يسجل بعد' : 'Not logged'}
+              </span>
+            )}
+          </div>
+          <p
+            className={`text-xs mt-1 ${
+              isDark ? 'text-gray-500' : 'text-slate-400'
+            }`}
+          >
+            {latestWeightRecord
+              ? latestWeightRecord.date
+              : lang === 'ar'
+              ? 'انقر لتسجيل الوزن'
+              : 'Click to log weight'}
           </p>
         </div>
 
@@ -433,7 +459,6 @@ export const Dashboard: React.FC = () => {
 
       {/* LAST COMPLETED WORKOUT BANNER OR EMPTY STATE */}
       {completedWorkouts.length > 0 ? (
-
         <div
           className={`rounded-xl p-5 border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
             isDark
@@ -442,7 +467,6 @@ export const Dashboard: React.FC = () => {
           }`}
         >
           <div className="space-y-1">
-
             <div
               className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider ${
                 isDark
@@ -497,9 +521,7 @@ export const Dashboard: React.FC = () => {
                   </strong>
                 </span>
               )}
-
             </div>
-
           </div>
 
           <button
@@ -516,14 +538,10 @@ export const Dashboard: React.FC = () => {
             <span>
               {lang === 'ar' ? 'عرض التفاصيل' : 'View Details'}
             </span>
-
             <ArrowUpRight className="w-4 h-4" />
           </button>
-
         </div>
-
       ) : (
-
         <div
           className={`rounded-2xl p-6 sm:p-8 border text-center space-y-4 ${
             isDark
@@ -542,11 +560,9 @@ export const Dashboard: React.FC = () => {
           </div>
 
           <div className="max-w-md mx-auto space-y-1.5">
-
             <h2 className="text-lg font-display font-bold">
               {t.noWorkoutsYet}
             </h2>
-
             <p
               className={`text-xs sm:text-sm ${
                 isDark ? 'text-gray-400' : 'text-slate-600'
@@ -554,11 +570,9 @@ export const Dashboard: React.FC = () => {
             >
               {t.startFirstWorkoutDesc}
             </p>
-
           </div>
 
           <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
-
             <button
               onClick={handleStartTodayPlan}
               disabled={isRestDay}
@@ -569,7 +583,6 @@ export const Dashboard: React.FC = () => {
               }`}
             >
               <Play className="w-4 h-4 fill-current" />
-
               <span>
                 {isRestDay
                   ? lang === 'ar'
@@ -591,10 +604,8 @@ export const Dashboard: React.FC = () => {
                 ? 'استعراض جدول الأسبوع'
                 : 'Explore Weekly Schedule'}
             </button>
-
           </div>
         </div>
-
       )}
 
       {/* MIDDLE GRID: WEEKLY ACTIVITY + WEEKLY SCHEDULE */}
@@ -609,12 +620,10 @@ export const Dashboard: React.FC = () => {
           }`}
         >
           <div className="flex items-center justify-between mb-4">
-
             <div>
               <h2 className="text-base font-display font-bold">
                 {t.weeklyActivityChart}
               </h2>
-
               <p
                 className={`text-xs ${
                   isDark ? 'text-gray-400' : 'text-slate-500'
@@ -636,13 +645,10 @@ export const Dashboard: React.FC = () => {
               {formatShortDate(weekRange.startOfWeek, lang)} –{' '}
               {formatShortDate(weekRange.endOfWeek, lang)}
             </span>
-
           </div>
 
           <div className="h-60 w-full">
-
             <ResponsiveContainer width="100%" height="100%">
-
               <BarChart
                 data={weeklyChartData}
                 margin={{
@@ -661,7 +667,6 @@ export const Dashboard: React.FC = () => {
                   }
                   vertical={false}
                 />
-
                 <XAxis
                   dataKey="dayName"
                   tick={{
@@ -671,7 +676,6 @@ export const Dashboard: React.FC = () => {
                   axisLine={false}
                   tickLine={false}
                 />
-
                 <YAxis
                   allowDecimals={false}
                   tick={{
@@ -681,7 +685,6 @@ export const Dashboard: React.FC = () => {
                   axisLine={false}
                   tickLine={false}
                 />
-
                 <Tooltip
                   contentStyle={{
                     backgroundColor: isDark
@@ -694,21 +697,17 @@ export const Dashboard: React.FC = () => {
                     color: isDark ? '#F3F4F6' : '#0F172A',
                     fontSize: '12px',
                   }}
-                  formatter={(
-                    value: unknown,
-                    name: unknown
-                  ) => [
+                  formatter={(value: unknown, name: unknown) => [
                     String(value),
                     name === 'sets'
                       ? lang === 'ar'
                         ? 'المجموعات المكتملة'
                         : 'Completed Sets'
                       : lang === 'ar'
-                        ? 'الجلسات'
-                        : 'Workout Sessions',
+                      ? 'الجلسات'
+                      : 'Workout Sessions',
                   ]}
                 />
-
                 <Bar
                   dataKey="sets"
                   name="sets"
@@ -720,7 +719,6 @@ export const Dashboard: React.FC = () => {
                   radius={[6, 6, 0, 0]}
                   maxBarSize={36}
                 />
-
                 <Bar
                   dataKey="sessions"
                   name="sessions"
@@ -728,11 +726,8 @@ export const Dashboard: React.FC = () => {
                   radius={[6, 6, 0, 0]}
                   maxBarSize={24}
                 />
-
               </BarChart>
-
             </ResponsiveContainer>
-
           </div>
         </div>
 
@@ -745,12 +740,10 @@ export const Dashboard: React.FC = () => {
           }`}
         >
           <div className="flex items-center justify-between mb-3">
-
             <div>
               <h2 className="text-base font-display font-bold">
                 {t.weeklySchedule}
               </h2>
-
               <p
                 className={`text-xs ${
                   isDark ? 'text-gray-400' : 'text-slate-500'
@@ -772,11 +765,9 @@ export const Dashboard: React.FC = () => {
             >
               {lang === 'ar' ? 'تعديل الجدول' : 'Customize'}
             </button>
-
           </div>
 
           <div className="space-y-2">
-
             {weeklySchedule.map((dayPlan) => {
               const isToday =
                 dayPlan.day === todayMeta.dayOfWeek;
@@ -790,12 +781,11 @@ export const Dashboard: React.FC = () => {
                         ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/40'
                         : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30'
                       : isDark
-                        ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,16%)]'
-                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
+                      ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,16%)]'
+                      : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-
                     <span
                       className={`font-display font-bold w-16 shrink-0 ${
                         isToday
@@ -803,8 +793,8 @@ export const Dashboard: React.FC = () => {
                             ? 'text-[hsl(75,92%,56%)]'
                             : 'text-[hsl(76,78%,42%)]'
                           : isDark
-                            ? 'text-gray-300'
-                            : 'text-slate-700'
+                          ? 'text-gray-300'
+                          : 'text-slate-700'
                       }`}
                     >
                       {translateDayName(
@@ -813,27 +803,23 @@ export const Dashboard: React.FC = () => {
                         true
                       )}
                     </span>
-
                     <span
                       className={`truncate font-medium ${
                         dayPlan.workoutType === 'rest'
                           ? 'text-gray-500 italic'
                           : dayPlan.workoutType === 'cardio'
-                            ? 'text-cyan-400'
-                            : isDark
-                              ? 'text-gray-200'
-                              : 'text-slate-800'
+                          ? 'text-cyan-400'
+                          : isDark
+                          ? 'text-gray-200'
+                          : 'text-slate-800'
                       }`}
                     >
                       {dayPlan.title}
                     </span>
-
                   </div>
-
                 </div>
               );
             })}
-
           </div>
         </div>
       </div>
@@ -850,11 +836,9 @@ export const Dashboard: React.FC = () => {
           }`}
         >
           <div className="flex items-center justify-between mb-4">
-
             <h2 className="text-base font-display font-bold">
               {t.recentActivity}
             </h2>
-
             <button
               onClick={() => setCurrentSection('calendar')}
               className={`text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors cursor-pointer ${
@@ -865,11 +849,9 @@ export const Dashboard: React.FC = () => {
             >
               {lang === 'ar' ? 'عرض الكل' : 'View All'}
             </button>
-
           </div>
 
           {completedWorkouts.length === 0 ? (
-
             <div
               className={`py-8 text-center text-xs ${
                 isDark ? 'text-gray-500' : 'text-slate-400'
@@ -879,18 +861,11 @@ export const Dashboard: React.FC = () => {
                 ? 'ستظهر أحدث تمارينك المكتملة هنا بمجرد حفظ أول تمرين.'
                 : 'Your recent completed workouts will appear here once recorded.'}
             </div>
-
           ) : (
-
             <div className="space-y-3">
-
               {completedWorkouts.slice(0, 4).map((session) => {
-
-                const totalSets = (
-                  session.exercises || []
-                ).reduce(
-                  (acc, ex) =>
-                    acc + (ex.sets ? ex.sets.length : 0),
+                const totalSets = (session.exercises || []).reduce(
+                  (acc, ex) => acc + (ex.sets ? ex.sets.length : 0),
                   0
                 );
 
@@ -908,46 +883,32 @@ export const Dashboard: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-
                       <div>
-
                         <div className="flex items-center gap-2">
-
                           <span
                             className={`w-2 h-2 rounded-full ${
                               session.workoutType === 'cardio'
                                 ? 'bg-cyan-400'
                                 : isDark
-                                  ? 'bg-[hsl(75,92%,56%)]'
-                                  : 'bg-[hsl(76,78%,42%)]'
+                                ? 'bg-[hsl(75,92%,56%)]'
+                                : 'bg-[hsl(76,78%,42%)]'
                             }`}
                           />
-
                           <h3 className="font-display font-semibold text-sm">
                             {session.title}
                           </h3>
-
                         </div>
-
                         <p
                           className={`text-xs mt-0.5 ${
-                            isDark
-                              ? 'text-gray-400'
-                              : 'text-slate-500'
+                            isDark ? 'text-gray-400' : 'text-slate-500'
                           }`}
                         >
-                          {formatFullDate(
-                            session.actualDate,
-                            lang
-                          )}
+                          {formatFullDate(session.actualDate, lang)}
                         </p>
-
                       </div>
 
                       <div className="text-end font-mono-num text-xs">
-
                         {session.workoutType === 'cardio' ? (
-
                           <span className="px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
                             {formatDurationMinutes(
                               session.cardioDetails?.durationMinutes ||
@@ -955,9 +916,7 @@ export const Dashboard: React.FC = () => {
                               lang
                             )}
                           </span>
-
                         ) : (
-
                           <span
                             className={`px-2 py-0.5 rounded ${
                               isDark
@@ -966,23 +925,16 @@ export const Dashboard: React.FC = () => {
                             } border`}
                           >
                             {session.exercises.length}{' '}
-                            {lang === 'ar' ? 'تمارين' : 'ex'} •{' '}
-                            {totalSets}{' '}
+                            {lang === 'ar' ? 'تمارين' : 'ex'} • {totalSets}{' '}
                             {lang === 'ar' ? 'مجموعات' : 'sets'}
                           </span>
-
                         )}
-
                       </div>
-
                     </div>
 
                     {session.muscleGroups.length > 0 && (
-
                       <div className="flex flex-wrap gap-1.5 mt-2.5">
-
                         {session.muscleGroups.map((mg) => (
-
                           <span
                             key={mg}
                             className={`text-[10px] px-2 py-0.5 rounded-md font-medium ${
@@ -993,21 +945,14 @@ export const Dashboard: React.FC = () => {
                           >
                             {translateMuscleGroup(mg, lang)}
                           </span>
-
                         ))}
-
                       </div>
-
                     )}
-
                   </div>
                 );
               })}
-
             </div>
-
           )}
-
         </div>
 
         {/* RECENT EXERCISE PROGRESSION */}
@@ -1019,11 +964,9 @@ export const Dashboard: React.FC = () => {
           }`}
         >
           <div className="flex items-center justify-between mb-4">
-
             <h2 className="text-base font-display font-bold">
               {t.recentProgression}
             </h2>
-
             <button
               onClick={() => setCurrentSection('progress')}
               className={`text-xs font-semibold ${
@@ -1034,11 +977,9 @@ export const Dashboard: React.FC = () => {
             >
               {lang === 'ar' ? 'تحليل التطور' : 'Full Progress'}
             </button>
-
           </div>
 
           {recentProgressions.length === 0 ? (
-
             <div
               className={`py-8 text-center text-xs ${
                 isDark ? 'text-gray-500' : 'text-slate-400'
@@ -1048,13 +989,9 @@ export const Dashboard: React.FC = () => {
                 ? 'سجّل تمارينك لمشاهدة مقارنات الأوزان والعدات بين الجلسات.'
                 : 'Record workouts to track weight and repetition progression across sessions.'}
             </div>
-
           ) : (
-
             <div className="space-y-3">
-
               {recentProgressions.map((prog) => {
-
                 const cur = prog.currentSession!;
                 const prev = prog.previousSession;
 
@@ -1071,37 +1008,27 @@ export const Dashboard: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-
                       <span className="font-display font-semibold text-sm">
                         {prog.exerciseName}
                       </span>
-
                       <span
                         className={`text-[11px] font-mono-num ${
-                          isDark
-                            ? 'text-gray-400'
-                            : 'text-slate-500'
+                          isDark ? 'text-gray-400' : 'text-slate-500'
                         }`}
                       >
                         {formatShortDate(cur.actualDate, lang)}
                       </span>
-
                     </div>
 
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
-
                       <div className="flex items-center gap-2">
-
                         <span
                           className={
-                            isDark
-                              ? 'text-gray-400'
-                              : 'text-slate-500'
+                            isDark ? 'text-gray-400' : 'text-slate-500'
                           }
                         >
                           {lang === 'ar' ? 'الأخير:' : 'Latest:'}
                         </span>
-
                         <span
                           className={`font-mono-num font-bold ${
                             isDark
@@ -1118,23 +1045,17 @@ export const Dashboard: React.FC = () => {
                               )
                             : '—'}
                         </span>
-
                       </div>
 
                       {prev && prev.bestWeightSet ? (
-
                         <div className="flex items-center gap-1.5 text-[11px]">
-
                           <span
                             className={
-                              isDark
-                                ? 'text-gray-500'
-                                : 'text-slate-400'
+                              isDark ? 'text-gray-500' : 'text-slate-400'
                             }
                           >
                             {lang === 'ar' ? 'السابق:' : 'Prev:'}
                           </span>
-
                           <span className="font-mono-num">
                             {formatSetPerformance(
                               prev.bestWeightSet.weight,
@@ -1143,35 +1064,24 @@ export const Dashboard: React.FC = () => {
                               lang
                             )}
                           </span>
-
                         </div>
-
                       ) : (
-
                         <span
                           className={`text-[11px] ${
-                            isDark
-                              ? 'text-gray-500'
-                              : 'text-slate-400'
+                            isDark ? 'text-gray-500' : 'text-slate-400'
                           }`}
                         >
                           {lang === 'ar'
                             ? 'أول جلسة مسجلة'
                             : 'First logged session'}
                         </span>
-
                       )}
-
                     </div>
-
                   </div>
                 );
               })}
-
             </div>
-
           )}
-
         </div>
 
       </div>
