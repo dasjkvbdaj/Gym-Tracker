@@ -111,7 +111,6 @@ export const ExerciseLibrary: React.FC = () => {
         muscleGroup: formMuscleGroup,
       });
     }
-
     setIsFormOpen(false);
   };
 
@@ -158,7 +157,6 @@ export const ExerciseLibrary: React.FC = () => {
               : 'Organize and manage exercises by muscle group.'}
           </p>
         </div>
-
         <button
           onClick={openAddModal}
           className={`self-start sm:self-auto px-4 py-2.5 rounded-xl font-display font-bold text-sm flex items-center gap-2 shadow-lg transition-all cursor-pointer ${
@@ -192,8 +190,8 @@ export const ExerciseLibrary: React.FC = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={
               lang === 'ar'
-                ? 'ابحث عن تمرين بالاسم (مثال: Lat Pulldown, Bench Press)...'
-                : 'Search exercises by name (e.g., Lat Pulldown, Cable Row, Squat)...'
+                ? 'ابحث عن تمرين بالاسم (مثال: Treadmill, Elliptical, Bench Press)...'
+                : 'Search exercises by name (e.g., Treadmill, Cable Row, Squat)...'
             }
             className={`w-full ps-10 pe-4 py-2.5 rounded-xl text-sm border focus:outline-none ${
               isDark
@@ -219,7 +217,6 @@ export const ExerciseLibrary: React.FC = () => {
           >
             {lang === 'ar' ? `الكل (${exercises.length})` : `All (${exercises.length})`}
           </button>
-
           {MUSCLE_GROUPS.map((mg) => {
             const count = exercises.filter((e) => e.muscleGroup === mg).length;
             const active = selectedCategory === mg;
@@ -294,11 +291,13 @@ export const ExerciseLibrary: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <span className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
-                        isDark
-                          ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
-                          : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/25'
-                      }`}>
+                      <span
+                        className={`inline-block text-[11px] font-semibold px-2 py-0.5 rounded-md border ${
+                          isDark
+                            ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
+                            : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/25'
+                        }`}
+                      >
                         {translateMuscleGroup(ex.muscleGroup, lang)}
                       </span>
                       <h3 className="font-display font-bold text-base mt-1.5">
@@ -339,9 +338,13 @@ export const ExerciseLibrary: React.FC = () => {
                       }`}
                       title="View Exercise History"
                     >
-                      <History className={`w-3.5 h-3.5 ${
-                        isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
-                      }`} />
+                      <History
+                        className={`w-3.5 h-3.5 ${
+                          isDark
+                            ? 'text-[hsl(75,92%,56%)]'
+                            : 'text-[hsl(76,78%,42%)]'
+                        }`}
+                      />
                       <span>
                         {lang === 'ar'
                           ? `السجل (${sessionsCount})`
@@ -427,14 +430,16 @@ export const ExerciseLibrary: React.FC = () => {
 
             <div>
               <label className="block text-xs font-semibold mb-1.5">
-                {lang === 'ar' ? 'اسم التمرين (يدعم الإنجليزية والعربية)' : 'Exercise Name *'}
+                {lang === 'ar'
+                  ? 'اسم التمرين (يدعم الإنجليزية والعربية)'
+                  : 'Exercise Name *'}
               </label>
               <input
                 type="text"
                 required
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g., Wide-Grip Lat Pulldown, Cable Row..."
+                placeholder="e.g., Treadmill, Elliptical, Lat Pulldown..."
                 className={`w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none ${
                   isDark
                     ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-100 focus:border-[hsl(75,92%,56%)]'
@@ -509,9 +514,11 @@ export const ExerciseLibrary: React.FC = () => {
           >
             <div className="flex items-center justify-between border-b border-inherit pb-3">
               <div>
-                <span className={`text-xs font-semibold ${
-                  isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
-                }`}>
+                <span
+                  className={`text-xs font-semibold ${
+                    isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                  }`}
+                >
                   {translateMuscleGroup(historyModalExercise.muscleGroup, lang)}
                 </span>
                 <h3 className="font-display font-bold text-lg">
@@ -545,16 +552,19 @@ export const ExerciseLibrary: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between text-xs">
-                      <span className={`font-semibold ${
-                        isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
-                      }`}>
+                      <span
+                        className={`font-semibold ${
+                          isDark
+                            ? 'text-[hsl(75,92%,56%)]'
+                            : 'text-[hsl(76,78%,42%)]'
+                        }`}
+                      >
                         {formatFullDate(log.actualDate, lang)}
                       </span>
                       <span className="font-mono-num uppercase text-gray-400">
                         {log.weightType === 'none' ? 'Bodyweight' : log.weightType}
                       </span>
                     </div>
-
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {log.sets.map((s) => (
                         <div
@@ -567,7 +577,12 @@ export const ExerciseLibrary: React.FC = () => {
                         >
                           <span className="text-gray-400 me-1.5">#{s.setNumber}:</span>
                           <span className="font-semibold">
-                            {formatSetPerformance(s.weight, log.weightType, s.reps, lang)}
+                            {formatSetPerformance(
+                              s.weight,
+                              log.weightType,
+                              s.reps,
+                              lang
+                            )}
                           </span>
                         </div>
                       ))}
