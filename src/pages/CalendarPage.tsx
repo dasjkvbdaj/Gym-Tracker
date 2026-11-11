@@ -147,6 +147,62 @@ const isCardioExercise = (exerciseName: string, muscleGroup: string) => {
   );
 };
 
+// دالة ذكية لتوزيع السعرات الحرارية نسبياً على التمارين والمجموعات بناءً على الجهد المبذول (Volume)
+const distributeCaloriesToWorkout = (workout: WorkoutSession): WorkoutSession => {
+  const totalSessionCalories = workout.exercises.reduce(
+    (acc, ex) => acc + (ex.caloriesBurned || 0),
+    0
+  );
+
+  if (totalSessionCalories <= 0) return workout;
+
+  let totalVolume = 0;
+  workout.exercises.forEach((ex) => {
+    if (!isCardioExercise(ex.exerciseNameSnapshot, ex.muscleGroup)) {
+      ex.sets.forEach((set) => {
+        const weightVal = set.weight || 0;
+        totalVolume += weightVal * set.reps;
+      });
+    }
+  });
+
+  // إذا لم يكن هناك أوزان مسجلة (أو تمارين كارديو بحتة)، يتم توزيعها بالتساوي
+  if (totalVolume <= 0) {
+    const totalSetsCount = workout.exercises.reduce((acc, ex) => acc + ex.sets.length, 0);
+    if (totalSetsCount === 0) return workout;
+    const caloriesPerSet = Math.round(totalSessionCalories / totalSetsCount);
+
+    const updatedExercises = workout.exercises.map((ex) => {
+      let exCalories = 0;
+      const updatedSets = ex.sets.map((set) => {
+        exCalories += caloriesPerSet;
+        return { ...set, caloriesBurned: caloriesPerSet };
+      });
+      return { ...ex, caloriesBurned: exCalories, sets: updatedSets };
+    });
+    return { ...workout, exercises: updatedExercises };
+  }
+
+  const updatedExercises = workout.exercises.map((ex) => {
+    let exCalories = 0;
+    const updatedSets = ex.sets.map((set) => {
+      const isCardio = isCardioExercise(ex.exerciseNameSnapshot, ex.muscleGroup);
+      let setCalories = 0;
+      if (!isCardio) {
+        const setVol = (set.weight || 0) * set.reps;
+        setCalories = Math.round((setVol / totalVolume) * totalSessionCalories);
+      } else {
+        setCalories = Math.round(totalSessionCalories / workout.exercises.length / ex.sets.length);
+      }
+      exCalories += setCalories;
+      return { ...set, caloriesBurned: setCalories };
+    });
+    return { ...ex, caloriesBurned: exCalories, sets: updatedSets };
+  });
+
+  return { ...workout, exercises: updatedExercises };
+};
+
 export const CalendarPage: React.FC = () => {
   const {
     completedWorkouts,
@@ -191,9 +247,11 @@ export const CalendarPage: React.FC = () => {
     const map = new Map<string, typeof completedWorkouts>();
 
     for (const workout of completedWorkouts) {
-      const existing = map.get(workout.actualDate) || [];
-      existing.push(workout);
-      map.set(workout.actualDate, existing);
+      // تطبيق حساب وتوزيع السعرات تلقائياً على التمارين والمجموعات
+      const processedWorkout = distributeCaloriesToWorkout(workout);
+      const existing = map.get(processedWorkout.actualDate) || [];
+      existing.push(processedWorkout);
+      map.set(processedWorkout.actualDate, existing);
     }
     return map;
   }, [completedWorkouts]);
@@ -393,7 +451,7 @@ export const CalendarPage: React.FC = () => {
     const exercise = exercises.find((item) => item.id === exerciseId);
     if (!exercise) return;
     const alreadyExists = editingWorkout.exercises.some(
-      (ex) => ex.exerciseId === exerciseId
+      (existing) => existing.exerciseId === exerciseId
     );
     if (alreadyExists) return;
 
@@ -450,7 +508,8 @@ export const CalendarPage: React.FC = () => {
   const handleSaveWorkout = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!editingWorkout) return;
-    await saveHistoricalWorkout(editingWorkout);
+    const distributedWorkout = distributeCaloriesToWorkout(editingWorkout);
+    await saveHistoricalWorkout(distributedWorkout);
     setEditingWorkout(null);
     setIsAddForgottenOpen(false);
     setForgottenMuscleFilter('ALL');
@@ -925,13 +984,13 @@ export const CalendarPage: React.FC = () => {
                                   }`}
                                 >
                                   <span>{ex.exerciseNameSnapshot}</span>
-                                  {isCardio && ex.caloriesBurned ? (
+                                  {ex.caloriesBurned ? (
                                     <span className="text-cyan-400 font-mono-num text-[11px] flex items-center gap-1">
                                       <Flame className="w-3 h-3" /> {ex.caloriesBurned} kcal
                                     </span>
                                   ) : null}
                                 </div>
-                                <div className="flex flex-wrap gap-1.5 font-mono-num text-[11px]">
+                                <div className="space-y-1 font-mono-num text-[11px]">
                                   {isCardio ? (
                                     <span
                                       className={`px-2 py-1 rounded flex items-center gap-1.5 text-xs font-semibold ${
@@ -947,23 +1006,18 @@ export const CalendarPage: React.FC = () => {
                                       </span>
                                     </span>
                                   ) : (
-                                    ex.sets.map((s) => (
-                                      <span
-                                        key={s.id}
-                                        className={`px-1.5 py-0.5 rounded ${
-                                          isDark
-                                            ? 'bg-[hsl(240,6%,4%)]'
-                                            : 'bg-white'
-                                        }`}
-                                      >
-                                        {formatSetPerformance(
-                                          s.weight,
-                                          ex.weightType,
-                                          s.reps,
-                                          lang
-                                        )}
-                                      </span>
-                                    ))
+                                    <div className="space-y-1">
+                                      {ex.sets.map((s) => (
+                                        <div key={s.id} className="flex items-center justify-between text-xs py-0.5 px-2 rounded bg-black/10 dark:bg-white/5">
+                                          <span>{formatSetPerformance(s.weight, ex.weightType, s.reps, lang)}</span>
+                                          {s.caloriesBurned !== undefined && s.caloriesBurned > 0 && (
+                                            <span className="text-[10px] text-orange-400 font-bold flex items-center gap-0.5">
+                                              <Flame className="w-2.5 h-2.5" /> {s.caloriesBurned} kcal
+                                            </span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
                                   )}
                                 </div>
                               </div>
