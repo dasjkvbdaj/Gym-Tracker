@@ -184,6 +184,15 @@ export const CalendarPage: React.FC = () => {
   const [expandedWorkoutId, setExpandedWorkoutId] =
     useState<string | null>(null);
 
+  // خريطة لربط معرف التمرين باسمه الحالي المحدث من مكتبة التمارين
+  const exerciseNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const ex of exercises) {
+      map.set(ex.id, ex.name);
+    }
+    return map;
+  }, [exercises]);
+
   // CALENDAR DATA
   const calendarCells = useMemo(
     () => getMonthCalendarGrid(viewYear, viewMonth),
@@ -363,7 +372,8 @@ export const CalendarPage: React.FC = () => {
 
     const updatedExercises = editingWorkout.exercises.map((ex) => {
       if (ex.id !== entryId) return ex;
-      const isCardio = isCardioExercise(ex.exerciseNameSnapshot, ex.muscleGroup);
+      const currentName = exerciseNameMap.get(ex.exerciseId) || ex.exerciseNameSnapshot;
+      const isCardio = isCardioExercise(currentName, ex.muscleGroup);
       const previousSet = ex.sets[ex.sets.length - 1];
       const newSet: SetEntry = {
         id: generateId('set'),
@@ -873,7 +883,7 @@ export const CalendarPage: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* TIME ONLY (TOTAL CALORIES REMOVED) */}
+                      {/* TIME ONLY */}
                       <div className="flex flex-wrap items-center justify-between text-[11px] text-gray-400 font-mono-num gap-2">
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -908,12 +918,13 @@ export const CalendarPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* EXERCISE SUMMARY / DETAILS */}
+                      {/* EXERCISE SUMMARY / DETAILS (يعرض الاسم المحدث فوريًا من الخريطة) */}
                       {expanded && (
                         <div className="space-y-3 pt-2 border-t border-inherit">
                           {workout.exercises.map((ex) => {
+                            const displayName = exerciseNameMap.get(ex.exerciseId) || ex.exerciseNameSnapshot;
                             const isCardio = isCardioExercise(
-                              ex.exerciseNameSnapshot,
+                              displayName,
                               ex.muscleGroup
                             );
                             return (
@@ -929,7 +940,7 @@ export const CalendarPage: React.FC = () => {
                                       : 'text-indigo-700'
                                   }`}
                                 >
-                                  <span>{ex.exerciseNameSnapshot}</span>
+                                  <span>{displayName}</span>
                                   {isCardio && ex.caloriesBurned ? (
                                     <span className="text-cyan-400 font-mono-num text-[11px] flex items-center gap-1">
                                       <Flame className="w-3 h-3" /> {ex.caloriesBurned} kcal
@@ -1079,8 +1090,9 @@ export const CalendarPage: React.FC = () => {
 
               {/* EXERCISES */}
               {editingWorkout.exercises.map((ex) => {
+                const displayName = exerciseNameMap.get(ex.exerciseId) || ex.exerciseNameSnapshot;
                 const isCardio = isCardioExercise(
-                  ex.exerciseNameSnapshot,
+                  displayName,
                   ex.muscleGroup
                 );
                 return (
@@ -1095,7 +1107,7 @@ export const CalendarPage: React.FC = () => {
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <h4 className="font-bold text-sm flex items-center gap-1.5">
-                          <span>{ex.exerciseNameSnapshot}</span>
+                          <span>{displayName}</span>
                           {isCardio && <span className="text-xs">🏃‍♂️</span>}
                         </h4>
                         <span className="text-[11px] text-gray-400">
