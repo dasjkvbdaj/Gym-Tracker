@@ -16,14 +16,12 @@ export interface ExerciseSessionRecord {
   weightType: WeightUnit;
   sets: SetEntry[];
   notes: string;
-  // Best set in this session (highest weight; tie-breaker: highest reps)
   bestWeightSet: SetEntry | null;
-  // Highest repetition set in this session
   bestRepsSet: SetEntry | null;
-  // Normalized best weight in user's preferred unit for chart alignment
   normalizedBestWeight: number;
   maxReps: number;
   totalSets: number;
+  totalCalories: number;
 }
 
 export interface ExerciseComparisonSummary {
@@ -32,7 +30,7 @@ export interface ExerciseComparisonSummary {
   totalSessions: number;
   lastPerformedDate: string | null;
   isBodyweightOnly: boolean;
-  // Best ever weight record (preserved in original unit)
+  isCardio: boolean;
   bestWeightRecord: {
     weight: number | null;
     unit: WeightUnit;
@@ -40,43 +38,45 @@ export interface ExerciseComparisonSummary {
     actualDate: string;
     normalizedKg: number;
   } | null;
-  // Best ever reps record (preserved in original unit)
   bestRepsRecord: {
     reps: number;
     weight: number | null;
     unit: WeightUnit;
     actualDate: string;
   } | null;
-  // Current (most recent) session vs Previous session
   currentSession: ExerciseSessionRecord | null;
   previousSession: ExerciseSessionRecord | null;
   comparisonDelta: {
     hasPrevious: boolean;
     sameUnit: boolean;
-    weightDiffOriginal: number | null; // if same unit
-    weightDiffNormalized: number; // in preferred unit
+    weightDiffOriginal: number | null;
+    weightDiffNormalized: number;
     repsDiff: number;
     unitLabel: string;
   } | null;
   historyChronological: ExerciseSessionRecord[];
 }
 
-/**
- * Extracts the best weight set and best reps set from an ExerciseEntry
- */
 function analyzeExerciseEntry(
   workout: WorkoutSession,
   entry: ExerciseEntry,
   preferredUnit: PreferredWeightUnit,
   lang: 'en' | 'ar' = 'en'
 ): ExerciseSessionRecord | null {
-  const validSets = (entry.sets || []).filter((s) => s.reps > 0 || (s.weight !== null && s.weight > 0));
-  if (validSets.length === 0) return null;
+  const validSets = (entry.sets || []).filter((s) => s.reps > 0 || (s.weight !== null && s.weight > 0) || (s.caloriesBurned && s.caloriesBurned > 0));
+  if (validSets.length === 0 && (!entry.sets || entry.sets.length === 0)) return null;
 
-  let bestWeightSet: SetEntry = validSets[0];
-  let bestRepsSet: SetEntry = validSets[0];
+  const setsToUse = validSets.length > 0 ? validSets : entry.sets || [];
 
-  for (const s of validSets) {
+  let bestWeightSet: SetEntry = setsToUse[0] || { id: '1', setNumber: 1, weight: 0, reps: 0, completed: true };
+  let bestRepsSet: SetEntry = setsToUse[0] || { id: '1', setNumber: 1, weight: 0, reps: 0, completed: true };
+
+  let totalCalories = entry.caloriesBurned || 0;
+
+  for (const s of setsToUse) {
+    if (s.caloriesBurned) {
+      totalCalories += s.caloriesBurned;
+    }
     const sWeight = entry.weightType === 'none' ? 0 : s.weight ?? 0;
     const bestW = entry.weightType === 'none' ? 0 : bestWeightSet.weight ?? 0;
 
@@ -103,19 +103,17 @@ function analyzeExerciseEntry(
     formattedDate: formatShortDate(workout.actualDate, lang),
     startTimestamp: workout.startTimestamp,
     weightType: entry.weightType,
-    sets: validSets,
+    sets: setsToUse,
     notes: entry.notes || '',
     bestWeightSet,
     bestRepsSet,
     normalizedBestWeight,
-    maxReps: bestRepsSet.reps,
-    totalSets: validSets.length,
+    maxReps: bestRepsSet?.reps || 0,
+    totalSets: setsToUse.length,
+    totalCalories,
   };
 }
 
-/**
- * Computes complete progression statistics for a single exercise across completed workouts
- */
 export function getExerciseProgressSummary(
   exerciseId: string,
   exerciseName: string,
@@ -129,15 +127,14 @@ export function getExerciseProgressSummary(
 
   if (timeframe === 'week') {
     const d = new Date(now);
-    d.setDate(d.getDate() - 28); // Last 4 weeks for weekly view
+    d.setDate(d.getDate() - 28);
     cutoffDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   } else if (timeframe === 'month') {
     const d = new Date(now);
-    d.setDate(d.getDate() - 90); // Last 3 months for monthly view
+    d.setDate(d.getDate() - 90);
     cutoffDateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
-  // Sort workouts chronologically (oldest -> newest)
   const sortedWorkouts = [...completedWorkouts]
     .filter((w) => w.status === 'completed' && w.actualDate >= cutoffDateStr)
     .sort((a, b) => {
@@ -160,6 +157,8 @@ export function getExerciseProgressSummary(
     }
   }
 
+  const isCardio = records.some((r) => r.weightType === 'none' && r.sets.some((s) => s.reps > 5));
+
   if (records.length === 0) {
     return {
       exerciseId,
@@ -167,6 +166,7 @@ export function getExerciseProgressSummary(
       totalSessions: 0,
       lastPerformedDate: null,
       isBodyweightOnly: false,
+      isCardio: false,
       bestWeightRecord: null,
       bestRepsRecord: null,
       currentSession: null,
@@ -182,12 +182,8 @@ export function getExerciseProgressSummary(
   let bestRepsRecord: ExerciseComparisonSummary['bestRepsRecord'] = null;
 
   for (const rec of records) {
-    if (rec.bestWeightSet) {
-      const normKg =
-        rec.weightType === 'none'
-          ? 0
-          : convertWeight(rec.bestWeightSet.weight, rec.weightType, 'kg');
-
+    if (rec.bestWeightSet && rec.weightType !== 'none') {
+      const normKg = convertWeight(rec.bestWeightSet.weight, rec.weightType, 'kg');
       if (
         !bestWeightRecord ||
         normKg > bestWeightRecord.normalizedKg ||
@@ -261,6 +257,7 @@ export function getExerciseProgressSummary(
     totalSessions: records.length,
     lastPerformedDate: currentSession.actualDate,
     isBodyweightOnly,
+    isCardio,
     bestWeightRecord,
     bestRepsRecord,
     currentSession,
@@ -270,10 +267,6 @@ export function getExerciseProgressSummary(
   };
 }
 
-/**
- * Finds the most recent performance of an exercise across all completed workouts
- * (Used to show a helpful "Last time: 100 lbs × 12 reps" badge during Start Workout)
- */
 export function getLastPerformanceForExercise(
   exerciseId: string,
   completedWorkouts: WorkoutSession[]
