@@ -73,7 +73,7 @@ export const Dashboard: React.FC = () => {
       if (saved) {
         const history = JSON.parse(saved);
         if (Array.isArray(history) && history.length > 0) {
-          return history[0]; // أحدث وزن مسجل
+          return history[0];
         }
       }
     } catch {
@@ -82,7 +82,6 @@ export const Dashboard: React.FC = () => {
     return null;
   }, []);
 
-  // Core KPI Calculations from actual saved workouts
   const stats = useMemo(() => {
     const totalSessions = completedWorkouts.length;
 
@@ -105,7 +104,6 @@ export const Dashboard: React.FC = () => {
     };
   }, [completedWorkouts, weekRange]);
 
-  // Weekly Activity Chart Data (Mon - Sun)
   const weeklyChartData = useMemo(() => {
     return weekRange.weekDates.map(({ day, dateStr }) => {
       const dayWorkouts = completedWorkouts.filter(
@@ -131,7 +129,6 @@ export const Dashboard: React.FC = () => {
     });
   }, [completedWorkouts, weekRange, lang]);
 
-  // Recent Exercise Progression
   const recentProgressions = useMemo(() => {
     if (completedWorkouts.length === 0) return [];
 
@@ -200,17 +197,19 @@ export const Dashboard: React.FC = () => {
         workoutType: todayPlan.workoutType,
         title: todayPlan.title,
         muscleGroups: todayPlan.muscleGroups,
-        exerciseIds: todayPlan.assignedExerciseIds,
+        exerciseIds: [], // Start empty so user selects session-specific exercises before timer/sets begin
         actualDate: todayStr,
       });
-
+      setCurrentSection('start-workout');
       return;
     }
 
     await startNewWorkout({
       workoutType: 'strength',
       actualDate: todayStr,
+      exerciseIds: [],
     });
+    setCurrentSection('start-workout');
   };
 
   return (
@@ -308,10 +307,8 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 4 KPI SUMMARY CARDS (INCLUDING THE NEW 4TH WEIGHT BOX) */}
+      {/* 4 KPI SUMMARY CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-
-        {/* TOTAL SESSIONS */}
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
             isDark
@@ -343,7 +340,6 @@ export const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* THIS WEEK */}
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
             isDark
@@ -375,7 +371,6 @@ export const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* CARDIO SESSIONS */}
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
             isDark
@@ -407,7 +402,6 @@ export const Dashboard: React.FC = () => {
           </p>
         </div>
 
-        {/* 4TH BOX: CURRENT BODY WEIGHT */}
         <div
           onClick={() => setCurrentSection('weight')}
           className={`p-4 sm:p-5 rounded-xl border cursor-pointer transition-all hover:border-[hsl(75,92%,56%)]/50 ${
@@ -454,10 +448,8 @@ export const Dashboard: React.FC = () => {
               : 'Click to log weight'}
           </p>
         </div>
-
       </div>
 
-      {/* LAST COMPLETED WORKOUT BANNER OR EMPTY STATE */}
       {completedWorkouts.length > 0 ? (
         <div
           className={`rounded-xl p-5 border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
@@ -608,10 +600,7 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* MIDDLE GRID: WEEKLY ACTIVITY + WEEKLY SCHEDULE */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-        {/* WEEKLY ACTIVITY CHART */}
         <div
           className={`lg:col-span-7 rounded-xl p-5 border flex flex-col justify-between ${
             isDark
@@ -731,7 +720,6 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* WEEKLY SCHEDULE OVERVIEW */}
         <div
           className={`lg:col-span-5 rounded-xl p-5 border flex flex-col justify-between ${
             isDark
@@ -824,10 +812,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* BOTTOM GRID: RECENT ACTIVITY + PROGRESSION */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {/* RECENT WORKOUT ACTIVITY */}
         <div
           className={`rounded-xl p-5 border ${
             isDark
@@ -955,7 +940,6 @@ export const Dashboard: React.FC = () => {
           )}
         </div>
 
-        {/* RECENT EXERCISE PROGRESSION */}
         <div
           className={`rounded-xl p-5 border ${
             isDark
@@ -1083,9 +1067,7 @@ export const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
-
       </div>
-
     </div>
   );
 };
