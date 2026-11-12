@@ -814,12 +814,6 @@ export const CalendarPage: React.FC = () => {
               <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {selectedDateWorkouts.map((workout) => {
                   const expanded = expandedWorkoutId === workout.id;
-                  
-                  // حساب إجمالي السعرات المحروقة لكل التمارين في هذه الجلسة
-                  const totalSessionCalories = workout.exercises.reduce(
-                    (acc, ex) => acc + (ex.caloriesBurned || 0),
-                    0
-                  );
 
                   return (
                     <div
@@ -879,7 +873,7 @@ export const CalendarPage: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* TIME & TOTAL CALORIES */}
+                      {/* TIME ONLY (TOTAL CALORIES REMOVED) */}
                       <div className="flex flex-wrap items-center justify-between text-[11px] text-gray-400 font-mono-num gap-2">
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -894,15 +888,6 @@ export const CalendarPage: React.FC = () => {
                               )}`
                             : ''}
                         </div>
-                        {totalSessionCalories > 0 && (
-                          <div className="flex items-center gap-1 text-cyan-400 font-bold">
-                            <Flame className="w-3 h-3" />
-                            <span>
-                              {totalSessionCalories}{' '}
-                              {lang === 'ar' ? 'سعرة حرارية' : 'kcal'}
-                            </span>
-                          </div>
-                        )}
                       </div>
 
                       {/* MUSCLE GROUPS */}
