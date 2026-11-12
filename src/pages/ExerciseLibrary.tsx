@@ -36,6 +36,7 @@ export const ExerciseLibrary: React.FC = () => {
     updateExercise,
     deleteExercise,
     openProgressForExercise,
+    saveHistoricalWorkout, // <-- أضيفت لتحديث السجلات التاريخية والتقويم تلقائياً عند تغيير اسم التمرين
   } = useGym();
 
   const lang = settings.language;
@@ -97,17 +98,38 @@ export const ExerciseLibrary: React.FC = () => {
 
   const handleSaveExercise = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formName.trim()) return;
+    const trimmedName = formName.trim();
+    if (!trimmedName) return;
 
     if (editingExercise) {
+      // 1. تحديث التمرين في المكتبة الأساسية
       await updateExercise({
         ...editingExercise,
-        name: formName.trim(),
+        name: trimmedName,
         muscleGroup: formMuscleGroup,
       });
+
+      // 2. إذا تم تغيير اسم التمرين، قم بتحديثه تلقائياً في جميع الجلسات السابقة (التقويم والسجلات)
+      if (editingExercise.name !== trimmedName) {
+        const workoutsToUpdate = completedWorkouts.filter((workout) =>
+          workout.exercises.some((ex) => ex.exerciseId === editingExercise.id)
+        );
+
+        for (const workout of workoutsToUpdate) {
+          const updatedWorkout = {
+            ...workout,
+            exercises: workout.exercises.map((ex) =>
+              ex.exerciseId === editingExercise.id
+                ? { ...ex, exerciseNameSnapshot: trimmedName }
+                : ex
+            ),
+          };
+          await saveHistoricalWorkout(updatedWorkout);
+        }
+      }
     } else {
       await addExercise({
-        name: formName.trim(),
+        name: trimmedName,
         muscleGroup: formMuscleGroup,
       });
     }
