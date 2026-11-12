@@ -15,7 +15,6 @@ import {
   AlertCircle,
   Info,
   Globe,
-  Scale,
 } from 'lucide-react';
 
 import { useGym } from '../../context/GymContext';
@@ -49,7 +48,6 @@ export const AppNavigation: React.FC<{
     { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
     { id: 'schedule', label: t.myWorkout, icon: ClipboardList },
     { id: 'exercises', label: t.exercises, icon: Dumbbell },
-    { id: 'weight' as AppSection, label: lang === 'ar' ? 'وزن الجسم' : 'Body Weight', icon: Scale },
   ];
 
   const activeWorkoutNavItem = {
@@ -72,7 +70,7 @@ export const AppNavigation: React.FC<{
     ? [...baseNavItems, activeWorkoutNavItem, ...endNavItems]
     : [...baseNavItems, ...endNavItems];
 
-  // MOBILE BOTTOM NAVIGATION (Placed Active Workout between Exercises and Weight)
+  // MOBILE BOTTOM NAVIGATION
   const mobileBottomItems: {
     id: AppSection;
     label: string;
@@ -104,11 +102,6 @@ export const AppNavigation: React.FC<{
           },
         ]
       : []),
-    {
-      id: 'weight' as AppSection,
-      label: lang === 'ar' ? 'الوزن' : 'Weight',
-      icon: Scale,
-    },
     {
       id: 'calendar',
       label: lang === 'ar' ? 'التقويم' : 'Calendar',
@@ -433,7 +426,7 @@ export const AppNavigation: React.FC<{
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION - FIXED SPACING & ALIGNMENT */}
+      {/* MOBILE BOTTOM NAVIGATION */}
       <nav
         className={`lg:hidden fixed bottom-0 inset-x-0 z-30 h-16 border-t backdrop-blur-lg px-2 flex items-center justify-between ${
           isDark
@@ -511,7 +504,7 @@ export const AppNavigation: React.FC<{
 
       {/* TOAST NOTIFICATIONS */}
       <div className="fixed bottom-20 lg:bottom-6 end-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
-        {toasts.map((toast) => (
+        {toasts.io ? null : toasts.map((toast) => (
           <div
             key={toast.id}
             className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-md transition-all ${
