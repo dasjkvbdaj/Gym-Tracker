@@ -39,7 +39,7 @@ export const AppNavigation: React.FC<{
   const t = UI_TEXT[lang];
   const isDark = settings.theme === 'dark';
 
-  // DESKTOP NAVIGATION
+  // DESKTOP NAVIGATION (Settings moved to endNavItems so it's last)
   const baseNavItems: {
     id: AppSection;
     label: string;
@@ -70,7 +70,7 @@ export const AppNavigation: React.FC<{
     ? [...baseNavItems, activeWorkoutNavItem, ...endNavItems]
     : [...baseNavItems, ...endNavItems];
 
-  // MOBILE BOTTOM NAVIGATION
+  // MOBILE BOTTOM NAVIGATION (Settings added as the last item)
   const mobileBottomItems: {
     id: AppSection;
     label: string;
@@ -111,6 +111,11 @@ export const AppNavigation: React.FC<{
       id: 'progress',
       label: lang === 'ar' ? 'التطور' : 'Progress',
       icon: TrendingUp,
+    },
+    {
+      id: 'settings',
+      label: lang === 'ar' ? 'الإعدادات' : 'Settings',
+      icon: SettingsIcon,
     },
   ];
 
@@ -313,7 +318,7 @@ export const AppNavigation: React.FC<{
         </div>
       </aside>
 
-      {/* MOBILE HEADER */}
+      {/* MOBILE HEADER (Settings button removed from here) */}
       <header
         className={`lg:hidden sticky top-0 z-30 border-b backdrop-blur-md ${
           isDark
@@ -368,23 +373,6 @@ export const AppNavigation: React.FC<{
                 <Moon className="w-4 h-4" />
               )}
             </button>
-
-            {/* SETTINGS ICON BUTTON (TOP HEADER) */}
-            <button
-              onClick={() => setCurrentSection('settings')}
-              className={`p-2 rounded-lg border cursor-pointer ${
-                currentSection === 'settings'
-                  ? isDark
-                    ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]'
-                    : 'bg-[hsl(76,78%,42%)]/10 border border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)]'
-                  : isDark
-                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] text-gray-300'
-                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
-              }`}
-              aria-label="Settings"
-            >
-              <SettingsIcon className="w-4 h-4" />
-            </button>
           </div>
         </div>
       </header>
@@ -426,7 +414,7 @@ export const AppNavigation: React.FC<{
         </main>
       </div>
 
-      {/* MOBILE BOTTOM NAVIGATION */}
+      {/* MOBILE BOTTOM NAVIGATION (Includes Settings at the end) */}
       <nav
         className={`lg:hidden fixed bottom-0 inset-x-0 z-30 h-16 border-t backdrop-blur-lg px-2 flex items-center justify-between ${
           isDark
