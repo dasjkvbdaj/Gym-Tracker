@@ -300,8 +300,8 @@ export const StartWorkout: React.FC = () => {
           </h1>
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
             {lang === 'ar'
-              ? 'اختر خطة جاهزة من جدولك الأسبوعي. يتم تسجيل التاريخ والوقت الفعليين لجهازك تلقائياً.'
-              : 'Choose a workout from your weekly schedule. Your local date and time are recorded automatically.'}
+              ? 'اختر خطة جاهزة من جدولك الأسبوعي أو أنشئ جلسة مخصصة. قم بتحديد وتصفية التمارين الخاصة بهذا اليوم قبل بدء الجلسة.'
+              : 'Choose a workout plan from your weekly schedule. Select and curate specific exercises for today before beginning your session.'}
           </p>
         </div>
 
@@ -387,7 +387,7 @@ export const StartWorkout: React.FC = () => {
                         workoutType: dayPlan.workoutType === 'cardio' ? 'cardio' : 'strength',
                         title: dayPlan.workoutType === 'rest' ? 'Bonus Session' : dayPlan.title,
                         muscleGroups: dayPlan.muscleGroups.length > 0 ? dayPlan.muscleGroups : ['Cardio'],
-                        exerciseIds: dayPlan.assignedExerciseIds,
+                        exerciseIds: [], // Start session empty so user selects session-specific exercises first
                         actualDate: todayStr,
                       })
                     }
@@ -398,7 +398,7 @@ export const StartWorkout: React.FC = () => {
                     }`}
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>{lang === 'ar' ? 'بدء التمرين' : 'Start Workout'}</span>
+                    <span>{lang === 'ar' ? 'بدء وتحديد التمارين' : 'Start & Select Exercises'}</span>
                   </button>
                 </div>
               </div>
@@ -529,7 +529,7 @@ export const StartWorkout: React.FC = () => {
 
         <div className="mt-4 pt-3 border-t border-inherit flex flex-wrap items-center gap-1.5">
           <span className={`text-xs me-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-            {lang === 'ar' ? 'العضلات:' : 'Muscle Groups:'}
+            {lang === 'ar' ? 'العضلات المستهدفة بهذه الجلسة:' : 'Session Muscle Groups:'}
           </span>
           {MUSCLE_GROUPS.map((mg) => {
             const selected = activeWorkout.muscleGroups.includes(mg);
@@ -577,9 +577,22 @@ export const StartWorkout: React.FC = () => {
               >
                 <p className="text-sm font-medium">
                   {lang === 'ar'
-                    ? 'لم تقم بإضافة أي تمارين لهذه الجلسة بعد. اضغط على الزر أدناه لاختيار أو إنشاء التمارين.'
-                    : 'No exercises added to this session yet. Click below to add exercises.'}
+                    ? 'لم تقم بإضافة أي تمارين لهذه الجلسة بعد. يرجى اختيار التمارين التي ترغب بتمرينها اليوم (مثل المعدة أو السواعد أو غيرها).'
+                    : 'No exercises added to this session yet. Select the specific exercises you want to perform today.'}
                 </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPickerMuscleFilter('ALL');
+                    setIsAddExerciseOpen(true);
+                  }}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer ${
+                    isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
+                  }`}
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{lang === 'ar' ? 'إضافة تمارين للجلسة' : 'Add Exercises'}</span>
+                </button>
               </div>
             );
           }
@@ -1019,7 +1032,7 @@ export const StartWorkout: React.FC = () => {
         <button
           type="button"
           onClick={() => {
-            setPickerMuscleFilter(activeWorkout.muscleGroups[0] || 'ALL');
+            setPickerMuscleFilter('ALL');
             setIsAddExerciseOpen(true);
           }}
           className={`w-full py-4 px-5 rounded-2xl border-2 border-dashed font-display font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
@@ -1029,7 +1042,7 @@ export const StartWorkout: React.FC = () => {
           }`}
         >
           <Plus className="w-5 h-5" />
-          <span>{lang === 'ar' ? 'إضافة تمرين للجلسة الحالية' : 'Add Exercise to Workout'}</span>
+          <span>{lang === 'ar' ? 'إضافة تمارين لهذه الجلسة' : 'Add Exercises to This Session'}</span>
         </button>
       </div>
 
@@ -1075,10 +1088,10 @@ export const StartWorkout: React.FC = () => {
             <div className="flex items-center justify-between border-b border-inherit pb-3">
               <div>
                 <h3 className="font-display font-bold text-base">
-                  {lang === 'ar' ? 'اختر تمريناً لإضافته' : 'Select Exercise to Add'}
+                  {lang === 'ar' ? 'اختر التمارين المراد تمرينها اليوم' : 'Select Exercises for Today'}
                 </h3>
                 <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                  {lang === 'ar' ? 'اختر من المكتبة أو أنشئ تمريناً مخصصاً جديداً فوراً' : 'Choose from your library or create a new custom exercise'}
+                  {lang === 'ar' ? 'قم بتصفية التمارين واختيار ما يناسب تمرين اليوم (مثل المعدة أو السواعد)' : 'Filter and select specific exercises for today\'s session'}
                 </p>
               </div>
               <button onClick={() => setIsAddExerciseOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10">
@@ -1093,7 +1106,7 @@ export const StartWorkout: React.FC = () => {
                   type="text"
                   value={pickerSearch}
                   onChange={(e) => setPickerSearch(e.target.value)}
-                  placeholder={lang === 'ar' ? 'بحث عن تمرين...' : 'Search exercise...'}
+                  placeholder={lang === 'ar' ? 'بحث عن تمرين (مثال: Abs, Forearms)...' : 'Search exercise...'}
                   className={`w-full ps-9 pe-3 py-2 rounded-xl text-xs sm:text-sm border focus:outline-none focus:border-[hsl(75,92%,56%)] ${
                     isDark
                       ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-100'
@@ -1139,7 +1152,7 @@ export const StartWorkout: React.FC = () => {
                     value={newExName}
                     onChange={(e) => setNewExName(e.target.value)}
                     placeholder={
-                      lang === 'ar' ? 'اسم التمرين (مثال: Treadmill)...' : 'Exercise Name...'
+                      lang === 'ar' ? 'اسم التمرين...' : 'Exercise Name...'
                     }
                     className={`sm:col-span-2 px-3 py-2 rounded-lg text-xs border ${
                       isDark
@@ -1269,7 +1282,7 @@ export const StartWorkout: React.FC = () => {
                   isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
                 }`}
               >
-                {lang === 'ar' ? 'إغلاق' : 'Done'}
+                {lang === 'ar' ? 'تم الاختيار' : 'Done'}
               </button>
             </div>
           </div>
@@ -1284,12 +1297,12 @@ export const StartWorkout: React.FC = () => {
             }`}
           >
             <h3 className="font-display font-bold text-base text-red-400">
-              {lang === 'ar' ? 'هل أنت متأكد من إلغاء التمرين الحالي؟ ؟' : 'Cancel Active Workout? ?'}
+              {lang === 'ar' ? 'هل أنت متأكد من إلغاء التمرين الحالي؟' : 'Cancel Active Workout?'}
             </h3>
             <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
               {lang === 'ar'
-                ? 'سيتم حذف هذه الجلسة غير المكتملة ولن يتم حفظها في سجل التمارين.'
-                : 'This unfinished workout session will be discarded and will not be saved to your workout history.'}
+                ? 'سيتم حذف هذه الجلسة ولن يتم حفظها في سجل التمارين.'
+                : 'This workout session will be discarded and will not be saved to your history.'}
             </p>
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
