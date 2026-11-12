@@ -56,6 +56,15 @@ export const StartWorkout: React.FC = () => {
   const todayStr = toLocalDateString(new Date());
   const todayMeta = getDateMetadata(todayStr);
 
+  // حالة اختيار التمارين قبل بدء الـ Timer الفعلي للجلسة الجديدة
+  const [selectedExerciseIdsForNewWorkout, setSelectedExerciseIdsForNewWorkout] = useState<string[]>([]);
+  const [isSelectingExercises, setIsSelectingExercises] = useState(false);
+  const [pendingWorkoutConfig, setPendingWorkoutConfig] = useState<{
+    workoutType: 'strength' | 'cardio';
+    title: string;
+    muscleGroups: MuscleGroup[];
+  } | null>(null);
+
   const [isAddExerciseOpen, setIsAddExerciseOpen] = useState(false);
   const [pickerMuscleFilter, setPickerMuscleFilter] = useState<MuscleGroup | 'ALL'>('ALL');
   const [pickerSearch, setPickerSearch] = useState('');
@@ -63,7 +72,7 @@ export const StartWorkout: React.FC = () => {
 
   const [showQuickCreateEx, setShowQuickCreateEx] = useState(false);
   const [newExName, setNewExName] = useState('');
-  const [newExMuscle, setNewExMuscle] = useState('Cardio');
+  const [newExMuscle, setNewExMuscle] = useState<MuscleGroup>('Back');
 
   const isCardioExercise = (entry: ExerciseEntry) => {
     return (
@@ -291,6 +300,244 @@ export const StartWorkout: React.FC = () => {
     });
   }, [exercises, pickerMuscleFilter, pickerSearch]);
 
+  // بدء عملية اختيار التمارين قبل تفعيل الجلسة والمؤقت
+  const handleInitiateWorkoutSetup = (dayPlan?: {
+    workoutType: string;
+    title: string;
+    muscleGroups: MuscleGroup[];
+    assignedExerciseIds: string[];
+  }) => {
+    const config = {
+      workoutType: dayPlan?.workoutType === 'cardio' ? ('cardio' as const) : ('strength' as const),
+      title: dayPlan ? dayPlan.title : (lang === 'ar' ? 'تمرين حر جديد' : 'Custom Workout'),
+      muscleGroups: dayPlan?.muscleGroups && dayPlan.muscleGroups.length > 0 ? dayPlan.muscleGroups : (['Back'] as MuscleGroup[]),
+    };
+    
+    setPendingWorkoutConfig(config);
+    // افتراضياً نبدأ باختيار التمارين المقترحة في الجدول أو فارغة لكي تنتقي ما تريده
+    setSelectedExerciseIdsForNewWorkout(dayPlan?.assignedExerciseIds || []);
+    setIsSelectingExercises(true);
+  };
+
+  // تأكيد التمارين المختارة وبدء الجلسة والمؤقت الفعلي
+  const handleConfirmAndStartWorkout = async () => {
+    if (!pendingWorkoutConfig) return;
+
+    await startNewWorkout({
+      workoutType: pendingWorkoutConfig.workoutType,
+      title: pendingWorkoutConfig.title,
+      muscleGroups: pendingWorkoutConfig.muscleGroups,
+      exerciseIds: selectedExerciseIdsForNewWorkout, // التمارين التي حددتها أنت فقط لهذا اليوم بالذات
+      actualDate: todayStr,
+    });
+
+    setIsSelectingExercises(false);
+    setPendingWorkoutConfig(null);
+  };
+
+  // شاشة نافذة اختيار وتخصيص تمارين اليوم قبل بدء الـ Timer
+  if (isSelectingExercises) {
+    return (
+      <div className="space-y-6 pb-24 max-w-2xl mx-auto">
+        <div className="flex items-center justify-between border-b pb-4">
+          <div>
+            <h1 className="font-display font-extrabold text-xl sm:text-2xl tracking-tight">
+              {lang === 'ar' ? 'تحديد تمارين هذا اليوم' : 'Select Exercises for Today'}
+            </h1>
+            <p className={`text-xs sm:text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
+              {lang === 'ar' 
+                ? 'اختر الحركات والعضلات التي ستلعبها اليوم بدقة قبل بدء المؤقت وتتبع المجموعات.' 
+                : 'Choose the exact exercises you want to perform today before starting the live timer.'}
+            </p>
+          </div>
+          <button
+            onClick={() => setIsSelectingExercises(false)}
+            className="p-2 rounded-xl hover:bg-white/10"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* فلاتر واختيار التمارين المتاحة */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-gray-400" />
+              <input
+                type="text"
+                value={pickerSearch}
+                onChange={(e) => setPickerSearch(e.target.value)}
+                placeholder={lang === 'ar' ? 'بحث عن تمرين في المكتبة...' : 'Search exercise in library...'}
+                className={`w-full ps-9 pe-3 py-2 rounded-xl text-xs sm:text-sm border focus:outline-none ${
+                  isDark
+                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-100'
+                    : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-slate-900'
+                }`}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowQuickCreateEx(!showQuickCreateEx)}
+              className="px-3.5 py-2 rounded-xl bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/30 text-xs font-semibold shrink-0 cursor-pointer"
+            >
+              {showQuickCreateEx ? (lang === 'ar' ? 'إخفاء' : 'Hide') : (lang === 'ar' ? '+ تمرين جديد' : '+ New')}
+            </button>
+          </div>
+
+          {showQuickCreateEx && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (!newExName.trim()) return;
+                const created = await addExercise({
+                  name: newExName.trim(),
+                  muscleGroup: newExMuscle,
+                });
+                setSelectedExerciseIdsForNewWorkout((prev) => [...prev, created.id]);
+                setNewExName('');
+                setShowQuickCreateEx(false);
+              }}
+              className={`p-3.5 rounded-xl border space-y-3 ${
+                isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(75,92%,56%)]/40' : 'bg-[hsl(76,78%,42%)]/5 border-[hsl(76,78%,42%)]/30'
+              }`}
+            >
+              <div className={`text-xs font-bold ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
+                {lang === 'ar' ? 'إنشاء تمرين مخصص جديد' : 'Create Custom Exercise'}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <input
+                  type="text"
+                  required
+                  value={newExName}
+                  onChange={(e) => setNewExName(e.target.value)}
+                  placeholder={lang === 'ar' ? 'اسم التمرين...' : 'Exercise name...'}
+                  className={`sm:col-span-2 px-3 py-2 rounded-lg text-xs border ${
+                    isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white' : 'bg-white border-[hsl(40,10%,85%)] text-slate-900'
+                  }`}
+                />
+                <select
+                  value={newExMuscle}
+                  onChange={(e) => setNewExMuscle(e.target.value as MuscleGroup)}
+                  className={`px-2 py-2 rounded-lg text-xs border ${
+                    isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white' : 'bg-white border-[hsl(40,10%,85%)] text-slate-900'
+                  }`}
+                >
+                  {MUSCLE_GROUPS.map((mg) => (
+                    <option key={mg} value={mg}>{translateMuscleGroup(mg, lang)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  className={`px-4 py-1.5 rounded-lg font-bold text-xs cursor-pointer ${
+                    isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
+                  }`}
+                >
+                  {lang === 'ar' ? 'إضافة وتحديد' : 'Create & Select'}
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* فلاتر العضلات */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
+            <button
+              onClick={() => setPickerMuscleFilter('ALL')}
+              className={`px-3 py-1 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
+                pickerMuscleFilter === 'ALL'
+                  ? isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
+                  : isDark ? 'bg-[hsl(240,5%,11%)] text-gray-300' : 'bg-[hsl(40,15%,94%)] text-slate-700'
+              }`}
+            >
+              {lang === 'ar' ? 'الكل' : 'All'}
+            </button>
+            {MUSCLE_GROUPS.map((mg) => (
+              <button
+                key={mg}
+                onClick={() => setPickerMuscleFilter(mg)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
+                  pickerMuscleFilter === mg
+                    ? isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
+                    : isDark ? 'bg-[hsl(240,5%,11%)] text-gray-300' : 'bg-[hsl(40,15%,94%)] text-slate-700'
+                }`}
+              >
+                {translateMuscleGroup(mg, lang)}
+              </button>
+            ))}
+          </div>
+
+          {/* قائمة التمارين للاختيار منها */}
+          <div className="max-h-[50vh] overflow-y-auto space-y-2 pr-1">
+            {filteredLibraryExercises.map((ex) => {
+              const isSelected = selectedExerciseIdsForNewWorkout.includes(ex.id);
+              return (
+                <div
+                  key={ex.id}
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedExerciseIdsForNewWorkout((prev) => prev.filter((id) => id !== ex.id));
+                    } else {
+                      setSelectedExerciseIdsForNewWorkout((prev) => [...prev, ex.id]);
+                    }
+                  }}
+                  className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all ${
+                    isSelected
+                      ? isDark
+                        ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)]'
+                        : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]'
+                      : isDark
+                      ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] hover:border-gray-600'
+                      : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)] hover:border-slate-400'
+                  }`}
+                >
+                  <div>
+                    <div className="font-display font-semibold text-sm">{ex.name}</div>
+                    <div className={`text-xs ${isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'}`}>
+                      {translateMuscleGroup(ex.muscleGroup, lang)}
+                    </div>
+                  </div>
+                  <div className={`w-6 h-6 rounded-lg flex items-center justify-center border ${
+                    isSelected 
+                      ? isDark ? 'bg-[hsl(75,92%,56%)] text-slate-950 border-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]'
+                      : 'border-gray-500'
+                  }`}>
+                    {isSelected && <Check className="w-3.5 h-3.5" />}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* زر التأكيد وبدء المؤقت والجلسة الفعلية */}
+          <div className="pt-3 border-t flex items-center justify-between">
+            <span className="text-xs font-mono-num text-gray-400">
+              {selectedExerciseIdsForNewWorkout.length} {lang === 'ar' ? 'تمارين مختارة لهذا اليوم' : 'exercises selected'}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setIsSelectingExercises(false)}
+                className="px-4 py-2 rounded-xl text-xs font-medium border"
+              >
+                {lang === 'ar' ? 'إلغاء' : 'Cancel'}
+              </button>
+              <button
+                onClick={handleConfirmAndStartWorkout}
+                className={`px-6 py-2.5 rounded-xl font-display font-bold text-xs flex items-center gap-2 cursor-pointer ${
+                  isDark ? 'bg-[hsl(75,92%,56%)] text-slate-950' : 'bg-[hsl(76,78%,42%)] text-white'
+                }`}
+              >
+                <Play className="w-4 h-4 fill-current" />
+                <span>{lang === 'ar' ? 'تأكيد وبدء المؤقت والتمارين' : 'Confirm & Start Timer'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // الواجهة الافتتاحية لاختيار الخطة عند عدم وجود جلسة نشطة قيد التشغيل
   if (!activeWorkout) {
     return (
       <div className="space-y-6 pb-24">
@@ -300,8 +547,8 @@ export const StartWorkout: React.FC = () => {
           </h1>
           <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
             {lang === 'ar'
-              ? 'اختر خطة جاهزة من جدولك الأسبوعي. يتم تسجيل التاريخ والوقت الفعليين لجهازك تلقائياً.'
-              : 'Choose a workout from your weekly schedule. Your local date and time are recorded automatically.'}
+              ? 'اختر اليوم أو خطة الجدول لتبدأ بتحديد تمارينك الخاصة لهذه الجلسة.'
+              : 'Choose a day or schedule plan to select your custom exercises for this session.'}
           </p>
         </div>
 
@@ -351,46 +598,16 @@ export const StartWorkout: React.FC = () => {
                   <h3 className="text-base sm:text-lg font-display font-bold">
                     {dayPlan.title}
                   </h3>
-                  {dayPlan.muscleGroups.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {dayPlan.muscleGroups.map((mg) => (
-                        <span
-                          key={mg}
-                          className={`text-[11px] px-2 py-0.5 rounded-md font-medium ${
-                            isDark
-                              ? 'bg-[hsl(240,5%,11%)] text-gray-300 border border-[hsl(240,4%,19%)]'
-                              : 'bg-[hsl(40,15%,94%)] text-slate-700'
-                          }`}
-                        >
-                          {translateMuscleGroup(mg, lang)}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-inherit">
-                  {dayPlan.workoutType !== 'strength' && (
-                    <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                      {dayPlan.workoutType === 'rest'
-                        ? lang === 'ar'
-                          ? 'يوم راحة مخطط'
-                          : 'Scheduled rest day'
-                        : lang === 'ar'
-                        ? 'تمرين كارديو مخصص'
-                        : 'Custom Cardio Session'}
-                    </span>
-                  )}
+                  <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
+                    {dayPlan.workoutType === 'rest'
+                      ? (lang === 'ar' ? 'يوم راحة' : 'Rest day')
+                      : (lang === 'ar' ? 'انقر لاختيار تمارين اليوم' : 'Click to pick exercises')}
+                  </span>
                   <button
-                    onClick={() =>
-                      startNewWorkout({
-                        workoutType: dayPlan.workoutType === 'cardio' ? 'cardio' : 'strength',
-                        title: dayPlan.workoutType === 'rest' ? 'Bonus Session' : dayPlan.title,
-                        muscleGroups: dayPlan.muscleGroups.length > 0 ? dayPlan.muscleGroups : ['Cardio'],
-                        exerciseIds: dayPlan.assignedExerciseIds,
-                        actualDate: todayStr,
-                      })
-                    }
+                    onClick={() => handleInitiateWorkoutSetup(dayPlan)}
                     className={`px-4 py-2 rounded-xl font-display font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
                       isDark
                         ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
@@ -398,7 +615,7 @@ export const StartWorkout: React.FC = () => {
                     }`}
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>{lang === 'ar' ? 'بدء التمرين' : 'Start Workout'}</span>
+                    <span>{lang === 'ar' ? 'اختيار تمارين وبدء' : 'Pick & Start'}</span>
                   </button>
                 </div>
               </div>
@@ -409,6 +626,7 @@ export const StartWorkout: React.FC = () => {
     );
   }
 
+  // الشاشة النشطة بعد بدء الجلسة الفعلية وتشغيل المؤقت وتتبع المجموعات (تبقى كما هي تماماً دون تغيير)
   const totalCompletedSets = activeWorkout.exercises.reduce(
     (sum, ex) => sum + ex.sets.length,
     0
@@ -421,6 +639,7 @@ export const StartWorkout: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-28">
+      {/* هيدر الجلسة النشطة والمؤقت */}
       <div
         className={`rounded-2xl p-4 sm:p-5 border shadow-lg ${
           isDark
@@ -443,12 +662,11 @@ export const StartWorkout: React.FC = () => {
                     isDark ? 'bg-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]'
                   }`}
                 />
-                {lang === 'ar' ? 'جلسة نشطة (حفظ تلقائي)' : 'LIVE SESSION • AUTOSAVED'}
+                {lang === 'ar' ? 'جلسة نشطة قيد التشغيل (الـ Timer يعمل)' : 'LIVE SESSION • TIMER RUNNING'}
               </span>
               <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                 {lang === 'ar' ? 'البدء:' : 'Started:'}{' '}
-                {formatTimeFromTimestamp(activeWorkout.startTimestamp, lang)} (
-                {activeWorkout.timezone})
+                {formatTimeFromTimestamp(activeWorkout.startTimestamp, lang)}
               </span>
             </div>
 
@@ -461,45 +679,6 @@ export const StartWorkout: React.FC = () => {
                 isDark ? 'text-white' : 'text-[hsl(240,10%,9%)]'
               }`}
             />
-
-            <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
-              <div
-                className={`flex items-center gap-1.5 font-medium ${
-                  isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
-                }`}
-              >
-                <CalendarIcon className="w-4 h-4" />
-                <span>{formatFullDate(activeWorkout.actualDate, lang)}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <label
-                  htmlFor="active-workout-date"
-                  className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}
-                >
-                  {lang === 'ar' ? 'تغيير التاريخ:' : 'Change Date:'}
-                </label>
-                <input
-                  id="active-workout-date"
-                  type="date"
-                  value={activeWorkout.actualDate}
-                  onChange={(e) => handleDateChange(e.target.value)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-mono-num border focus:outline-none focus:border-[hsl(75,92%,56%)] ${
-                    isDark
-                      ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200'
-                      : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-slate-800'
-                  }`}
-                />
-              </div>
-
-              {totalSessionCalories > 0 && (
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 text-xs font-bold font-mono-num">
-                  <Flame className="w-3.5 h-3.5" />
-                  <span>
-                    {totalSessionCalories} {lang === 'ar' ? 'سعرة حرارية محروقة' : 'Total kcal'}
-                  </span>
-                </div>
-              )}
-            </div>
           </div>
 
           <div className="flex items-center gap-2.5 self-stretch sm:self-auto">
@@ -526,35 +705,9 @@ export const StartWorkout: React.FC = () => {
             </button>
           </div>
         </div>
-
-        <div className="mt-4 pt-3 border-t border-inherit flex flex-wrap items-center gap-1.5">
-          <span className={`text-xs me-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-            {lang === 'ar' ? 'العضلات:' : 'Muscle Groups:'}
-          </span>
-          {MUSCLE_GROUPS.map((mg) => {
-            const selected = activeWorkout.muscleGroups.includes(mg);
-            return (
-              <button
-                key={mg}
-                type="button"
-                onClick={() => handleToggleWorkoutMuscleGroup(mg)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
-                  selected
-                    ? isDark
-                      ? 'bg-[hsl(75,92%,56%)]/20 border-[hsl(75,92%,56%)] text-[hsl(75,92%,56%)] font-semibold'
-                      : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)] text-[hsl(76,78%,42%)] font-semibold'
-                    : isDark
-                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-400 hover:text-gray-200'
-                    : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-600'
-                }`}
-              >
-                {translateMuscleGroup(mg, lang)}
-              </button>
-            );
-          })}
-        </div>
       </div>
 
+      {/* قائمة التمارين والمجموعات النشطة */}
       <div className="space-y-6">
         {(() => {
           const groups = new Map<MuscleGroup, ExerciseEntry[]>();
@@ -570,14 +723,12 @@ export const StartWorkout: React.FC = () => {
             return (
               <div
                 className={`p-10 rounded-2xl border border-dashed text-center space-y-3 ${
-                  isDark
-                    ? 'border-[hsl(240,4%,19%)] bg-[hsl(240,5%,7.5%)] text-gray-400'
-                    : 'border-[hsl(40,10%,85%)] bg-white text-slate-500'
+                  isDark ? 'border-[hsl(240,4%,19%)] bg-[hsl(240,5%,7.5%)] text-gray-400' : 'border-[hsl(40,10%,85%)] bg-white text-slate-500'
                 }`}
               >
                 <p className="text-sm font-medium">
                   {lang === 'ar'
-                    ? 'لم تقم بإضافة أي تمارين لهذه الجلسة بعد. اضغط على الزر أدناه لاختيار أو إنشاء التمارين.'
+                    ? 'لم تقم بإضافة أي تمارين لهذه الجلسة بعد. اضغط على الزر أدناه لإضافة تمارينك.'
                     : 'No exercises added to this session yet. Click below to add exercises.'}
                 </p>
               </div>
@@ -586,121 +737,52 @@ export const StartWorkout: React.FC = () => {
 
           return groupEntries.map(([muscleGroup, groupExercises], groupIdx) => (
             <div key={muscleGroup}>
-              {groupIdx > 0 && (
-                <hr
-                  className={`mb-6 ${
-                    isDark ? 'border-[hsl(240,4%,19%)]' : 'border-[hsl(40,10%,88%)]'
-                  }`}
-                />
-              )}
+              {groupIdx > 0 && <hr className={`mb-6 ${isDark ? 'border-[hsl(240,4%,19%)]' : 'border-[hsl(40,10%,88%)]'}`} />}
               <div className="flex items-center gap-3 mb-4">
-                <h2
-                  className={`text-xs font-bold uppercase tracking-widest ${
-                    isDark ? 'text-gray-400' : 'text-slate-500'
-                  }`}
-                >
+                <h2 className={`text-xs font-bold uppercase tracking-widest ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                   {translateMuscleGroup(muscleGroup, lang)}
                 </h2>
-                <div
-                  className={`flex-1 h-px ${
-                    isDark ? 'bg-[hsl(240,4%,19%)]/50' : 'bg-[hsl(40,10%,88%)]'
-                  }`}
-                />
+                <div className={`flex-1 h-px ${isDark ? 'bg-[hsl(240,4%,19%)]/50' : 'bg-[hsl(40,10%,88%)]'}`} />
               </div>
 
               <div className="space-y-4">
                 {groupExercises.map((entry) => {
                   const isCardio = isCardioExercise(entry);
-                  const lastPerf = getLastPerformanceForExercise(
-                    entry.exerciseId,
-                    completedWorkouts
-                  );
+                  const lastPerf = getLastPerformanceForExercise(entry.exerciseId, completedWorkouts);
 
                   return (
                     <div
                       key={entry.id}
                       className={`rounded-2xl border p-4 sm:p-5 space-y-4 transition-all ${
-                        isDark
-                          ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
-                          : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)] shadow-xs'
+                        isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)] shadow-xs'
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-inherit">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2.5">
-                            <h3 className="font-display font-bold text-base sm:text-lg">
-                              {entry.exerciseNameSnapshot}
-                            </h3>
-                          </div>
-                          {lastPerf && lastPerf.bestSet && (
-                            <div
-                              className={`flex items-center gap-1.5 text-xs ${
-                                isDark ? 'text-gray-400' : 'text-slate-500'
-                              }`}
-                            >
-                              <History className="w-3.5 h-3.5 text-[hsl(75,92%,56%)]" />
-                              <span>
-                                {lang === 'ar' ? 'آخر أداء مسجل' : 'Last recorded'} (
-                                {formatShortDate(lastPerf.actualDate, lang)}):
-                              </span>
-                              <strong
-                                className={`font-mono-num ${
-                                  isDark
-                                    ? 'text-[hsl(75,92%,56%)]'
-                                    : 'text-[hsl(76,78%,42%)]'
-                                }`}
-                              >
-                                {isCardio
-                                  ? `${lastPerf.bestSet.reps} ${lang === 'ar' ? 'دقيقة' : 'mins'}`
-                                  : formatSetPerformance(
-                                      lastPerf.bestSet.weight,
-                                      lastPerf.weightType,
-                                      lastPerf.bestSet.reps,
-                                      lang
-                                    )}
-                              </strong>
-                            </div>
-                          )}
+                          <h3 className="font-display font-bold text-base sm:text-lg">
+                            {entry.exerciseNameSnapshot}
+                          </h3>
                         </div>
 
                         <div className="flex items-center justify-between sm:justify-end gap-2">
                           {!isCardio && (
-                            <div
-                              className={`inline-flex rounded-xl p-1 border ${
-                                isDark
-                                  ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)]'
-                                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)]'
-                              }`}
-                              role="group"
-                              aria-label="Weight unit selector"
-                            >
-                              {(
-                                [
-                                  { id: 'kg', label: 'KG' },
-                                  { id: 'lbs', label: 'LB' },
-                                  {
-                                    id: 'none',
-                                    label: lang === 'ar' ? 'وزن الجسم' : 'Bodyweight',
-                                  },
-                                ] as const
-                              ).map((u) => {
-                                const isSelected = entry.weightType === u.id;
+                            <div className={`inline-flex rounded-xl p-1 border ${
+                              isDark ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)]' : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)]'
+                            }`}>
+                              {(['kg', 'lbs', 'none'] as const).map((u) => {
+                                const isSelected = entry.weightType === u;
                                 return (
                                   <button
-                                    key={u.id}
+                                    key={u}
                                     type="button"
-                                    onClick={() => handleExerciseUnitChange(entry.id, u.id)}
+                                    onClick={() => handleExerciseUnitChange(entry.id, u)}
                                     className={`px-3 py-1.5 rounded-lg text-xs font-mono-num font-bold transition-all cursor-pointer ${
                                       isSelected
-                                        ? isDark
-                                          ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] shadow-xs'
-                                          : 'bg-[hsl(76,78%,42%)] text-white shadow-xs'
-                                        : isDark
-                                        ? 'text-gray-400 hover:text-gray-200'
-                                        : 'text-slate-600 hover:text-slate-900'
+                                        ? isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] shadow-xs' : 'bg-[hsl(76,78%,42%)] text-white shadow-xs'
+                                        : isDark ? 'text-gray-400 hover:text-gray-200' : 'text-slate-600 hover:text-slate-900'
                                     }`}
                                   >
-                                    {u.label}
+                                    {u === 'none' ? (lang === 'ar' ? 'وزن الجسم' : 'BW') : u.toUpperCase()}
                                   </button>
                                 );
                               })}
@@ -709,305 +791,88 @@ export const StartWorkout: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => handleRemoveExerciseEntry(entry.id)}
-                            className={`p-2 rounded-xl transition-colors cursor-pointer ${
-                              isDark
-                                ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'
-                                : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
-                            }`}
-                            title="Remove exercise from workout"
+                            className="p-2 rounded-xl text-red-400 hover:bg-red-500/10 cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
 
-                      {isCardio ? (
-                        <div className="space-y-3 py-2">
-                          {entry.sets.map((setItem) => (
-                            <div
-                              key={setItem.id}
-                              className={`p-3.5 rounded-xl border flex flex-col md:flex-row md:items-center justify-between gap-3 ${
-                                isDark
-                                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]'
-                                  : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 flex-1">
-                                <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
-                                <label className="text-xs font-semibold whitespace-nowrap">
-                                  {lang === 'ar' ? 'المدة (دقائق):' : 'Duration (Mins):'}
-                                </label>
-                                <input
-                                  type="number"
-                                  inputMode="numeric"
-                                  min={1}
-                                  value={setItem.reps || 30}
-                                  onChange={(e) =>
-                                    handleUpdateSet(
-                                      entry.id,
-                                      setItem.id,
-                                      'reps',
-                                      e.target.value === '' ? 0 : Number(e.target.value)
-                                    )
-                                  }
-                                  className={`w-24 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-cyan-500 ${
-                                    isDark
-                                      ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
-                                      : 'bg-white border-[hsl(40,10%,85%)] text-slate-900'
-                                  }`}
-                                />
-                                <span className="text-xs font-semibold text-gray-400">
-                                  {lang === 'ar' ? 'دقيقة' : 'min'}
-                                </span>
-                              </div>
-
-                              <div className="flex items-center gap-2 flex-1">
-                                <Flame className="w-4 h-4 text-orange-400 shrink-0" />
-                                <label className="text-xs font-semibold whitespace-nowrap text-orange-500">
-                                  {lang === 'ar' ? 'السعرات الحرارية:' : 'Calories Burned:'}
-                                </label>
-                                <input
-                                  type="number"
-                                  inputMode="numeric"
-                                  min={0}
-                                  placeholder="e.g. 300"
-                                  value={entry.caloriesBurned ?? ''}
-                                  onChange={(e) =>
-                                    handleUpdateCalories(
-                                      entry.id,
-                                      e.target.value === '' ? 0 : Number(e.target.value)
-                                    )
-                                  }
-                                  className={`w-28 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-orange-500 ${
-                                    isDark
-                                      ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-orange-300'
-                                      : 'bg-white border-orange-200 text-orange-900'
-                                  }`}
-                                />
-                                <span className="text-xs font-semibold text-orange-400">kcal</span>
-                              </div>
-
-                              <div className="flex items-center gap-1.5 overflow-x-auto">
-                                {[15, 30, 45, 60].map((m) => (
-                                  <button
-                                    key={m}
-                                    type="button"
-                                    onClick={() => handleUpdateSet(entry.id, setItem.id, 'reps', m)}
-                                    className={`px-2.5 py-1 rounded-lg text-xs font-mono-num font-semibold border cursor-pointer ${
-                                      setItem.reps === m
-                                        ? 'bg-cyan-500 text-slate-950 border-cyan-500'
-                                        : isDark
-                                        ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-gray-300'
-                                        : 'bg-white border-[hsl(40,10%,85%)] text-slate-700'
-                                    }`}
-                                  >
-                                    {m}m
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
+                      {/* مجموعات العدات والأوزان */}
+                      <div className="space-y-2">
+                        {entry.sets.map((setItem) => (
                           <div
-                            className={`grid grid-cols-12 gap-2 px-2 text-[11px] font-semibold uppercase tracking-wider ${
-                              isDark ? 'text-gray-400' : 'text-slate-500'
+                            key={setItem.id}
+                            className={`grid grid-cols-12 gap-2 items-center p-2 rounded-xl border ${
+                              setItem.completed
+                                ? isDark ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/30' : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30'
+                                : isDark ? 'bg-[hsl(240,5%,11%)]/80 border-[hsl(240,4%,19%)]' : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
                             }`}
                           >
-                            <div className="col-span-2 sm:col-span-1 text-center">
-                              {lang === 'ar' ? 'مجموعة' : 'Set'}
+                            <div className="col-span-2 sm:col-span-1 flex justify-center">
+                              <span className={`w-7 h-7 rounded-lg font-mono-num text-xs font-bold flex items-center justify-center ${
+                                isDark ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/15 text-[hsl(76,78%,42%)]'
+                              }`}>
+                                {setItem.setNumber}
+                              </span>
                             </div>
                             <div className="col-span-4 sm:col-span-5">
-                              {entry.weightType === 'none'
-                                ? lang === 'ar'
-                                  ? 'الوزن (وزن الجسم)'
-                                  : 'Weight (Bodyweight)'
-                                : `${lang === 'ar' ? 'الوزن' : 'Weight'} (${
-                                    entry.weightType === 'lbs' ? 'LB' : 'KG'
-                                  })`}
+                              {entry.weightType === 'none' ? (
+                                <div className="h-11 px-3 rounded-xl border flex items-center justify-center text-xs font-semibold">
+                                  {lang === 'ar' ? 'وزن الجسم' : 'Bodyweight'}
+                                </div>
+                              ) : (
+                                <input
+                                  type="number"
+                                  inputMode="decimal"
+                                  value={setItem.weight ?? ''}
+                                  onChange={(e) => handleUpdateSet(entry.id, setItem.id, 'weight', e.target.value === '' ? 0 : Number(e.target.value))}
+                                  className={`w-full h-11 px-3 rounded-xl font-mono-num text-base font-bold border focus:outline-none ${
+                                    isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white' : 'bg-white border-[hsl(40,10%,85%)] text-slate-900'
+                                  }`}
+                                />
+                              )}
                             </div>
                             <div className="col-span-4 sm:col-span-4">
-                              {lang === 'ar' ? 'العدات (Reps)' : 'Repetitions (Reps)'}
+                              <input
+                                type="number"
+                                inputMode="numeric"
+                                value={setItem.reps}
+                                onChange={(e) => handleUpdateSet(entry.id, setItem.id, 'reps', e.target.value === '' ? 0 : Number(e.target.value))}
+                                className={`w-full h-11 px-3 rounded-xl font-mono-num text-base font-bold border focus:outline-none ${
+                                  isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white' : 'bg-white border-[hsl(40,10%,85%)] text-slate-900'
+                                }`}
+                              />
                             </div>
-                            <div className="col-span-2 text-end">
-                              {lang === 'ar' ? 'إجراء' : 'Action'}
+                            <div className="col-span-2 flex items-center justify-end gap-1">
+                              <button
+                                type="button"
+                                onClick={() => handleUpdateSet(entry.id, setItem.id, 'completed', !setItem.completed)}
+                                className={`w-9 h-9 rounded-xl flex items-center justify-center border cursor-pointer ${
+                                  setItem.completed
+                                    ? isDark ? 'bg-[hsl(75,92%,56%)] text-slate-950 border-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]'
+                                    : 'border-gray-500 text-gray-400'
+                                }`}
+                              >
+                                <Check className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
+                        ))}
 
-                          {entry.sets.length === 0 && (
-                            <div
-                              className={`p-4 rounded-xl border border-dashed text-center text-xs ${
-                                isDark
-                                  ? 'border-[hsl(240,4%,19%)] text-gray-400'
-                                  : 'border-[hsl(40,10%,85%)] text-slate-500'
-                              }`}
-                            >
-                              {lang === 'ar'
-                                ? 'تم حذف جميع المجموعات. اضغط على "+ إضافة مجموعة" لإضافة مجموعة جديدة.'
-                                : 'No sets remaining. Click "+ Add Set" to add one.'}
-                            </div>
-                          )}
-
-                          {entry.sets.map((setItem) => (
-                            <div
-                              key={setItem.id}
-                              className={`grid grid-cols-12 gap-2 items-center p-2 rounded-xl border transition-colors ${
-                                setItem.completed
-                                  ? isDark
-                                    ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/30'
-                                    : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30'
-                                  : isDark
-                                  ? 'bg-[hsl(240,5%,11%)]/80 border-[hsl(240,4%,19%)]'
-                                  : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
-                              }`}
-                            >
-                              <div className="col-span-2 sm:col-span-1 flex justify-center">
-                                <span
-                                  className={`w-7 h-7 rounded-lg font-mono-num text-xs font-bold flex items-center justify-center ${
-                                    isDark
-                                      ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
-                                      : 'bg-[hsl(76,78%,42%)]/15 text-[hsl(76,78%,42%)]'
-                                  }`}
-                                >
-                                  {setItem.setNumber}
-                                </span>
-                              </div>
-                              <div className="col-span-4 sm:col-span-5">
-                                {entry.weightType === 'none' ? (
-                                  <div
-                                    className={`h-11 px-3 rounded-xl border flex items-center justify-center text-xs font-semibold ${
-                                      isDark
-                                        ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-[hsl(75,92%,56%)]'
-                                        : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)] text-[hsl(76,78%,42%)]'
-                                    }`}
-                                  >
-                                    {lang === 'ar' ? 'وزن الجسم' : 'Bodyweight'}
-                                  </div>
-                                ) : (
-                                  <div className="relative">
-                                    <input
-                                      type="number"
-                                      inputMode="decimal"
-                                      step="any"
-                                      min={0}
-                                      value={
-                                        setItem.weight === null || setItem.weight === undefined
-                                          ? ''
-                                          : setItem.weight
-                                      }
-                                      onChange={(e) =>
-                                        handleUpdateSet(
-                                          entry.id,
-                                          setItem.id,
-                                          'weight',
-                                          e.target.value === '' ? 0 : Number(e.target.value)
-                                        )
-                                      }
-                                      onFocus={(e) => e.target.select()}
-                                      className={`w-full h-11 px-3 pe-10 rounded-xl font-mono-num text-base font-bold border focus:outline-none focus:border-[hsl(75,92%,56%)] ${
-                                        isDark
-                                          ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
-                                          : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
-                                      }`}
-                                    />
-                                    <span
-                                      className={`absolute top-1/2 -translate-y-1/2 end-3 text-xs font-mono-num font-semibold pointer-events-none uppercase ${
-                                        isDark ? 'text-gray-400' : 'text-slate-400'
-                                      }`}
-                                    >
-                                      {entry.weightType === 'lbs' ? 'lb' : 'kg'}
-                                    </span>
-                                  </div>
-                                )}
-                              </div>
-                              <div className="col-span-4 sm:col-span-4">
-                                <div className="relative">
-                                  <input
-                                    type="number"
-                                    inputMode="numeric"
-                                    min={0}
-                                    value={setItem.reps}
-                                    onChange={(e) =>
-                                      handleUpdateSet(
-                                        entry.id,
-                                        setItem.id,
-                                        'reps',
-                                        e.target.value === '' ? 0 : Number(e.target.value)
-                                      )
-                                    }
-                                    onFocus={(e) => e.target.select()}
-                                    className={`w-full h-11 px-3 pe-12 rounded-xl font-mono-num text-base font-bold border focus:outline-none focus:border-[hsl(75,92%,56%)] ${
-                                      isDark
-                                        ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
-                                        : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
-                                    }`}
-                                  />
-                                  <span
-                                    className={`absolute top-1/2 -translate-y-1/2 end-3 text-xs font-mono-num pointer-events-none ${
-                                      isDark ? 'text-gray-400' : 'text-slate-400'
-                                    }`}
-                                  >
-                                    {lang === 'ar' ? 'عدات' : 'reps'}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="col-span-2 flex items-center justify-end gap-1">
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleUpdateSet(
-                                      entry.id,
-                                      setItem.id,
-                                      'completed',
-                                      !setItem.completed
-                                    )
-                                  }
-                                  className={`w-9 h-9 rounded-xl flex items-center justify-center border transition-all cursor-pointer ${
-                                    setItem.completed
-                                      ? isDark
-                                        ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]'
-                                        : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]'
-                                      : isDark
-                                      ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-gray-400 hover:text-[hsl(75,92%,56%)]'
-                                      : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-slate-400 hover:text-[hsl(76,78%,42%)]'
-                                  }`}
-                                  title="Mark set complete"
-                                >
-                                  <Check className="w-4 h-4" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleRemoveSet(entry.id, setItem.id)}
-                                  className={`w-8 h-9 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
-                                    isDark
-                                      ? 'text-gray-500 hover:text-red-400 hover:bg-red-500/10'
-                                      : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
-                                  }`}
-                                  title={lang === 'ar' ? 'حذف المجموعة' : 'Delete set'}
-                                >
-                                  <X className="w-4 h-4" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-
-                          <div className="pt-2">
-                            <button
-                              type="button"
-                              onClick={() => handleAddSet(entry.id)}
-                              className={`py-2.5 px-4 rounded-xl text-xs font-display font-bold border flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                                isDark
-                                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,56%)] hover:text-[hsl(240,10%,9%)]'
-                                  : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/40 text-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,42%)] hover:text-white'
-                              }`}
-                            >
-                              <Plus className="w-4 h-4" />
-                              <span>{lang === 'ar' ? 'إضافة مجموعة (+ Set)' : 'Add Set'}</span>
-                            </button>
-                          </div>
+                        <div className="pt-2">
+                          <button
+                            type="button"
+                            onClick={() => handleAddSet(entry.id)}
+                            className={`py-2 px-4 rounded-xl text-xs font-bold border flex items-center gap-1.5 cursor-pointer ${
+                              isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
+                            }`}
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>{lang === 'ar' ? 'إضافة مجموعة' : 'Add Set'}</span>
+                          </button>
                         </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })}
@@ -1018,300 +883,56 @@ export const StartWorkout: React.FC = () => {
 
         <button
           type="button"
-          onClick={() => {
-            setPickerMuscleFilter(activeWorkout.muscleGroups[0] || 'ALL');
-            setIsAddExerciseOpen(true);
-          }}
-          className={`w-full py-4 px-5 rounded-2xl border-2 border-dashed font-display font-bold text-sm flex items-center justify-center gap-2 transition-all cursor-pointer ${
-            isDark
-              ? 'border-[hsl(75,92%,56%)]/40 bg-[hsl(75,92%,56%)]/5 hover:bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
-              : 'border-[hsl(76,78%,42%)]/40 bg-[hsl(76,78%,42%)]/5 hover:bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
+          onClick={() => setIsAddExerciseOpen(true)}
+          className={`w-full py-3.5 px-5 rounded-2xl border-2 border-dashed font-display font-bold text-sm flex items-center justify-center gap-2 cursor-pointer ${
+            isDark ? 'border-[hsl(75,92%,56%)]/40 bg-[hsl(75,92%,56%)]/5 text-[hsl(75,92%,56%)]' : 'border-[hsl(76,78%,42%)]/40 bg-[hsl(76,78%,42%)]/5 text-[hsl(76,78%,42%)]'
           }`}
         >
           <Plus className="w-5 h-5" />
-          <span>{lang === 'ar' ? 'إضافة تمرين للجلسة الحالية' : 'Add Exercise to Workout'}</span>
+          <span>{lang === 'ar' ? 'إضافة تمرين آخر لهذه الجلسة' : 'Add Another Exercise to Session'}</span>
         </button>
       </div>
 
-      <div
-        className={`rounded-2xl p-5 border ${
-          isDark
-            ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
-            : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)] shadow-xs'
-        }`}
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-            <span>
-              {activeWorkout.exercises.length} {lang === 'ar' ? 'تمارين' : 'exercises'} •{' '}
-              {totalCompletedSets} {lang === 'ar' ? 'مجموعات' : 'sets'}
-              {totalSessionCalories > 0 && ` • ${totalSessionCalories} kcal`}
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleFinishSession}
-            className={`w-full sm:w-auto px-6 py-3.5 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer ${
-              isDark
-                ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)] shadow-[hsl(75,92%,56%)]/20'
-                : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white shadow-[hsl(76,78%,42%)]/20'
-            }`}
-          >
-            <CheckCircle2 className="w-5 h-5" />
-            <span>
-              {lang === 'ar' ? 'إنهاء التمرين وحفظه في السجل' : 'Finish & Save Completed Workout'}
-            </span>
-          </button>
-        </div>
-      </div>
-
+      {/* نافذة إضافة تمرين إضافي أثناء التمرين الحي */}
       {isAddExerciseOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div
-            className={`w-full max-w-xl rounded-2xl border p-5 space-y-4 max-h-[88vh] flex flex-col ${
-              isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]' : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)]'
-            }`}
-          >
-            <div className="flex items-center justify-between border-b border-inherit pb-3">
-              <div>
-                <h3 className="font-display font-bold text-base">
-                  {lang === 'ar' ? 'اختر تمريناً لإضافته' : 'Select Exercise to Add'}
-                </h3>
-                <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                  {lang === 'ar' ? 'اختر من المكتبة أو أنشئ تمريناً مخصصاً جديداً فوراً' : 'Choose from your library or create a new custom exercise'}
-                </p>
-              </div>
+          <div className={`w-full max-w-xl rounded-2xl border p-5 space-y-4 max-h-[85vh] flex flex-col ${
+            isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]' : 'bg-white border-[hsl(40,10%,88%)]'
+          }`}>
+            <div className="flex items-center justify-between border-b pb-3">
+              <h3 className="font-display font-bold text-base">
+                {lang === 'ar' ? 'إضافة تمرين إضافي للجلسة' : 'Add Exercise to Session'}
+              </h3>
               <button onClick={() => setIsAddExerciseOpen(false)} className="p-1.5 rounded-lg hover:bg-white/10">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute top-1/2 -translate-y-1/2 start-3 text-gray-400" />
-                <input
-                  type="text"
-                  value={pickerSearch}
-                  onChange={(e) => setPickerSearch(e.target.value)}
-                  placeholder={lang === 'ar' ? 'بحث عن تمرين...' : 'Search exercise...'}
-                  className={`w-full ps-9 pe-3 py-2 rounded-xl text-xs sm:text-sm border focus:outline-none focus:border-[hsl(75,92%,56%)] ${
-                    isDark
-                      ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-100'
-                      : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,85%)] text-slate-900'
-                  }`}
-                />
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowQuickCreateEx(!showQuickCreateEx)}
-                className="px-3 py-2 rounded-xl bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/30 text-xs font-semibold shrink-0 cursor-pointer"
-              >
-                {showQuickCreateEx
-                  ? lang === 'ar'
-                    ? 'إخفاء الإنشاء'
-                    : 'Hide New'
-                  : lang === 'ar'
-                  ? '+ تمرين جديد'
-                  : '+ New Custom'}
-              </button>
-            </div>
-
-            {showQuickCreateEx && (
-              <form
-                onSubmit={handleQuickCreateAndAddExercise}
-                className={`p-3.5 rounded-xl border space-y-3 ${
-                  isDark
-                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(75,92%,56%)]/40'
-                    : 'bg-[hsl(76,78%,42%)]/5 border-[hsl(76,78%,42%)]/30'
-                }`}
-              >
+            <div className="flex-1 overflow-y-auto space-y-2">
+              {exercises.map((ex) => (
                 <div
-                  className={`text-xs font-bold ${
-                    isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                  key={ex.id}
+                  className={`p-3 rounded-xl border flex items-center justify-between ${
+                    isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]' : 'bg-slate-50 border-slate-200'
                   }`}
                 >
-                  {lang === 'ar' ? 'إنشاء تمرين جديد وإضافته فوراً' : 'Create & Add Custom Exercise'}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <input
-                    type="text"
-                    required
-                    value={newExName}
-                    onChange={(e) => setNewExName(e.target.value)}
-                    placeholder={
-                      lang === 'ar' ? 'اسم التمرين (مثال: Treadmill)...' : 'Exercise Name...'
-                    }
-                    className={`sm:col-span-2 px-3 py-2 rounded-lg text-xs border ${
-                      isDark
-                        ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
-                        : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
-                    }`}
-                  />
-                  <select
-                    value={newExMuscle}
-                    onChange={(e) => setNewExMuscle(e.target.value as MuscleGroup)}
-                    className={`px-2.5 py-2 rounded-lg text-xs border ${
-                      isDark
-                        ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
-                        : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
-                    }`}
-                  >
-                    {MUSCLE_GROUPS.map((mg) => (
-                      <option key={mg} value={mg}>
-                        {translateMuscleGroup(mg, lang)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center justify-end gap-2">
+                  <div>
+                    <div className="font-semibold text-sm">{ex.name}</div>
+                    <div className="text-xs text-gray-400">{translateMuscleGroup(ex.muscleGroup, lang)}</div>
+                  </div>
                   <button
-                    type="submit"
-                    className={`px-4 py-1.5 rounded-lg font-bold text-xs cursor-pointer ${
-                      isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
+                    onClick={() => {
+                      handleAddExerciseToSession(ex.id);
+                      setIsAddExerciseOpen(false);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl font-semibold text-xs cursor-pointer ${
+                      isDark ? 'bg-[hsl(75,92%,56%)] text-slate-950' : 'bg-[hsl(76,78%,42%)] text-white'
                     }`}
                   >
-                    {lang === 'ar' ? 'حفظ وإضافة' : 'Create & Add'}
+                    {lang === 'ar' ? 'إضافة' : 'Add'}
                   </button>
                 </div>
-              </form>
-            )}
-
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
-              <button
-                onClick={() => setPickerMuscleFilter('ALL')}
-                className={`px-3 py-1 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
-                  pickerMuscleFilter === 'ALL'
-                    ? isDark
-                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]'
-                      : 'bg-[hsl(76,78%,42%)] text-white'
-                    : isDark
-                    ? 'bg-[hsl(240,5%,11%)] text-gray-300'
-                    : 'bg-[hsl(40,15%,94%)] text-slate-700'
-                }`}
-              >
-                {lang === 'ar' ? 'الكل' : 'All'}
-              </button>
-              {MUSCLE_GROUPS.map((mg) => (
-                <button
-                  key={mg}
-                  onClick={() => setPickerMuscleFilter(mg)}
-                  className={`px-3 py-1 rounded-lg text-xs font-semibold shrink-0 cursor-pointer ${
-                    pickerMuscleFilter === mg
-                      ? isDark
-                        ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]'
-                        : 'bg-[hsl(76,78%,42%)] text-white'
-                      : isDark
-                      ? 'bg-[hsl(240,5%,11%)] text-gray-300'
-                      : 'bg-[hsl(40,15%,94%)] text-slate-700'
-                  }`}
-                >
-                  {translateMuscleGroup(mg, lang)}
-                </button>
               ))}
-            </div>
-
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {filteredLibraryExercises.map((ex) => {
-                const alreadyInSession = activeWorkout.exercises.some(
-                  (e) => e.exerciseId === ex.id
-                );
-                return (
-                  <div
-                    key={ex.id}
-                    className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${
-                      isDark
-                        ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]'
-                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
-                    }`}
-                  >
-                    <div>
-                      <div className="font-display font-semibold text-sm">{ex.name}</div>
-                      <div
-                        className={`text-xs ${
-                          isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
-                        }`}
-                      >
-                        {translateMuscleGroup(ex.muscleGroup, lang)}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => handleAddExerciseToSession(ex.id)}
-                      className={`px-3.5 py-1.5 rounded-xl font-semibold text-xs flex items-center gap-1 cursor-pointer ${
-                        alreadyInSession
-                          ? isDark
-                            ? 'bg-[hsl(240,4%,16%)] text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/30'
-                            : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border border-[hsl(76,78%,42%)]/20'
-                          : isDark
-                          ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
-                          : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white'
-                      }`}
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>
-                        {alreadyInSession
-                          ? lang === 'ar'
-                            ? 'إضافة مرة أخرى'
-                            : 'Add Again'
-                          : lang === 'ar'
-                          ? 'إضافة'
-                          : 'Add'}
-                      </span>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="pt-2 border-t border-inherit flex justify-end">
-              <button
-                onClick={() => setIsAddExerciseOpen(false)}
-                className={`px-5 py-2 rounded-xl font-bold text-xs cursor-pointer ${
-                  isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
-                }`}
-              >
-                {lang === 'ar' ? 'إغلاق' : 'Done'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {isCancelConfirmOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4">
-          <div
-            className={`w-full max-w-md rounded-2xl border p-5 space-y-4 ${
-              isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]' : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,88%)]'
-            }`}
-          >
-            <h3 className="font-display font-bold text-base text-red-400">
-              {lang === 'ar' ? 'هل أنت متأكد من إلغاء التمرين الحالي؟ ؟' : 'Cancel Active Workout? ?'}
-            </h3>
-            <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
-              {lang === 'ar'
-                ? 'سيتم حذف هذه الجلسة غير المكتملة ولن يتم حفظها في سجل التمارين.'
-                : 'This unfinished workout session will be discarded and will not be saved to your workout history.'}
-            </p>
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                onClick={() => setIsCancelConfirmOpen(false)}
-                className={`px-4 py-2 rounded-xl text-xs font-medium border cursor-pointer ${
-                  isDark
-                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
-                    : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700'
-                }`}
-              >
-                {lang === 'ar' ? 'العودة للتمرين' : 'Keep Training'}
-              </button>
-              <button
-                onClick={async () => {
-                  setIsCancelConfirmOpen(false);
-                  await cancelActiveWorkout();
-                  setCurrentSection('dashboard');
-                }}
-                className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-400 text-white font-semibold text-xs cursor-pointer"
-              >
-                {lang === 'ar' ? 'إلغاء التمرين' : 'Discard Workout'}
-              </button>
             </div>
           </div>
         </div>
