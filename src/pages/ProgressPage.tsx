@@ -77,7 +77,6 @@ export const ProgressPage: React.FC = () => {
         setSelectedProgressExerciseId(filteredExercises[0].id);
       }
     } else {
-      // If no exercises match the current filter, clear selection or set to empty
       setSelectedProgressExerciseId('');
     }
   }, [filteredExercises, selectedProgressExerciseId, setSelectedProgressExerciseId]);
@@ -281,8 +280,14 @@ export const ProgressPage: React.FC = () => {
         </div>
       ) : (
         <>
-          {/* TOP 4 SUMMARY CARDS */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+          {/* TOP SUMMARY CARDS (2 Cards for Cardio, 4 Cards for Strength/Bodyweight) */}
+          <div
+            className={`grid gap-3.5 sm:gap-4 ${
+              progressSummary.isCardio
+                ? 'grid-cols-1 sm:grid-cols-2'
+                : 'grid-cols-2 lg:grid-cols-4'
+            }`}
+          >
             {/* Best Weight / Duration Card */}
             <div
               className={`p-4 sm:p-5 rounded-xl border ${
@@ -333,47 +338,39 @@ export const ProgressPage: React.FC = () => {
               )}
             </div>
 
-            {/* Best Reps / Total Calories Card */}
-            <div
-              className={`p-4 sm:p-5 rounded-xl border ${
-                isDark
-                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
-                  : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
-              }`}
-            >
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>
-                  {progressSummary.isCardio
-                    ? lang === 'ar'
-                      ? 'إجمالي السعرات الحرارية'
-                      : 'Total Calories Burned'
-                    : lang === 'ar'
-                    ? 'أعلى عدد عدات'
-                    : 'Best Repetition Set'}
-                </span>
-                <TrendingUp className="w-4 h-4 text-cyan-400" />
+            {/* Best Reps Card (Hidden for Cardio) */}
+            {!progressSummary.isCardio && (
+              <div
+                className={`p-4 sm:p-5 rounded-xl border ${
+                  isDark
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                    : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
+                }`}
+              >
+                <div className="flex items-center justify-between text-xs text-gray-400">
+                  <span>{lang === 'ar' ? 'أعلى عدد عدات' : 'Best Repetition Set'}</span>
+                  <TrendingUp className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div className="mt-2 font-mono-num text-xl sm:text-2xl font-bold text-cyan-400">
+                  {progressSummary.bestRepsRecord
+                    ? `${progressSummary.bestRepsRecord.reps} ${
+                        lang === 'ar' ? 'عدات' : 'reps'
+                      }`
+                    : '—'}
+                </div>
+                {progressSummary.bestRepsRecord && (
+                  <p className="text-[11px] text-gray-400 mt-1 font-mono-num">
+                    @{' '}
+                    {formatOriginalWeight(
+                      progressSummary.bestRepsRecord.weight,
+                      progressSummary.bestRepsRecord.unit,
+                      lang
+                    )}{' '}
+                    ({formatShortDate(progressSummary.bestRepsRecord.actualDate, lang)})
+                  </p>
+                )}
               </div>
-              <div className="mt-2 font-mono-num text-xl sm:text-2xl font-bold text-cyan-400">
-                {progressSummary.isCardio
-                  ? `${progressSummary.totalCardioCalories || 0} kcal`
-                  : progressSummary.bestRepsRecord
-                  ? `${progressSummary.bestRepsRecord.reps} ${
-                      lang === 'ar' ? 'عدات' : 'reps'
-                    }`
-                  : '—'}
-              </div>
-              {progressSummary.bestRepsRecord && !progressSummary.isCardio && (
-                <p className="text-[11px] text-gray-400 mt-1 font-mono-num">
-                  @{' '}
-                  {formatOriginalWeight(
-                    progressSummary.bestRepsRecord.weight,
-                    progressSummary.bestRepsRecord.unit,
-                    lang
-                  )}{' '}
-                  ({formatShortDate(progressSummary.bestRepsRecord.actualDate, lang)})
-                </p>
-              )}
-            </div>
+            )}
 
             {/* Most Recent Performance (Hidden for Cardio) */}
             {!progressSummary.isCardio && (
@@ -413,8 +410,6 @@ export const ProgressPage: React.FC = () => {
             {/* Workout Frequency */}
             <div
               className={`p-4 sm:p-5 rounded-xl border ${
-                progressSummary.isCardio ? 'col-span-2' : ''
-              } ${
                 isDark
                   ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
                   : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
