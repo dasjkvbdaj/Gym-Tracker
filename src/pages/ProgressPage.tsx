@@ -69,32 +69,24 @@ export const ProgressPage: React.FC = () => {
       });
   }, [exercises, muscleFilter, exercisesWithHistoryCounts]);
 
-  // Ensure a valid exercise is selected
+  // Ensure a valid exercise is selected when filter changes or exercises load
   useEffect(() => {
-    const hasCurrentValid = filteredExercises.some((e) => e.id === selectedProgressExerciseId);
-    if (!hasCurrentValid && filteredExercises.length > 0) {
-      setSelectedProgressExerciseId(filteredExercises[0].id);
-    } else if (!selectedProgressExerciseId && exercises.length > 0) {
-      const firstWithHistory = exercises.find(
-        (e) => (exercisesWithHistoryCounts.get(e.id) || 0) > 0
-      );
-      if (firstWithHistory) {
-        setSelectedProgressExerciseId(firstWithHistory.id);
+    if (filteredExercises.length > 0) {
+      const hasCurrentValid = filteredExercises.some((e) => e.id === selectedProgressExerciseId);
+      if (!hasCurrentValid) {
+        setSelectedProgressExerciseId(filteredExercises[0].id);
       }
+    } else {
+      // If no exercises match the current filter, clear selection or set to empty
+      setSelectedProgressExerciseId('');
     }
-  }, [
-    filteredExercises,
-    selectedProgressExerciseId,
-    exercises,
-    exercisesWithHistoryCounts,
-    setSelectedProgressExerciseId,
-  ]);
+  }, [filteredExercises, selectedProgressExerciseId, setSelectedProgressExerciseId]);
 
   const activeExercise = useMemo(() => {
     return (
       exercises.find((e) => e.id === selectedProgressExerciseId) ||
       filteredExercises[0] ||
-      exercises[0]
+      null
     );
   }, [exercises, selectedProgressExerciseId, filteredExercises]);
 
@@ -234,7 +226,7 @@ export const ProgressPage: React.FC = () => {
           ))}
         </div>
 
-        {/* Exercise Selector Dropdown (Only shows exercises with > 0 sessions) */}
+        {/* Exercise Selector Dropdown */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-3">
           <label htmlFor="progress-exercise-select" className="text-xs font-semibold shrink-0">
             {lang === 'ar' ? 'اختر التمرين للمقارنة:' : 'Select Exercise:'}
@@ -269,7 +261,7 @@ export const ProgressPage: React.FC = () => {
       </div>
 
       {/* IF NO SESSIONS FOR SELECTED EXERCISE */}
-      {!progressSummary || progressSummary.totalSessions === 0 ? (
+      {!activeExercise || !progressSummary || progressSummary.totalSessions === 0 ? (
         <div
           className={`p-10 rounded-2xl border border-dashed text-center space-y-3 ${
             isDark ? 'border-[hsl(240,4%,19%)] text-gray-400' : 'border-[hsl(40,10%,85%)] text-slate-500'
@@ -341,7 +333,7 @@ export const ProgressPage: React.FC = () => {
               )}
             </div>
 
-            {/* Best Reps / Intensity Card */}
+            {/* Best Reps / Total Calories Card */}
             <div
               className={`p-4 sm:p-5 rounded-xl border ${
                 isDark
@@ -353,8 +345,8 @@ export const ProgressPage: React.FC = () => {
                 <span>
                   {progressSummary.isCardio
                     ? lang === 'ar'
-                      ? 'إجمالي السعرات'
-                      : 'Total Calories'
+                      ? 'إجمالي السعرات الحرارية'
+                      : 'Total Calories Burned'
                     : lang === 'ar'
                     ? 'أعلى عدد عدات'
                     : 'Best Repetition Set'}
@@ -363,7 +355,7 @@ export const ProgressPage: React.FC = () => {
               </div>
               <div className="mt-2 font-mono-num text-xl sm:text-2xl font-bold text-cyan-400">
                 {progressSummary.isCardio
-                  ? `${progressSummary.currentSession?.totalCalories || 0} kcal`
+                  ? `${progressSummary.totalCardioCalories || 0} kcal`
                   : progressSummary.bestRepsRecord
                   ? `${progressSummary.bestRepsRecord.reps} ${
                       lang === 'ar' ? 'عدات' : 'reps'
@@ -383,42 +375,46 @@ export const ProgressPage: React.FC = () => {
               )}
             </div>
 
-            {/* Most Recent Performance */}
-            <div
-              className={`p-4 sm:p-5 rounded-xl border ${
-                isDark
-                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
-                  : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
-              }`}
-            >
-              <div className="flex items-center justify-between text-xs text-gray-400">
-                <span>{lang === 'ar' ? 'الأداء الأخير' : 'Most Recent Session'}</span>
-                <Dumbbell
-                  className={`w-4 h-4 ${
-                    isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
-                  }`}
-                />
+            {/* Most Recent Performance (Hidden for Cardio) */}
+            {!progressSummary.isCardio && (
+              <div
+                className={`p-4 sm:p-5 rounded-xl border ${
+                  isDark
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                    : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
+                }`}
+              >
+                <div className="flex items-center justify-between text-xs text-gray-400">
+                  <span>{lang === 'ar' ? 'الأداء الأخير' : 'Most Recent Session'}</span>
+                  <Dumbbell
+                    className={`w-4 h-4 ${
+                      isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                    }`}
+                  />
+                </div>
+                <div className="mt-2 font-mono-num text-base sm:text-lg font-bold">
+                  {progressSummary.currentSession?.bestWeightSet
+                    ? formatSetPerformance(
+                        progressSummary.currentSession.bestWeightSet.weight,
+                        progressSummary.currentSession.weightType,
+                        progressSummary.currentSession.bestWeightSet.reps,
+                        lang
+                      )
+                    : '—'}
+                </div>
+                {progressSummary.currentSession && (
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {formatShortDate(progressSummary.currentSession.actualDate, lang)}
+                  </p>
+                )}
               </div>
-              <div className="mt-2 font-mono-num text-base sm:text-lg font-bold">
-                {progressSummary.currentSession?.bestWeightSet
-                  ? formatSetPerformance(
-                      progressSummary.currentSession.bestWeightSet.weight,
-                      progressSummary.currentSession.weightType,
-                      progressSummary.currentSession.bestWeightSet.reps,
-                      lang
-                    )
-                  : '—'}
-              </div>
-              {progressSummary.currentSession && (
-                <p className="text-[11px] text-gray-400 mt-1">
-                  {formatShortDate(progressSummary.currentSession.actualDate, lang)}
-                </p>
-              )}
-            </div>
+            )}
 
             {/* Workout Frequency */}
             <div
               className={`p-4 sm:p-5 rounded-xl border ${
+                progressSummary.isCardio ? 'col-span-2' : ''
+              } ${
                 isDark
                   ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
                   : 'bg-white border-[hsl(40,10%,88%)] shadow-2xs'
@@ -443,103 +439,105 @@ export const ProgressPage: React.FC = () => {
             </div>
           </div>
 
-          {/* SESSION COMPARISON SPOTLIGHT */}
-          <div
-            className={`rounded-2xl border p-5 sm:p-6 ${
-              isDark
-                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
-                : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
-            }`}
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-inherit">
-              <div>
-                <h2 className="text-base sm:text-lg font-display font-bold">
-                  {activeExercise.name} —{' '}
-                  {lang === 'ar'
-                    ? 'مقارنة الجلسة الحالية مع الجلسة السابقة'
-                    : 'Previous vs. Current Session Comparison'}
-                </h2>
-              </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
-              {/* Previous Session */}
-              <div
-                className={`p-4 rounded-xl border ${
-                  isDark
-                    ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,19%)]'
-                    : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
-                }`}
-              >
-                <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
-                  <span className="font-semibold uppercase">
-                    {lang === 'ar' ? 'الجلسة السابقة' : 'Previous Session'}
-                  </span>
-                  {progressSummary.previousSession && (
-                    <span className="font-mono-num">
-                      {formatFullDate(progressSummary.previousSession.actualDate, lang)}
-                    </span>
-                  )}
+          {/* SESSION COMPARISON SPOTLIGHT (Hidden for Cardio) */}
+          {!progressSummary.isCardio && (
+            <div
+              className={`rounded-2xl border p-5 sm:p-6 ${
+                isDark
+                  ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                  : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-inherit">
+                <div>
+                  <h2 className="text-base sm:text-lg font-display font-bold">
+                    {activeExercise.name} —{' '}
+                    {lang === 'ar'
+                      ? 'مقارنة الجلسة الحالية مع الجلسة السابقة'
+                      : 'Previous vs. Current Session Comparison'}
+                  </h2>
                 </div>
-                {progressSummary.previousSession && progressSummary.previousSession.bestWeightSet ? (
-                  <div className="space-y-2">
-                    <div className="font-mono-num text-lg font-bold">
-                      {formatSetPerformance(
-                        progressSummary.previousSession.bestWeightSet.weight,
-                        progressSummary.previousSession.weightType,
-                        progressSummary.previousSession.bestWeightSet.reps,
-                        lang
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-500 py-3">
-                    {lang === 'ar' ? 'لا توجد جلسة سابقة للمقارنة بعد.' : 'No prior session recorded.'}
-                  </p>
-                )}
               </div>
-
-              {/* Current Session */}
-              <div
-                className={`p-4 rounded-xl border ${
-                  isDark
-                    ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/40'
-                    : 'bg-[hsl(76,78%,42%)]/5 border-[hsl(76,78%,42%)]/30'
-                }`}
-              >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+                {/* Previous Session */}
                 <div
-                  className={`flex items-center justify-between text-xs mb-2 ${
-                    isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                  className={`p-4 rounded-xl border ${
+                    isDark
+                      ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,19%)]'
+                      : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
                   }`}
                 >
-                  <span className="font-bold uppercase flex items-center gap-1">
-                    <ArrowRight className="w-3.5 h-3.5" />
-                    {lang === 'ar' ? 'الجلسة الحالية (الأحدث)' : 'Current Session (Latest)'}
-                  </span>
-                  {progressSummary.currentSession && (
-                    <span className="font-mono-num">
-                      {formatFullDate(progressSummary.currentSession.actualDate, lang)}
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-2">
+                    <span className="font-semibold uppercase">
+                      {lang === 'ar' ? 'الجلسة السابقة' : 'Previous Session'}
                     </span>
+                    {progressSummary.previousSession && (
+                      <span className="font-mono-num">
+                        {formatFullDate(progressSummary.previousSession.actualDate, lang)}
+                      </span>
+                    )}
+                  </div>
+                  {progressSummary.previousSession && progressSummary.previousSession.bestWeightSet ? (
+                    <div className="space-y-2">
+                      <div className="font-mono-num text-lg font-bold">
+                        {formatSetPerformance(
+                          progressSummary.previousSession.bestWeightSet.weight,
+                          progressSummary.previousSession.weightType,
+                          progressSummary.previousSession.bestWeightSet.reps,
+                          lang
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-gray-500 py-3">
+                      {lang === 'ar' ? 'لا توجد جلسة سابقة للمقارنة بعد.' : 'No prior session recorded.'}
+                    </p>
                   )}
                 </div>
-                {progressSummary.currentSession && progressSummary.currentSession.bestWeightSet ? (
-                  <div className="space-y-2">
-                    <div
-                      className={`font-mono-num text-lg font-bold ${
-                        isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
-                      }`}
-                    >
-                      {formatSetPerformance(
-                        progressSummary.currentSession.bestWeightSet.weight,
-                        progressSummary.currentSession.weightType,
-                        progressSummary.currentSession.bestWeightSet.reps,
-                        lang
-                      )}
-                    </div>
+
+                {/* Current Session */}
+                <div
+                  className={`p-4 rounded-xl border ${
+                    isDark
+                      ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/40'
+                      : 'bg-[hsl(76,78%,42%)]/5 border-[hsl(76,78%,42%)]/30'
+                  }`}
+                >
+                  <div
+                    className={`flex items-center justify-between text-xs mb-2 ${
+                      isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                    }`}
+                  >
+                    <span className="font-bold uppercase flex items-center gap-1">
+                      <ArrowRight className="w-3.5 h-3.5" />
+                      {lang === 'ar' ? 'الجلسة الحالية (الأحدث)' : 'Current Session (Latest)'}
+                    </span>
+                    {progressSummary.currentSession && (
+                      <span className="font-mono-num">
+                        {formatFullDate(progressSummary.currentSession.actualDate, lang)}
+                      </span>
+                    )}
                   </div>
-                ) : null}
+                  {progressSummary.currentSession && progressSummary.currentSession.bestWeightSet ? (
+                    <div className="space-y-2">
+                      <div
+                        className={`font-mono-num text-lg font-bold ${
+                          isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                        }`}
+                      >
+                        {formatSetPerformance(
+                          progressSummary.currentSession.bestWeightSet.weight,
+                          progressSummary.currentSession.weightType,
+                          progressSummary.currentSession.bestWeightSet.reps,
+                          lang
+                        )}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* CHARTS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -598,8 +596,8 @@ export const ProgressPage: React.FC = () => {
                 <h3 className="font-display font-bold text-base">
                   {progressSummary.isCardio
                     ? lang === 'ar'
-                      ? 'مخطط المدة والزمن (دقائق)'
-                      : 'Duration Progression Over Time'
+                      ? 'مخطط المدة والزمن (دقائق) عبر الجلسات'
+                      : 'Duration Progression Over Time (Minutes)'
                     : lang === 'ar'
                     ? 'مخطط تطور العدات (Repetitions)'
                     : 'Repetition Progression Over Time'}
@@ -615,6 +613,18 @@ export const ProgressPage: React.FC = () => {
                     <XAxis dataKey="date" tick={{ fill: isDark ? '#9CA3AF' : '#64748B', fontSize: 11 }} />
                     <YAxis allowDecimals={false} tick={{ fill: isDark ? '#9CA3AF' : '#64748B', fontSize: 11 }} />
                     <Tooltip
+                      formatter={(value: any) => [
+                        progressSummary.isCardio
+                          ? `${value} ${lang === 'ar' ? 'دقيقة' : 'mins'}`
+                          : value,
+                        progressSummary.isCardio
+                          ? lang === 'ar'
+                            ? 'المدة'
+                            : 'Duration'
+                          : lang === 'ar'
+                          ? 'العدات'
+                          : 'Reps',
+                      ]}
                       contentStyle={{
                         backgroundColor: isDark ? 'hsl(240, 5%, 7.5%)' : 'hsl(0, 0%, 100%)',
                         borderColor: isDark ? 'hsl(240, 4%, 19%)' : 'hsl(40, 10%, 88%)',
@@ -668,19 +678,31 @@ export const ProgressPage: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {rec.sets.map((s) => (
-                      <span
-                        key={s.id}
-                        className={`px-2.5 py-1 rounded-lg font-mono-num text-xs font-semibold border ${
-                          isDark
-                            ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-200'
-                            : 'bg-white border-[hsl(40,10%,88%)] text-slate-800'
-                        }`}
-                      >
-                        #{s.setNumber}:{' '}
-                        {formatSetPerformance(s.weight, rec.weightType, s.reps, lang)}
-                      </span>
-                    ))}
+                    {progressSummary.isCardio ? (
+                      <div className="flex items-center gap-3 text-xs font-mono-num font-semibold">
+                        <span className="flex items-center gap-1">
+                          <Flame className="w-3.5 h-3.5 text-orange-400" />
+                          {rec.totalCalories} kcal
+                        </span>
+                        <span>
+                          {rec.maxReps} {lang === 'ar' ? 'دقائق' : 'mins'}
+                        </span>
+                      </div>
+                    ) : (
+                      rec.sets.map((s) => (
+                        <span
+                          key={s.id}
+                          className={`px-2.5 py-1 rounded-lg font-mono-num text-xs font-semibold border ${
+                            isDark
+                              ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-200'
+                              : 'bg-white border-[hsl(40,10%,88%)] text-slate-800'
+                          }`}
+                        >
+                          #{s.setNumber}:{' '}
+                          {formatSetPerformance(s.weight, rec.weightType, s.reps, lang)}
+                        </span>
+                      ))
+                    )}
                   </div>
                 </div>
               ))}
