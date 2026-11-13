@@ -348,7 +348,6 @@ export const CalendarPage: React.FC = () => {
     if (targetMuscles.length > 0) {
       setForgottenMuscleFilter(targetMuscles[0]);
     }
-    // تحديد ما إذا كان التمرين مستقبلي (Plan) أو تاريخ قديم/حالي مسجل
     const todayStr = toLocalDateString(new Date());
     const isFuture = session.actualDate > todayStr;
 
@@ -461,7 +460,6 @@ export const CalendarPage: React.FC = () => {
     setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
   };
 
-  // إضافة تمرين (سواء في التعديل العادي أو التخطيط المستقبلي بنفس الطريقة السريعة)
   const handleAddForgottenExercise = (exerciseId: string) => {
     if (!editingWorkout || !exerciseId) return;
 
@@ -482,7 +480,7 @@ export const CalendarPage: React.FC = () => {
       muscleGroup: exercise.muscleGroup,
       weightType: unit,
       sets: isPlanningMode
-        ? [] // في وضع التخطيط: اسم تمرين فقط بدون مجموعات أو أوزان
+        ? []
         : [
             {
               id: generateId('set'),
@@ -491,7 +489,7 @@ export const CalendarPage: React.FC = () => {
               reps: isCardio ? 30 : 10,
               completed: true,
             },
-          ], // في التعديل العادي: مجموعة افتراضية أولية يمكن تعديلها
+          ],
       caloriesBurned: isCardio ? 0 : undefined,
       notes: '',
     };
@@ -698,6 +696,10 @@ export const CalendarPage: React.FC = () => {
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {calendarCells.map((cell) => {
               const dayWorkouts = workoutsByDate.get(cell.dateStr) || [];
+              const todayStr = toLocalDateString(new Date());
+              // التحقق مما إذا كان اليوم في المستقبل ويحتوي على تمارين مخزنة (أي Future Plan)
+              const isFuturePlan = cell.dateStr > todayStr && dayWorkouts.length > 0;
+
               const hasStrength = dayWorkouts.some(
                 (w) =>
                   w.workoutType === 'strength' &&
@@ -749,6 +751,21 @@ export const CalendarPage: React.FC = () => {
                     >
                       {cell.dayNumber}
                     </span>
+                    
+                    {/* مؤشر مرئي للخطة المستقبلية (Future Plan) داخل خلية التقويم */}
+                    {isFuturePlan && (
+                      <span
+                        title={lang === 'ar' ? 'خطة مستقبلية' : 'Future Plan'}
+                        className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter ${
+                          isDark
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            : 'bg-amber-100 text-amber-800 border border-amber-200'
+                        }`}
+                      >
+                        {lang === 'ar' ? 'خطة' : 'Plan'}
+                      </span>
+                    )}
+
                     {isScheduledRest && dayWorkouts.length === 0 && (
                       <span title="Scheduled Rest Day">
                         <Moon className="w-3 h-3 text-gray-500 opacity-60" />
@@ -812,6 +829,14 @@ export const CalendarPage: React.FC = () => {
               <span className="w-3 h-3 rounded-full bg-cyan-400" />
               <span>
                 {lang === 'ar' ? 'جلسة كارديو مسجلة' : 'Cardio Session Recorded'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
+                {lang === 'ar' ? 'خطة' : 'Plan'}
+              </span>
+              <span>
+                {lang === 'ar' ? 'خطة مستقبلية (Future Plan)' : 'Future Plan'}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -1178,7 +1203,6 @@ export const CalendarPage: React.FC = () => {
                 );
 
                 if (isPlanningMode) {
-                  // في وضع التخطيط المستقبلي: عرض اسم التمرين فقط بدون أوزان أو مجموعات
                   return (
                     <div
                       key={ex.id}
@@ -1208,7 +1232,6 @@ export const CalendarPage: React.FC = () => {
                   );
                 }
 
-                // في وضع التعديل العادي (التاريخ الحالي/الماضي): عرض المجموعات والأوزان والتكرارات بالكامل
                 return (
                   <div
                     key={ex.id}
@@ -1434,7 +1457,7 @@ export const CalendarPage: React.FC = () => {
                 );
               })}
 
-              {/* ADD EXERCISE SECTION (تعمل بنفس الطريقة السريعة في الاثنين مع فلتر عضلات اليوم حصراً) */}
+              {/* ADD EXERCISE SECTION */}
               <div className="p-4 rounded-xl border border-indigo-500/30 space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold">
