@@ -37,7 +37,6 @@ import {
 import {
   translateDayName,
   translateMuscleGroup,
-  MUSCLE_GROUPS,
 } from '../utils/i18n';
 
 import { formatSetPerformance } from '../utils/unitConversion';
@@ -182,15 +181,16 @@ export const CalendarPage: React.FC = () => {
   const [isAddForgottenOpen, setIsAddForgottenOpen] =
     useState(false);
 
+  // استخراج عضلات اليوم المحدد وتحديد أول عضلة افتراضياً
   const selectedDateMetaForFilter = getDateMetadata(selectedCalendarDate);
   const currentDayScheduleForFilter = weeklySchedule.find(
     (d) => d.day === selectedDateMetaForFilter.dayOfWeek
   );
   const allowedMuscles = currentDayScheduleForFilter?.targetMuscles || currentDayScheduleForFilter?.muscleGroups || [];
-  const defaultMuscle = allowedMuscles.length > 0 ? allowedMuscles[0] : 'Back';
+  const defaultMuscle = allowedMuscles.length > 0 ? allowedMuscles[0] : ('Back' as MuscleGroup);
 
   const [forgottenMuscleFilter, setForgottenMuscleFilter] =
-    useState<MuscleGroup>(defaultMuscle as MuscleGroup);
+    useState<MuscleGroup>(defaultMuscle);
 
   const [expandedWorkoutId, setExpandedWorkoutId] =
     useState<string | null>(null);
@@ -348,7 +348,11 @@ export const CalendarPage: React.FC = () => {
     if (targetMuscles.length > 0) {
       setForgottenMuscleFilter(targetMuscles[0]);
     }
-    setIsPlanningMode(false); // وضع تعديل عادي
+    // تحديد ما إذا كان التمرين مستقبلي (Plan) أو تاريخ قديم/حالي مسجل
+    const todayStr = toLocalDateString(new Date());
+    const isFuture = session.actualDate > todayStr;
+
+    setIsPlanningMode(isFuture);
     setEditingWorkout(
       JSON.parse(JSON.stringify(session)) as WorkoutSession
     );
@@ -457,7 +461,7 @@ export const CalendarPage: React.FC = () => {
     setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
   };
 
-  // إضافة تمرين حسب وضع التخطيط أو التعديل العادي
+  // إضافة تمرين (سواء في التعديل العادي أو التخطيط المستقبلي بنفس الطريقة السريعة)
   const handleAddForgottenExercise = (exerciseId: string) => {
     if (!editingWorkout || !exerciseId) return;
 
@@ -478,7 +482,7 @@ export const CalendarPage: React.FC = () => {
       muscleGroup: exercise.muscleGroup,
       weightType: unit,
       sets: isPlanningMode
-        ? [] // في وضع التخطيط، لا توجد مجموعات أو أوزان افتراضية
+        ? [] // في وضع التخطيط: اسم تمرين فقط بدون مجموعات أو أوزان
         : [
             {
               id: generateId('set'),
@@ -487,7 +491,7 @@ export const CalendarPage: React.FC = () => {
               reps: isCardio ? 30 : 10,
               completed: true,
             },
-          ],
+          ], // في التعديل العادي: مجموعة افتراضية أولية يمكن تعديلها
       caloriesBurned: isCardio ? 0 : undefined,
       notes: '',
     };
@@ -500,11 +504,6 @@ export const CalendarPage: React.FC = () => {
       muscleGroups: groups,
       exercises: [...editingWorkout.exercises, newEntry],
     });
-  };
-
-  const handleAddForgottenExerciseOldDropdown = (exerciseId: string) => {
-    if (!editingWorkout || !exerciseId) return;
-    handleAddForgottenExercise(exerciseId);
   };
 
   const handleRemoveExercise = (entryId: string) => {
@@ -559,18 +558,6 @@ export const CalendarPage: React.FC = () => {
           (existing) => existing.exerciseId === exercise.id
         );
         const matchesMuscle = exercise.muscleGroup === forgottenMuscleFilter;
-        return notAlreadyAdded && matchesMuscle;
-      })
-    : [];
-
-  const availableForgottenExercisesOld = editingWorkout
-    ? exercises.filter((exercise) => {
-        const notAlreadyAdded = !editingWorkout.exercises.some(
-          (existing) => existing.exerciseId === exercise.id
-        );
-        const matchesMuscle =
-          forgottenMuscleFilter === 'ALL' ||
-          exercise.muscleGroup === forgottenMuscleFilter;
         return notAlreadyAdded && matchesMuscle;
       })
     : [];
@@ -1180,7 +1167,7 @@ export const CalendarPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* EXERCISES: بناءً على وضع التعديل العادي أو وضع التخطيط */}
+              {/* EXERCISES */}
               {editingWorkout.exercises.map((ex) => {
                 const displayName =
                   exerciseNameMap.get(ex.exerciseId) ||
@@ -1191,7 +1178,7 @@ export const CalendarPage: React.FC = () => {
                 );
 
                 if (isPlanningMode) {
-                  // في وضع التخطيط: عرض اسم التمرين فقط بدون مجموعات أو أوزان
+                  // في وضع التخطيط المستقبلي: عرض اسم التمرين فقط بدون أوزان أو مجموعات
                   return (
                     <div
                       key={ex.id}
@@ -1221,7 +1208,7 @@ export const CalendarPage: React.FC = () => {
                   );
                 }
 
-                // في وضع التعديل العادي: عرض المجموعات، الأوزان، والتكرارات بالكامل كما في الكود الأصلي
+                // في وضع التعديل العادي (التاريخ الحالي/الماضي): عرض المجموعات والأوزان والتكرارات بالكامل
                 return (
                   <div
                     key={ex.id}
@@ -1447,154 +1434,72 @@ export const CalendarPage: React.FC = () => {
                 );
               })}
 
-              {/* ADD EXERCISE: تختلف حسب وضع التخطيط أو وضع التعديل */}
-              <div className="space-y-3">
-                {isPlanningMode ? (
-                  <div className="p-4 rounded-xl border border-indigo-500/30 space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold">
-                        {lang === 'ar'
-                          ? 'تصفية حسب عضلة اليوم'
-                          : 'Filter by Day Muscle Group'}
-                      </label>
-                      <select
-                        value={forgottenMuscleFilter}
-                        onChange={(e) =>
-                          setForgottenMuscleFilter(
-                            e.target.value as MuscleGroup
-                          )
-                        }
-                        className={fieldClass}
-                      >
-                        {allowedMuscleGroupsForDay.map((muscle) => (
-                          <option key={muscle} value={muscle}>
-                            {translateMuscleGroup(muscle, lang)}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+              {/* ADD EXERCISE SECTION (تعمل بنفس الطريقة السريعة في الاثنين مع فلتر عضلات اليوم حصراً) */}
+              <div className="p-4 rounded-xl border border-indigo-500/30 space-y-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold">
+                    {lang === 'ar'
+                      ? 'تصفية حسب عضلة اليوم'
+                      : 'Filter by Day Muscle Group'}
+                  </label>
+                  <select
+                    value={forgottenMuscleFilter}
+                    onChange={(e) =>
+                      setForgottenMuscleFilter(
+                        e.target.value as MuscleGroup
+                      )
+                    }
+                    className={fieldClass}
+                  >
+                    {allowedMuscleGroupsForDay.map((muscle) => (
+                      <option key={muscle} value={muscle}>
+                        {translateMuscleGroup(muscle, lang)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-                    <div className="space-y-2">
-                      <label className="block text-xs font-semibold">
-                        {lang === 'ar' ? 'التمارين المتاحة (اضغط إضافة):' : 'Available Exercises:'}
-                      </label>
-                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                        {availableForgottenExercises.length === 0 ? (
-                          <p className="text-xs text-gray-400 py-2 text-center">
-                            {lang === 'ar'
-                              ? 'تمت إضافة جميع تمارين هذه العضلة أو لا توجد تمارين متاحة.'
-                              : 'No available exercises in this muscle group.'}
-                          </p>
-                        ) : (
-                          availableForgottenExercises.map((exercise) => (
-                            <div
-                              key={exercise.id}
-                              className={`flex items-center justify-between p-2.5 rounded-xl border ${
-                                isDark
-                                  ? 'bg-[hsl(240,5%,10%)] border-gray-800'
-                                  : 'bg-white border-slate-200'
-                              }`}
-                            >
-                              <span className="text-xs font-semibold">
-                                {exercise.name}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleAddForgottenExercise(exercise.id)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                                  isDark
-                                    ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
-                                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
-                                }`}
-                              >
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
-                              </button>
-                            </div>
-                          ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsAddForgottenOpen(!isAddForgottenOpen);
-                        setForgottenMuscleFilter('ALL');
-                      }}
-                      className="w-full py-3 rounded-xl border border-dashed border-indigo-500/50 text-indigo-500 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4" />{' '}
-                      {lang === 'ar' ? 'إضافة تمرين منسي' : 'Add Forgotten Workout'}
-                    </button>
-                    {isAddForgottenOpen && (
-                      <div className="p-3 rounded-xl border border-indigo-500/30 space-y-3 mt-2">
-                        <p className="text-xs text-gray-400">
-                          {lang === 'ar'
-                            ? 'اختر المجموعة العضلية أولاً، ثم اختر التمرين الذي تريد إضافته.'
-                            : 'Select a muscle group first, then choose the exercise you want to add.'}
-                        </p>
-                        <div className="space-y-1.5">
-                          <label className="block text-xs font-semibold">
-                            {lang === 'ar' ? 'تصفية حسب العضلة' : 'Filter by Muscle Group'}
-                          </label>
-                          <select
-                            value={forgottenMuscleFilter}
-                            onChange={(e) =>
-                              setForgottenMuscleFilter(
-                                e.target.value as MuscleGroup | 'ALL'
-                              )
-                            }
-                            className={fieldClass}
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold">
+                    {lang === 'ar' ? 'التمارين المتاحة (اضغط إضافة):' : 'Available Exercises:'}
+                  </label>
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {availableForgottenExercises.length === 0 ? (
+                      <p className="text-xs text-gray-400 py-2 text-center">
+                        {lang === 'ar'
+                          ? 'تمت إضافة جميع تمارين هذه العضلة أو لا توجد تمارين متاحة.'
+                          : 'No available exercises in this muscle group.'}
+                      </p>
+                    ) : (
+                      availableForgottenExercises.map((exercise) => (
+                        <div
+                          key={exercise.id}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border ${
+                            isDark
+                              ? 'bg-[hsl(240,5%,10%)] border-gray-800'
+                              : 'bg-white border-slate-200'
+                          }`}
+                        >
+                          <span className="text-xs font-semibold">
+                            {exercise.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleAddForgottenExercise(exercise.id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                              isDark
+                                ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
+                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+                            }`}
                           >
-                            <option value="ALL">
-                              {lang === 'ar' ? 'جميع العضلات' : 'All Muscle Groups'}
-                            </option>
-                            {MUSCLE_GROUPS.map((muscle) => (
-                              <option key={muscle} value={muscle}>
-                                {translateMuscleGroup(muscle, lang)}
-                              </option>
-                            ))}
-                          </select>
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
+                          </button>
                         </div>
-                        <div className="space-y-1.5">
-                          <label className="block text-xs font-semibold">
-                            {lang === 'ar' ? 'اختر التمرين' : 'Select Exercise'}
-                          </label>
-                          <select
-                            defaultValue=""
-                            onChange={(e) => {
-                              const exerciseId = e.target.value;
-                              if (exerciseId) {
-                                handleAddForgottenExerciseOldDropdown(exerciseId);
-                                e.target.value = '';
-                              }
-                            }}
-                            className={fieldClass}
-                          >
-                            <option value="">
-                              {lang === 'ar' ? 'اختر تمريناً...' : 'Select exercise...'}
-                            </option>
-                            {availableForgottenExercisesOld.map((exercise) => (
-                              <option key={exercise.id} value={exercise.id}>
-                                {exercise.name}
-                              </option>
-                            ))}
-                          </select>
-                          {availableForgottenExercisesOld.length === 0 && (
-                            <p className="text-xs text-gray-400 pt-1">
-                              {lang === 'ar'
-                                ? 'لا توجد تمارين متاحة ضمن هذه المجموعة.'
-                                : 'No available exercises in this muscle group.'}
-                            </p>
-                          )}
-                        </div>
-                      </div>
+                      ))
                     )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
 
