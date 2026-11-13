@@ -244,13 +244,13 @@ export const CalendarPage: React.FC = () => {
     [weeklySchedule, selectedDateMeta]
   );
 
-  // التحقق هل التاريخ المحدد هو في المستقبل فقط (من غداً وطالع) ولا يشمل اليوم أو الأيام الماضية
+  // التحقق هل التاريخ المحدد هو في المستقبل فقط (من غداً وطالع)
   const isFutureDate = useMemo(() => {
     const todayStr = toLocalDateString(new Date());
     return selectedCalendarDate > todayStr;
   }, [selectedCalendarDate]);
 
-  // فتح نافذة التخطيط اليومي المخطط (Put a Plan / Plan Day) للأيام المستقبلية فقط
+  // فتح نافذة التخطيط اليومي المخطط (Put a Plan / Plan Day) بدون أي تمارين مسبقة
   const handleOpenPlanDay = () => {
     if (!selectedDaySchedule || selectedDaySchedule.workoutType === 'rest') {
       return;
@@ -259,39 +259,6 @@ export const CalendarPage: React.FC = () => {
     const targetMuscles = selectedDaySchedule.targetMuscles || selectedDaySchedule.muscleGroups || [];
     const defaultMuscleGroups = targetMuscles.length > 0 ? targetMuscles : ['Back' as MuscleGroup];
 
-    // اقتراح تمارين افتراضية تتطابق حصرياً مع عضلات جدول هذا اليوم
-    const matchingExercises = exercises.filter((ex) =>
-      defaultMuscleGroups.includes(ex.muscleGroup)
-    );
-
-    const initialExercises: ExerciseEntry[] = matchingExercises
-      .slice(0, 3)
-      .map((exercise) => {
-        const isCardio = isCardioExercise(exercise.name, exercise.muscleGroup);
-        const unit: WeightUnit =
-          exercise.isBodyweight || isCardio
-            ? 'none'
-            : exercise.defaultWeightUnit || settings.preferredWeightUnit;
-        return {
-          id: generateId('ex_entry'),
-          exerciseId: exercise.id,
-          exerciseNameSnapshot: exercise.name,
-          muscleGroup: exercise.muscleGroup,
-          weightType: unit,
-          sets: [
-            {
-              id: generateId('set'),
-              setNumber: 1,
-              weight: null,
-              reps: isCardio ? 30 : 10,
-              completed: false,
-            },
-          ],
-          caloriesBurned: isCardio ? 0 : undefined,
-          notes: '',
-        };
-      });
-
     const newSession: WorkoutSession = {
       id: generateId('workout'),
       title: selectedDaySchedule.title || (lang === 'ar' ? 'تمرين مخطط' : 'Scheduled Workout'),
@@ -299,7 +266,7 @@ export const CalendarPage: React.FC = () => {
       muscleGroups: defaultMuscleGroups,
       startTimestamp: Date.now(),
       finishTimestamp: null,
-      exercises: initialExercises,
+      exercises: [], // تم جعلها فارغة تماماً بناءً على طلبك لتختار التمارين يدوياً عبر زر Add
       actualDate: selectedCalendarDate,
       year: Number(selectedCalendarDate.split('-')[0]),
       month: Number(selectedCalendarDate.split('-')[1]),
@@ -555,7 +522,7 @@ export const CalendarPage: React.FC = () => {
       : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
   }`;
 
-  // تحديد العضلات المتاحة لهذا اليوم بناءً على الجدول الأسبوعي فقط (مثل back, biceps, forearms)
+  // تحديد العضلات المتاحة لهذا اليوم بناءً على الجدول الأسبوعي فقط
   const allowedMuscleGroupsForDay = useMemo(() => {
     if (selectedDaySchedule) {
       return selectedDaySchedule.targetMuscles || selectedDaySchedule.muscleGroups || [];
@@ -869,7 +836,7 @@ export const CalendarPage: React.FC = () => {
                     <strong>{selectedDaySchedule.title}</strong>
                   </p>
 
-                  {/* زر تخطيط التمرين (Put a Plan) يظهر حصراً في الأيام المستقبلية فقط (من غداً وطالع) */}
+                  {/* زر تخطيط التمرين (Put a Plan) يظهر حصراً في الأيام المستقبلية */}
                   {isFutureDate && selectedDaySchedule.workoutType !== 'rest' && (
                     <button
                       onClick={handleOpenPlanDay}
@@ -1180,7 +1147,7 @@ export const CalendarPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* EXERCISES */}
+              {/* EXERCISES (فارغة في البداية عند تخطيط يوم جديد لتضيفها يدوياً عبر Add) */}
               {editingWorkout.exercises.map((ex) => {
                 const displayName =
                   exerciseNameMap.get(ex.exerciseId) ||
@@ -1415,7 +1382,7 @@ export const CalendarPage: React.FC = () => {
                 );
               })}
 
-              {/* ADD EXERCISE / FORGOTTEN EXERCISE (مفلترة بعضلات اليوم المخصصة في الجدول حصراً) */}
+              {/* ADD EXERCISE / FORGOTTEN EXERCISE (مفلترة حصرياً بعضلات اليوم المخصصة وتضاف يدوياً عبر Add) */}
               <div className="space-y-3">
                 <button
                   type="button"
