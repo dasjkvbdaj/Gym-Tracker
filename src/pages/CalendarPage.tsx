@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import {
   Calendar as CalendarIcon,
@@ -244,29 +245,42 @@ export const CalendarPage: React.FC = () => {
     [weeklySchedule, selectedDateMeta]
   );
 
-  // التحقق هل التاريخ المحدد هو في المستقبل (أو اليوم)
-  const isFutureOrTodayDate = useMemo(() => {
+  // التحقق الحصري هل التاريخ المحدد هو في المستقبل فقط (أكبر تماماً من تاريخ اليوم)
+  const isFutureDate = useMemo(() => {
     const todayStr = toLocalDateString(new Date());
-    return selectedCalendarDate >= todayStr;
+    return selectedCalendarDate > todayStr;
   }, [selectedCalendarDate]);
 
-  // فتح نافذة التخطيط اليومي المخطط (Put a Plan)
+  // عضلات الجدول الخاصة بيوم التحديد فقط
+  const allowedMuscleGroupsForDay = useMemo(() => {
+    if (selectedDaySchedule && selectedDaySchedule.targetMuscles?.length) {
+      return selectedDaySchedule.targetMuscles;
+    }
+    if (selectedDaySchedule && selectedDaySchedule.muscleGroups?.length) {
+      return selectedDaySchedule.muscleGroups;
+    }
+    return [];
+  }, [selectedDaySchedule]);
+
+  // فتح نافذة التخطيط اليومي المخطط (Put a Plan) للأيام المستقبلية حصرياً
   const handleOpenPlanDay = () => {
     if (!selectedDaySchedule || selectedDaySchedule.workoutType === 'rest') {
       return;
     }
 
-    const defaultMuscleGroups = selectedDaySchedule.targetMuscles?.length
-      ? selectedDaySchedule.targetMuscles
-      : ['Chest' as MuscleGroup];
+    const defaultMuscleGroups = allowedMuscleGroupsForDay.length > 0
+      ? allowedMuscleGroupsForDay
+      : ['Back' as MuscleGroup];
 
-    // فلترة التمارين الافتراضية المناسبة لهذه العضلات
-    const matchingExercises = exercises.filter((ex) =>
-      defaultMuscleGroups.includes(ex.muscleGroup)
-    );
+    // جلب التمارين الافتراضية المرتبطة بجدول هذا اليوم حصرياً أو المرتبطة بعضلات اليوم
+    const matchingExercises = exercises.filter((ex) => {
+      const isAssigned = selectedDaySchedule.assignedExerciseIds?.includes(ex.id);
+      const matchesMuscle = defaultMuscleGroups.includes(ex.muscleGroup);
+      return isAssigned || matchesMuscle;
+    });
 
     const initialExercises: ExerciseEntry[] = matchingExercises
-      .slice(0, 3) // اقتراح أول 3 تمارين افتراضياً كمثال
+      .slice(0, 4) // جلب عدة تمارين مقترحة بناءً على الجدول
       .map((exercise) => {
         const isCardio = isCardioExercise(exercise.name, exercise.muscleGroup);
         const unit: WeightUnit =
@@ -407,7 +421,6 @@ export const CalendarPage: React.FC = () => {
     setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
   };
 
-  // تعديل السعرات الحرارية لتمرين كارديو معين أثناء التعديل
   const handleEditCaloriesChange = (entryId: string, calories: number) => {
     if (!editingWorkout) return;
     const updatedExercises = editingWorkout.exercises.map((ex) => {
@@ -557,14 +570,7 @@ export const CalendarPage: React.FC = () => {
       : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
   }`;
 
-  // تصفية العضلات المتاحة للإضافة أثناء التخطيط أو التعديل بناءً على عضلات الجدول لهذا اليوم أو الكل
-  const allowedMuscleGroupsForDay = useMemo(() => {
-    if (selectedDaySchedule && selectedDaySchedule.targetMuscles?.length) {
-      return selectedDaySchedule.targetMuscles;
-    }
-    return MUSCLE_GROUPS;
-  }, [selectedDaySchedule]);
-
+  // تصفية التمارين المتاحة للإضافة أثناء التعديل أو التخطيط بحيث تطابق عضلات جدول اليوم المحدد فقط
   const availableForgottenExercises = editingWorkout
     ? exercises.filter((exercise) => {
         const notAlreadyAdded = !editingWorkout.exercises.some(
@@ -591,8 +597,8 @@ export const CalendarPage: React.FC = () => {
             }`}
           >
             {lang === 'ar'
-              ? 'يعرض التمارين المسجلة فعلياً حسب التاريخ. اضغط على أي يوم لعرض التفاصيل أو إضافة/تخطيط تمرين.'
-              : 'Displays actual recorded workout dates. Select any date to inspect sessions or plan a workout.'}
+              ? 'يعرض التمارين المسجلة فعلياً حسب التاريخ. اضغط على أي يوم لعرض التفاصيل أو تخطيط تمرين مستقبلّي.'
+              : 'Displays actual recorded workout dates. Select any date to inspect sessions or plan future workouts.'}
           </p>
         </div>
         <button
@@ -871,8 +877,8 @@ export const CalendarPage: React.FC = () => {
                     <strong>{selectedDaySchedule.title}</strong>
                   </p>
 
-                  {/* زر تخطيط التمرين (Put a Plan / Plan Day) */}
-                  {selectedDaySchedule.workoutType !== 'rest' && (
+                  {/* زر تخطيط التمرين (Put a Plan) يظهر حصرياً للأيام المستقبلية (Future Dates) */}
+                  {isFutureDate && selectedDaySchedule.workoutType !== 'rest' && (
                     <button
                       onClick={handleOpenPlanDay}
                       className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
@@ -908,7 +914,7 @@ export const CalendarPage: React.FC = () => {
                 </p>
                 <p className="text-[11px] opacity-75">
                   {lang === 'ar'
-                    ? 'يمكنك إضافة تمرين أو وضع خطة لهذا التاريخ.'
+                    ? 'يمكنك إضافة أو تخطيط تمرين لهذا التاريخ.'
                     : 'You can record or plan a session on this date.'}
                 </p>
               </div>
@@ -1417,7 +1423,7 @@ export const CalendarPage: React.FC = () => {
                 );
               })}
 
-              {/* ADD EXERCISE / FORGOTTEN EXERCISE */}
+              {/* ADD EXERCISE / FORGOTTEN EXERCISE WITH DAY MUSCLE FILTERING */}
               <div className="space-y-3">
                 <button
                   type="button"
@@ -1428,20 +1434,20 @@ export const CalendarPage: React.FC = () => {
                   className="w-full py-3 rounded-xl border border-dashed border-indigo-500/50 text-indigo-500 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4" />{' '}
-                  {lang === 'ar' ? 'إضافة تمرين' : 'Add Exercise'}
+                  {lang === 'ar' ? 'إضافة تمرين (Add Exercise)' : 'Add Exercise'}
                 </button>
                 {isAddForgottenOpen && (
                   <div className="p-3 rounded-xl border border-indigo-500/30 space-y-3">
                     <p className="text-xs text-gray-400">
                       {lang === 'ar'
-                        ? 'اختر المجموعة العضلية المخصصة لهذا اليوم، أو تصفح الكل.'
-                        : 'Select from the target muscles for this day or all groups.'}
+                        ? 'تصفية العضلات المتاحة لهذا اليوم وفقاً لجدولك الأسبوعي:'
+                        : 'Filter muscles available for this day according to your weekly schedule:'}
                     </p>
                     <div className="space-y-1.5">
                       <label className="block text-xs font-semibold">
                         {lang === 'ar'
-                          ? 'تصفية حسب العضلة'
-                          : 'Filter by Muscle Group'}
+                          ? 'تصفية حسب عضلات اليوم المحدد'
+                          : 'Filter by Day Muscles'}
                       </label>
                       <select
                         value={forgottenMuscleFilter}
@@ -1453,7 +1459,7 @@ export const CalendarPage: React.FC = () => {
                         className={fieldClass}
                       >
                         <option value="ALL">
-                          {lang === 'ar' ? 'جميع العضلات' : 'All Muscle Groups'}
+                          {lang === 'ar' ? 'كل عضلات هذا اليوم' : 'All Day Muscles'}
                         </option>
                         {allowedMuscleGroupsForDay.map((muscle) => (
                           <option key={muscle} value={muscle}>
@@ -1464,7 +1470,7 @@ export const CalendarPage: React.FC = () => {
                     </div>
                     <div className="space-y-1.5">
                       <label className="block text-xs font-semibold">
-                        {lang === 'ar' ? 'اختر التمرين' : 'Select Exercise'}
+                        {lang === 'ar' ? 'اختر التمرين لإضافته' : 'Select Exercise to Add'}
                       </label>
                       <select
                         defaultValue=""
@@ -1489,8 +1495,8 @@ export const CalendarPage: React.FC = () => {
                       {availableForgottenExercises.length === 0 && (
                         <p className="text-xs text-gray-400 pt-1">
                           {lang === 'ar'
-                            ? 'لا توجد تمارين متاحة ضمن هذه المجموعة.'
-                            : 'No available exercises in this muscle group.'}
+                            ? 'لا توجد تمارين متاحة إضافية ضمن هذه العضلة.'
+                            : 'No more available exercises in this muscle group.'}
                         </p>
                       )}
                     </div>
