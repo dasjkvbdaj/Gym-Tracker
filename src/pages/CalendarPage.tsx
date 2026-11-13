@@ -697,7 +697,7 @@ export const CalendarPage: React.FC = () => {
             {calendarCells.map((cell) => {
               const dayWorkouts = workoutsByDate.get(cell.dateStr) || [];
               const todayStr = toLocalDateString(new Date());
-              // التحقق مما إذا كان اليوم في المستقبل ويحتوي على تمارين مخزنة (أي Future Plan)
+              // التحقق مما إذا كان اليوم في المستقبل ويحتوي على خطة/تمرين (Future Plan)
               const isFuturePlan = cell.dateStr > todayStr && dayWorkouts.length > 0;
 
               const hasStrength = dayWorkouts.some(
@@ -752,18 +752,12 @@ export const CalendarPage: React.FC = () => {
                       {cell.dayNumber}
                     </span>
                     
-                    {/* مؤشر مرئي للخطة المستقبلية (Future Plan) داخل خلية التقويم */}
+                    {/* النقطة الصفراء للدلالة على وجود خطة مستقبلية (Future Plan) */}
                     {isFuturePlan && (
                       <span
-                        title={lang === 'ar' ? 'خطة مستقبلية' : 'Future Plan'}
-                        className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tighter ${
-                          isDark
-                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                            : 'bg-amber-100 text-amber-800 border border-amber-200'
-                        }`}
-                      >
-                        {lang === 'ar' ? 'خطة' : 'Plan'}
-                      </span>
+                        title={lang === 'ar' ? 'يوم مخطط (Future Plan)' : 'Future Plan'}
+                        className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm ring-1 ring-amber-500/50 shrink-0"
+                      />
                     )}
 
                     {isScheduledRest && dayWorkouts.length === 0 && (
@@ -832,9 +826,7 @@ export const CalendarPage: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold">
-                {lang === 'ar' ? 'خطة' : 'Plan'}
-              </span>
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
               <span>
                 {lang === 'ar' ? 'خطة مستقبلية (Future Plan)' : 'Future Plan'}
               </span>
