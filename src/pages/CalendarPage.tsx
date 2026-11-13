@@ -173,13 +173,15 @@ export const CalendarPage: React.FC = () => {
   const [editingWorkout, setEditingWorkout] =
     useState<WorkoutSession | null>(null);
 
+  // هل نحن في وضع التخطيط (Put a Plan) أم التعديل العادي
+  const [isPlanningMode, setIsPlanningMode] = useState(false);
+
   const [deleteConfirmId, setDeleteConfirmId] =
     useState<string | null>(null);
 
   const [isAddForgottenOpen, setIsAddForgottenOpen] =
     useState(false);
 
-  // استخراج عضلات اليوم المحدد واختيار أول عضلة افتراضياً تلقائياً
   const selectedDateMetaForFilter = getDateMetadata(selectedCalendarDate);
   const currentDayScheduleForFilter = weeklySchedule.find(
     (d) => d.day === selectedDateMetaForFilter.dayOfWeek
@@ -258,7 +260,7 @@ export const CalendarPage: React.FC = () => {
     return selectedCalendarDate > todayStr;
   }, [selectedCalendarDate]);
 
-  // فتح نافذة التخطيط اليومي المخطط (Put a Plan / Plan Day)
+  // فتح نافذة التخطيط اليومي (Put a Plan)
   const handleOpenPlanDay = () => {
     if (!selectedDaySchedule || selectedDaySchedule.workoutType === 'rest') {
       return;
@@ -268,6 +270,7 @@ export const CalendarPage: React.FC = () => {
     const defaultMuscleGroups = targetMuscles.length > 0 ? targetMuscles : ['Back' as MuscleGroup];
 
     setForgottenMuscleFilter(defaultMuscleGroups[0]);
+    setIsPlanningMode(true);
 
     const newSession: WorkoutSession = {
       id: generateId('workout'),
@@ -345,6 +348,7 @@ export const CalendarPage: React.FC = () => {
     if (targetMuscles.length > 0) {
       setForgottenMuscleFilter(targetMuscles[0]);
     }
+    setIsPlanningMode(false); // وضع تعديل عادي
     setEditingWorkout(
       JSON.parse(JSON.stringify(session)) as WorkoutSession
     );
@@ -353,10 +357,107 @@ export const CalendarPage: React.FC = () => {
 
   const handleCloseEdit = () => {
     setEditingWorkout(null);
+    setIsPlanningMode(false);
     setIsAddForgottenOpen(false);
   };
 
-  // إضافة تمرين بدون مجموعات أو أوزان (اسم التمرين فقط) وبسرعة عبر زر Add
+  const handleEditSetChange = (
+    entryId: string,
+    setId: string,
+    field: 'weight' | 'reps',
+    value: number
+  ) => {
+    if (!editingWorkout) return;
+
+    const updatedExercises = editingWorkout.exercises.map((ex) => {
+      if (ex.id !== entryId) return ex;
+      return {
+        ...ex,
+        sets: ex.sets.map((set) => {
+          if (set.id !== setId) return set;
+          if (field === 'weight') {
+            return {
+              ...set,
+              weight:
+                ex.weightType === 'none' ? null : Math.max(0, value),
+            };
+          }
+          return { ...set, reps: Math.max(0, Math.round(value)) };
+        }),
+      };
+    });
+    setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
+  };
+
+  const handleEditCaloriesChange = (entryId: string, calories: number) => {
+    if (!editingWorkout) return;
+    const updatedExercises = editingWorkout.exercises.map((ex) => {
+      if (ex.id !== entryId) return ex;
+      return { ...ex, caloriesBurned: Math.max(0, calories) };
+    });
+    setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
+  };
+
+  const handleEditExerciseUnit = (
+    entryId: string,
+    unit: WeightUnit
+  ) => {
+    if (!editingWorkout) return;
+
+    const updatedExercises = editingWorkout.exercises.map((ex) => {
+      if (ex.id !== entryId) return ex;
+      return {
+        ...ex,
+        weightType: unit,
+        sets: ex.sets.map((set) => ({
+          ...set,
+          weight: unit === 'none' ? null : set.weight ?? 0,
+        })),
+      };
+    });
+    setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
+  };
+
+  const handleAddSet = (entryId: string) => {
+    if (!editingWorkout) return;
+
+    const updatedExercises = editingWorkout.exercises.map((ex) => {
+      if (ex.id !== entryId) return ex;
+      const currentName =
+        exerciseNameMap.get(ex.exerciseId) || ex.exerciseNameSnapshot;
+      const isCardio = isCardioExercise(currentName, ex.muscleGroup);
+      const previousSet = ex.sets[ex.sets.length - 1];
+      const newSet: SetEntry = {
+        id: generateId('set'),
+        setNumber: ex.sets.length + 1,
+        weight:
+          isCardio || ex.weightType === 'none'
+            ? null
+            : previousSet?.weight ?? 0,
+        reps: isCardio ? 30 : previousSet?.reps ?? 10,
+        completed: true,
+      };
+      return { ...ex, sets: [...ex.sets, newSet] };
+    });
+    setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
+  };
+
+  const handleRemoveSet = (entryId: string, setId: string) => {
+    if (!editingWorkout) return;
+
+    const updatedExercises = editingWorkout.exercises.map((ex) => {
+      if (ex.id !== entryId) return ex;
+      return {
+        ...ex,
+        sets: ex.sets
+          .filter((set) => set.id !== setId)
+          .map((set, index) => ({ ...set, setNumber: index + 1 })),
+      };
+    });
+    setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
+  };
+
+  // إضافة تمرين حسب وضع التخطيط أو التعديل العادي
   const handleAddForgottenExercise = (exerciseId: string) => {
     if (!editingWorkout || !exerciseId) return;
 
@@ -367,16 +468,30 @@ export const CalendarPage: React.FC = () => {
     );
     if (alreadyExists) return;
 
-    const unit: WeightUnit = 'none';
+    const isCardio = isCardioExercise(exercise.name, exercise.muscleGroup);
+    const unit: WeightUnit = exercise.isBodyweight || isCardio ? 'none' : exercise.defaultWeightUnit || settings.preferredWeightUnit;
+    
     const newEntry: ExerciseEntry = {
       id: generateId('ex_entry'),
       exerciseId: exercise.id,
       exerciseNameSnapshot: exercise.name,
       muscleGroup: exercise.muscleGroup,
       weightType: unit,
-      sets: [],
+      sets: isPlanningMode
+        ? [] // في وضع التخطيط، لا توجد مجموعات أو أوزان افتراضية
+        : [
+            {
+              id: generateId('set'),
+              setNumber: 1,
+              weight: null,
+              reps: isCardio ? 30 : 10,
+              completed: true,
+            },
+          ],
+      caloriesBurned: isCardio ? 0 : undefined,
       notes: '',
     };
+
     const groups = editingWorkout.muscleGroups.includes(exercise.muscleGroup)
       ? editingWorkout.muscleGroups
       : [...editingWorkout.muscleGroups, exercise.muscleGroup];
@@ -385,6 +500,11 @@ export const CalendarPage: React.FC = () => {
       muscleGroups: groups,
       exercises: [...editingWorkout.exercises, newEntry],
     });
+  };
+
+  const handleAddForgottenExerciseOldDropdown = (exerciseId: string) => {
+    if (!editingWorkout || !exerciseId) return;
+    handleAddForgottenExercise(exerciseId);
   };
 
   const handleRemoveExercise = (entryId: string) => {
@@ -406,6 +526,7 @@ export const CalendarPage: React.FC = () => {
     if (!editingWorkout) return;
     await saveHistoricalWorkout(editingWorkout);
     setEditingWorkout(null);
+    setIsPlanningMode(false);
     setIsAddForgottenOpen(false);
   };
 
@@ -425,7 +546,6 @@ export const CalendarPage: React.FC = () => {
       : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
   }`;
 
-  // عضلات اليوم المحدد في الجدول الأسبوعي (بدون خيار الكل)
   const allowedMuscleGroupsForDay = useMemo(() => {
     if (selectedDaySchedule) {
       return selectedDaySchedule.targetMuscles || selectedDaySchedule.muscleGroups || [];
@@ -439,6 +559,18 @@ export const CalendarPage: React.FC = () => {
           (existing) => existing.exerciseId === exercise.id
         );
         const matchesMuscle = exercise.muscleGroup === forgottenMuscleFilter;
+        return notAlreadyAdded && matchesMuscle;
+      })
+    : [];
+
+  const availableForgottenExercisesOld = editingWorkout
+    ? exercises.filter((exercise) => {
+        const notAlreadyAdded = !editingWorkout.exercises.some(
+          (existing) => existing.exerciseId === exercise.id
+        );
+        const matchesMuscle =
+          forgottenMuscleFilter === 'ALL' ||
+          exercise.muscleGroup === forgottenMuscleFilter;
         return notAlreadyAdded && matchesMuscle;
       })
     : [];
@@ -1048,106 +1180,421 @@ export const CalendarPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* EXERCISES: عرض اسم التمرين فقط بدون أوزان ومجموعات */}
+              {/* EXERCISES: بناءً على وضع التعديل العادي أو وضع التخطيط */}
               {editingWorkout.exercises.map((ex) => {
                 const displayName =
                   exerciseNameMap.get(ex.exerciseId) ||
                   ex.exerciseNameSnapshot;
+                const isCardio = isCardioExercise(
+                  displayName,
+                  ex.muscleGroup
+                );
+
+                if (isPlanningMode) {
+                  // في وضع التخطيط: عرض اسم التمرين فقط بدون مجموعات أو أوزان
+                  return (
+                    <div
+                      key={ex.id}
+                      className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+                        isDark
+                          ? 'bg-[hsl(240,5%,11%)] border-gray-800'
+                          : 'bg-slate-50 border-slate-200'
+                      }`}
+                    >
+                      <div>
+                        <h4 className="font-bold text-sm flex items-center gap-1.5">
+                          <span>{displayName}</span>
+                        </h4>
+                        <span className="text-[11px] text-gray-400">
+                          {translateMuscleGroup(ex.muscleGroup, lang)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExercise(ex.id)}
+                        className="p-1.5 text-red-500 cursor-pointer hover:bg-red-500/10 rounded-lg transition-colors"
+                        title="Remove exercise"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                }
+
+                // في وضع التعديل العادي: عرض المجموعات، الأوزان، والتكرارات بالكامل كما في الكود الأصلي
                 return (
                   <div
                     key={ex.id}
-                    className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+                    className={`p-3.5 rounded-xl border space-y-3 ${
                       isDark
                         ? 'bg-[hsl(240,5%,11%)] border-gray-800'
                         : 'bg-slate-50 border-slate-200'
                     }`}
                   >
-                    <div>
-                      <h4 className="font-bold text-sm flex items-center gap-1.5">
-                        <span>{displayName}</span>
-                      </h4>
-                      <span className="text-[11px] text-gray-400">
-                        {translateMuscleGroup(ex.muscleGroup, lang)}
-                      </span>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div>
+                        <h4 className="font-bold text-sm flex items-center gap-1.5">
+                          <span>{displayName}</span>
+                          {isCardio && <span className="text-xs">🏃‍♂️</span>}
+                        </h4>
+                        <span className="text-[11px] text-gray-400">
+                          {translateMuscleGroup(ex.muscleGroup, lang)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {!isCardio &&
+                          (['kg', 'lbs', 'none'] as const).map((unit) => (
+                            <button
+                              key={unit}
+                              type="button"
+                              onClick={() =>
+                                handleEditExerciseUnit(ex.id, unit)
+                              }
+                              className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${
+                                ex.weightType === unit
+                                  ? 'bg-indigo-700 text-white border-indigo-700'
+                                  : 'border-gray-500/30'
+                              }`}
+                            >
+                              {unit === 'none'
+                                ? lang === 'ar'
+                                  ? 'وزن الجسم'
+                                  : 'Bodyweight'
+                                : unit.toUpperCase()}
+                            </button>
+                          ))}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveExercise(ex.id)}
+                          className="p-1.5 text-red-500 cursor-pointer"
+                          title="Remove exercise"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveExercise(ex.id)}
-                      className="p-1.5 text-red-500 cursor-pointer hover:bg-red-500/10 rounded-lg transition-colors"
-                      title="Remove exercise"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+
+                    {isCardio ? (
+                      <div className="space-y-3 pt-2">
+                        {ex.sets.map((set) => (
+                          <div
+                            key={set.id}
+                            className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                              isDark
+                                ? 'bg-[hsl(240,5%,15%)] border-cyan-500/30'
+                                : 'bg-cyan-50/50 border-cyan-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 flex-1">
+                              <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
+                              <label className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 whitespace-nowrap">
+                                {lang === 'ar' ? 'المدة (دقائق):' : 'Duration:'}
+                              </label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={set.reps || 30}
+                                onChange={(e) =>
+                                  handleEditSetChange(
+                                    ex.id,
+                                    set.id,
+                                    'reps',
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className={`w-full sm:w-24 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-cyan-400 ${
+                                  isDark
+                                    ? 'bg-[hsl(240,5%,10%)] border-gray-700 text-cyan-300'
+                                    : 'bg-white border-cyan-200 text-cyan-800'
+                                }`}
+                              />
+                              <span className="text-xs text-cyan-500 font-semibold shrink-0">
+                                {lang === 'ar' ? 'دقيقة' : 'min'}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2 flex-1">
+                              <Flame className="w-4 h-4 text-orange-400 shrink-0" />
+                              <label className="text-xs font-semibold text-orange-600 dark:text-orange-400 whitespace-nowrap">
+                                {lang === 'ar'
+                                  ? 'السعرات (Calories):'
+                                  : 'Calories (kcal):'}
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="e.g. 250"
+                                value={ex.caloriesBurned ?? ''}
+                                onChange={(e) =>
+                                  handleEditCaloriesChange(
+                                    ex.id,
+                                    e.target.value === ''
+                                      ? 0
+                                      : Number(e.target.value)
+                                  )
+                                }
+                                className={`w-full sm:w-28 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-orange-400 ${
+                                  isDark
+                                    ? 'bg-[hsl(240,5%,10%)] border-gray-700 text-orange-300'
+                                    : 'bg-white border-orange-200 text-orange-800'
+                                }`}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-12 gap-2 text-[10px] font-semibold text-gray-400">
+                          <span className="col-span-2">
+                            {lang === 'ar' ? 'مجموعة' : 'SET'}
+                          </span>
+                          <span className="col-span-4">
+                            {ex.weightType === 'none'
+                              ? lang === 'ar'
+                                ? 'النوع'
+                                : 'TYPE'
+                              : lang === 'ar'
+                              ? 'الوزن'
+                              : 'WEIGHT'}
+                          </span>
+                          <span className="col-span-4">
+                            {lang === 'ar' ? 'التكرارات' : 'REPS'}
+                          </span>
+                          <span className="col-span-2" />
+                        </div>
+                        {ex.sets.map((set) => (
+                          <div
+                            key={set.id}
+                            className="grid grid-cols-12 gap-2 items-center"
+                          >
+                            <span className="col-span-2 text-xs font-mono-num">
+                              #{set.setNumber}
+                            </span>
+                            <div className="col-span-4">
+                              {ex.weightType === 'none' ? (
+                                <span className="text-xs text-purple-400">
+                                  {lang === 'ar'
+                                    ? 'وزن الجسم'
+                                    : 'Bodyweight'}
+                                </span>
+                              ) : (
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="any"
+                                  value={set.weight ?? 0}
+                                  onChange={(e) =>
+                                    handleEditSetChange(
+                                      ex.id,
+                                      set.id,
+                                      'weight',
+                                      Number(e.target.value)
+                                    )
+                                  }
+                                  className={fieldClass}
+                                  placeholder={
+                                    lang === 'ar' ? 'الوزن' : 'Weight'
+                                  }
+                                />
+                              )}
+                            </div>
+                            <div className="col-span-4">
+                              <input
+                                type="number"
+                                min="0"
+                                value={set.reps}
+                                onChange={(e) =>
+                                  handleEditSetChange(
+                                    ex.id,
+                                    set.id,
+                                    'reps',
+                                    Number(e.target.value)
+                                  )
+                                }
+                                className={fieldClass}
+                                placeholder={
+                                  lang === 'ar' ? 'التكرارات' : 'Reps'
+                                }
+                              />
+                            </div>
+                            <div className="col-span-2 text-center">
+                              {ex.sets.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleRemoveSet(ex.id, set.id)
+                                  }
+                                  className="text-red-500 cursor-pointer"
+                                  aria-label="Remove set"
+                                >
+                                  <X className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => handleAddSet(ex.id)}
+                          className="text-xs font-bold text-indigo-500 flex items-center gap-1 cursor-pointer pt-1"
+                        >
+                          <Plus className="w-4 h-4" />{' '}
+                          {lang === 'ar' ? 'إضافة مجموعة' : 'Add Set'}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
 
-              {/* ADD EXERCISE: تصفية العضلات وعرض التمارين كنص مع زر Add مباشر (add add add) بدون قائمة select طويلة */}
-              <div className="p-4 rounded-xl border border-indigo-500/30 space-y-4">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold">
-                    {lang === 'ar'
-                      ? 'تصفية حسب عضلة اليوم'
-                      : 'Filter by Day Muscle Group'}
-                  </label>
-                  <select
-                    value={forgottenMuscleFilter}
-                    onChange={(e) =>
-                      setForgottenMuscleFilter(
-                        e.target.value as MuscleGroup
-                      )
-                    }
-                    className={fieldClass}
-                  >
-                    {allowedMuscleGroupsForDay.map((muscle) => (
-                      <option key={muscle} value={muscle}>
-                        {translateMuscleGroup(muscle, lang)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold">
-                    {lang === 'ar' ? 'التمارين المتاحة (اضغط إضافة):' : 'Available Exercises:'}
-                  </label>
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {availableForgottenExercises.length === 0 ? (
-                      <p className="text-xs text-gray-400 py-2 text-center">
+              {/* ADD EXERCISE: تختلف حسب وضع التخطيط أو وضع التعديل */}
+              <div className="space-y-3">
+                {isPlanningMode ? (
+                  <div className="p-4 rounded-xl border border-indigo-500/30 space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold">
                         {lang === 'ar'
-                          ? 'تمت إضافة جميع تمارين هذه العضلة أو لا توجد تمارين متاحة.'
-                          : 'No available exercises in this muscle group.'}
-                      </p>
-                    ) : (
-                      availableForgottenExercises.map((exercise) => (
-                        <div
-                          key={exercise.id}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border ${
-                            isDark
-                              ? 'bg-[hsl(240,5%,10%)] border-gray-800'
-                              : 'bg-white border-slate-200'
-                          }`}
-                        >
-                          <span className="text-xs font-semibold">
-                            {exercise.name}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleAddForgottenExercise(exercise.id)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                              isDark
-                                ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
-                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
-                            }`}
+                          ? 'تصفية حسب عضلة اليوم'
+                          : 'Filter by Day Muscle Group'}
+                      </label>
+                      <select
+                        value={forgottenMuscleFilter}
+                        onChange={(e) =>
+                          setForgottenMuscleFilter(
+                            e.target.value as MuscleGroup
+                          )
+                        }
+                        className={fieldClass}
+                      >
+                        {allowedMuscleGroupsForDay.map((muscle) => (
+                          <option key={muscle} value={muscle}>
+                            {translateMuscleGroup(muscle, lang)}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold">
+                        {lang === 'ar' ? 'التمارين المتاحة (اضغط إضافة):' : 'Available Exercises:'}
+                      </label>
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                        {availableForgottenExercises.length === 0 ? (
+                          <p className="text-xs text-gray-400 py-2 text-center">
+                            {lang === 'ar'
+                              ? 'تمت إضافة جميع تمارين هذه العضلة أو لا توجد تمارين متاحة.'
+                              : 'No available exercises in this muscle group.'}
+                          </p>
+                        ) : (
+                          availableForgottenExercises.map((exercise) => (
+                            <div
+                              key={exercise.id}
+                              className={`flex items-center justify-between p-2.5 rounded-xl border ${
+                                isDark
+                                  ? 'bg-[hsl(240,5%,10%)] border-gray-800'
+                                  : 'bg-white border-slate-200'
+                              }`}
+                            >
+                              <span className="text-xs font-semibold">
+                                {exercise.name}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleAddForgottenExercise(exercise.id)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                                  isDark
+                                    ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
+                                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+                                }`}
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsAddForgottenOpen(!isAddForgottenOpen);
+                        setForgottenMuscleFilter('ALL');
+                      }}
+                      className="w-full py-3 rounded-xl border border-dashed border-indigo-500/50 text-indigo-500 font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />{' '}
+                      {lang === 'ar' ? 'إضافة تمرين منسي' : 'Add Forgotten Workout'}
+                    </button>
+                    {isAddForgottenOpen && (
+                      <div className="p-3 rounded-xl border border-indigo-500/30 space-y-3 mt-2">
+                        <p className="text-xs text-gray-400">
+                          {lang === 'ar'
+                            ? 'اختر المجموعة العضلية أولاً، ثم اختر التمرين الذي تريد إضافته.'
+                            : 'Select a muscle group first, then choose the exercise you want to add.'}
+                        </p>
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-semibold">
+                            {lang === 'ar' ? 'تصفية حسب العضلة' : 'Filter by Muscle Group'}
+                          </label>
+                          <select
+                            value={forgottenMuscleFilter}
+                            onChange={(e) =>
+                              setForgottenMuscleFilter(
+                                e.target.value as MuscleGroup | 'ALL'
+                              )
+                            }
+                            className={fieldClass}
                           >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
-                          </button>
+                            <option value="ALL">
+                              {lang === 'ar' ? 'جميع العضلات' : 'All Muscle Groups'}
+                            </option>
+                            {MUSCLE_GROUPS.map((muscle) => (
+                              <option key={muscle} value={muscle}>
+                                {translateMuscleGroup(muscle, lang)}
+                              </option>
+                            ))}
+                          </select>
                         </div>
-                      ))
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-semibold">
+                            {lang === 'ar' ? 'اختر التمرين' : 'Select Exercise'}
+                          </label>
+                          <select
+                            defaultValue=""
+                            onChange={(e) => {
+                              const exerciseId = e.target.value;
+                              if (exerciseId) {
+                                handleAddForgottenExerciseOldDropdown(exerciseId);
+                                e.target.value = '';
+                              }
+                            }}
+                            className={fieldClass}
+                          >
+                            <option value="">
+                              {lang === 'ar' ? 'اختر تمريناً...' : 'Select exercise...'}
+                            </option>
+                            {availableForgottenExercisesOld.map((exercise) => (
+                              <option key={exercise.id} value={exercise.id}>
+                                {exercise.name}
+                              </option>
+                            ))}
+                          </select>
+                          {availableForgottenExercisesOld.length === 0 && (
+                            <p className="text-xs text-gray-400 pt-1">
+                              {lang === 'ar'
+                                ? 'لا توجد تمارين متاحة ضمن هذه المجموعة.'
+                                : 'No available exercises in this muscle group.'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -1164,7 +1611,13 @@ export const CalendarPage: React.FC = () => {
                 type="submit"
                 className="px-5 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-bold cursor-pointer"
               >
-                {lang === 'ar' ? 'حفظ الخطة / التمرين' : 'Save Plan / Workout'}
+                {isPlanningMode
+                  ? lang === 'ar'
+                    ? 'حفظ الخطة'
+                    : 'Save Plan'
+                  : lang === 'ar'
+                  ? 'تحديث التمرين'
+                  : 'Update Workout'}
               </button>
             </div>
           </form>
