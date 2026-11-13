@@ -258,7 +258,7 @@ export const CalendarPage: React.FC = () => {
     return selectedCalendarDate > todayStr;
   }, [selectedCalendarDate]);
 
-  // فتح نافذة التخطيط اليومي المخطط (Put a Plan / Plan Day) بدون أي تمارين مسبقة ومع تعيين أول عضلة افتراضياً
+  // فتح نافذة التخطيط اليومي المخطط (Put a Plan / Plan Day)
   const handleOpenPlanDay = () => {
     if (!selectedDaySchedule || selectedDaySchedule.workoutType === 'rest') {
       return;
@@ -276,7 +276,7 @@ export const CalendarPage: React.FC = () => {
       muscleGroups: defaultMuscleGroups,
       startTimestamp: Date.now(),
       finishTimestamp: null,
-      exercises: [], // فارغة لتتم إضافتها يدوياً
+      exercises: [],
       actualDate: selectedCalendarDate,
       year: Number(selectedCalendarDate.split('-')[0]),
       month: Number(selectedCalendarDate.split('-')[1]),
@@ -356,7 +356,7 @@ export const CalendarPage: React.FC = () => {
     setIsAddForgottenOpen(false);
   };
 
-  // إضافة تمرين بدون مجموعات أو أوزان (اسم التمرين فقط)
+  // إضافة تمرين بدون مجموعات أو أوزان (اسم التمرين فقط) وبسرعة عبر زر Add
   const handleAddForgottenExercise = (exerciseId: string) => {
     if (!editingWorkout || !exerciseId) return;
 
@@ -374,7 +374,7 @@ export const CalendarPage: React.FC = () => {
       exerciseNameSnapshot: exercise.name,
       muscleGroup: exercise.muscleGroup,
       weightType: unit,
-      sets: [], // فارغة تماماً بدون مجموعات أو أوزان أو تكرارات
+      sets: [],
       notes: '',
     };
     const groups = editingWorkout.muscleGroups.includes(exercise.muscleGroup)
@@ -1082,13 +1082,8 @@ export const CalendarPage: React.FC = () => {
                 );
               })}
 
-              {/* ADD EXERCISE: تصفية عضلات اليوم المحدد حصراً بدون خيار الكل وتحديد أول عضلة افتراضياً */}
-              <div className="p-3 rounded-xl border border-indigo-500/30 space-y-3">
-                <p className="text-xs text-gray-400">
-                  {lang === 'ar'
-                    ? 'اختر العضلة ثم حدد التمرين لإضافته إلى خطة اليوم.'
-                    : 'Select a muscle group then choose an exercise to add.'}
-                </p>
+              {/* ADD EXERCISE: تصفية العضلات وعرض التمارين كنص مع زر Add مباشر (add add add) بدون قائمة select طويلة */}
+              <div className="p-4 rounded-xl border border-indigo-500/30 space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold">
                     {lang === 'ar'
@@ -1111,37 +1106,47 @@ export const CalendarPage: React.FC = () => {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1.5">
+
+                <div className="space-y-2">
                   <label className="block text-xs font-semibold">
-                    {lang === 'ar' ? 'اختر التمرين' : 'Select Exercise'}
+                    {lang === 'ar' ? 'التمارين المتاحة (اضغط إضافة):' : 'Available Exercises:'}
                   </label>
-                  <select
-                    defaultValue=""
-                    onChange={(e) => {
-                      const exerciseId = e.target.value;
-                      if (exerciseId) {
-                        handleAddForgottenExercise(exerciseId);
-                        e.target.value = '';
-                      }
-                    }}
-                    className={fieldClass}
-                  >
-                    <option value="">
-                      {lang === 'ar' ? 'اختر تمريناً...' : 'Select exercise...'}
-                    </option>
-                    {availableForgottenExercises.map((exercise) => (
-                      <option key={exercise.id} value={exercise.id}>
-                        {exercise.name}
-                      </option>
-                    ))}
-                  </select>
-                  {availableForgottenExercises.length === 0 && (
-                    <p className="text-xs text-gray-400 pt-1">
-                      {lang === 'ar'
-                        ? 'لا توجد تمارين متاحة إضافية ضمن هذه المجموعة.'
-                        : 'No available exercises in this muscle group.'}
-                    </p>
-                  )}
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {availableForgottenExercises.length === 0 ? (
+                      <p className="text-xs text-gray-400 py-2 text-center">
+                        {lang === 'ar'
+                          ? 'تمت إضافة جميع تمارين هذه العضلة أو لا توجد تمارين متاحة.'
+                          : 'No available exercises in this muscle group.'}
+                      </p>
+                    ) : (
+                      availableForgottenExercises.map((exercise) => (
+                        <div
+                          key={exercise.id}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border ${
+                            isDark
+                              ? 'bg-[hsl(240,5%,10%)] border-gray-800'
+                              : 'bg-white border-slate-200'
+                          }`}
+                        >
+                          <span className="text-xs font-semibold">
+                            {exercise.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleAddForgottenExercise(exercise.id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                              isDark
+                                ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
+                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+                            }`}
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
