@@ -33,6 +33,7 @@ export type AppSection =
   | 'settings';
 
 export interface SetEntry {
+  caloriesBurned: boolean;
   id: string;
   setNumber: number;
   weight: number | null; // null when weightType === 'none' (Bodyweight)
