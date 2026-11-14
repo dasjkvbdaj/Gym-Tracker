@@ -56,6 +56,21 @@ export const StartWorkout: React.FC = () => {
   const todayStr = toLocalDateString(new Date());
   const todayMeta = getDateMetadata(todayStr);
 
+  // الجلسات المكتملة فعلياً فقط (لاستخراج آخر أداء مسجل بدقة)
+  const actualCompletedWorkouts = useMemo(
+    () => completedWorkouts.filter((w) => (w.status as string) !== 'planned'),
+    [completedWorkouts]
+  );
+
+  // خطة اليوم المجدولة في التقويم إن وجدت
+  const todayCalendarPlan = useMemo(
+    () =>
+      completedWorkouts.find(
+        (w) => w.actualDate === todayStr && (w.status as string) === 'planned'
+      ),
+    [completedWorkouts, todayStr]
+  );
+
   const [isAddExerciseOpen, setIsAddExerciseOpen] = useState(false);
   const [pickerMuscleFilter, setPickerMuscleFilter] = useState<MuscleGroup | 'ALL'>('ALL');
   const [pickerSearch, setPickerSearch] = useState('');
@@ -112,7 +127,7 @@ export const StartWorkout: React.FC = () => {
     const libEx = exercises.find((e) => e.id === exerciseId);
     if (!libEx) return;
 
-    const lastPerf = getLastPerformanceForExercise(libEx.id, completedWorkouts);
+    const lastPerf = getLastPerformanceForExercise(libEx.id, actualCompletedWorkouts);
     const initialUnit: WeightUnit = libEx.isBodyweight ? 'none' : lastPerf ? lastPerf.weightType : libEx.defaultWeightUnit || settings.preferredWeightUnit;
     const isCardio = libEx.muscleGroup === 'Cardio' || libEx.name.toLowerCase().includes('treadmill') || libEx.name.toLowerCase().includes('elliptical') || libEx.name.toLowerCase().includes('bike') || libEx.name.toLowerCase().includes('running') || libEx.name.toLowerCase().includes('cardio');
     const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? null : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 0;
@@ -320,6 +335,12 @@ export const StartWorkout: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {weeklySchedule.map((dayPlan) => {
             const isTodayPlan = dayPlan.day === todayMeta.dayOfWeek;
+            const activePlanTitle = isTodayPlan && todayCalendarPlan ? todayCalendarPlan.title : dayPlan.title;
+            const activePlanMuscleGroups = isTodayPlan && todayCalendarPlan ? todayCalendarPlan.muscleGroups : dayPlan.muscleGroups;
+            const activePlanExerciseIds = isTodayPlan && todayCalendarPlan
+              ? todayCalendarPlan.exercises.map((e) => e.exerciseId)
+              : dayPlan.assignedExerciseIds;
+
             return (
               <div
                 key={dayPlan.day}
@@ -349,11 +370,11 @@ export const StartWorkout: React.FC = () => {
                     )}
                   </div>
                   <h3 className="text-base sm:text-lg font-display font-bold">
-                    {dayPlan.title}
+                    {activePlanTitle}
                   </h3>
-                  {dayPlan.muscleGroups.length > 0 && (
+                  {activePlanMuscleGroups.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1">
-                      {dayPlan.muscleGroups.map((mg) => (
+                      {activePlanMuscleGroups.map((mg) => (
                         <span
                           key={mg}
                           className={`text-[11px] px-2 py-0.5 rounded-md font-medium ${
@@ -370,7 +391,7 @@ export const StartWorkout: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-between pt-2 border-t border-inherit">
-                  {dayPlan.workoutType !== 'strength' && (
+                  {dayPlan.workoutType !== 'strength' && !(isTodayPlan && todayCalendarPlan) && (
                     <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
                       {dayPlan.workoutType === 'rest'
                         ? lang === 'ar'
@@ -384,12 +405,21 @@ export const StartWorkout: React.FC = () => {
                   <button
                     onClick={() =>
                       startNewWorkout({
-                        workoutType: dayPlan.workoutType === 'cardio' ? 'cardio' : 'strength',
-                        title: dayPlan.workoutType === 'rest' ? 'Bonus Session' : dayPlan.title,
-                        muscleGroups: dayPlan.muscleGroups.length > 0 ? dayPlan.muscleGroups : ['Cardio'],
-                        exerciseIds: dayPlan.assignedExerciseIds,
+                        workoutType: isTodayPlan && todayCalendarPlan
+                          ? todayCalendarPlan.workoutType
+                          : dayPlan.workoutType === 'cardio'
+                          ? 'cardio'
+                          : 'strength',
+                        title: isTodayPlan && todayCalendarPlan
+                          ? todayCalendarPlan.title
+                          : dayPlan.workoutType === 'rest'
+                          ? 'Bonus Session'
+                          : dayPlan.title,
+                        muscleGroups: activePlanMuscleGroups.length > 0 ? activePlanMuscleGroups : ['Cardio'],
+                        exerciseIds: activePlanExerciseIds,
                         actualDate: todayStr,
-                      })
+                        plannedWorkoutId: isTodayPlan && todayCalendarPlan ? todayCalendarPlan.id : undefined,
+                      } as Parameters<typeof startNewWorkout>[0])
                     }
                     className={`px-4 py-2 rounded-xl font-display font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
                       isDark
@@ -613,7 +643,7 @@ export const StartWorkout: React.FC = () => {
                   const isCardio = isCardioExercise(entry);
                   const lastPerf = getLastPerformanceForExercise(
                     entry.exerciseId,
-                    completedWorkouts
+                    actualCompletedWorkouts
                   );
 
                   return (
