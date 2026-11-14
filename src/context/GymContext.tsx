@@ -35,6 +35,7 @@ interface StartWorkoutOptions {
   exerciseIds?: string[];
   actualDate?: string; // YYYY-MM-DD
   notes?: string;
+  plannedWorkoutId?: string;
 }
 
 interface GymContextValue {
@@ -168,7 +169,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const completedWorkouts = useMemo(() => {
     return workouts
-      .filter((w) => w.status === 'completed')
+      .filter((w) => w.status === 'completed' || (w.status as string) === 'planned')
       .sort((a, b) => {
         if (b.actualDate !== a.actualDate) {
           return b.actualDate.localeCompare(a.actualDate);
@@ -189,23 +190,40 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const dateStr = options?.actualDate || toLocalDateString(new Date(now));
     const meta = getDateMetadata(dateStr);
 
-    const workoutType = options?.workoutType || 'strength';
+    // التحقق من وجود خطة مخصصة محفوظة في التقويم لهذا التاريخ
+    const existingPlan = workouts.find(
+      (w) =>
+        (options?.plannedWorkoutId && w.id === options.plannedWorkoutId) ||
+        (w.actualDate === dateStr && (w.status as string) === 'planned')
+    );
+
+    const workoutType = options?.workoutType || existingPlan?.workoutType || 'strength';
     const muscleGroups: MuscleGroup[] =
       options?.muscleGroups && options.muscleGroups.length > 0
         ? options.muscleGroups
+        : existingPlan && existingPlan.muscleGroups.length > 0
+        ? existingPlan.muscleGroups
         : workoutType === 'cardio'
         ? ['Cardio']
         : ['Back'];
 
     const defaultTitle =
       options?.title ||
+      existingPlan?.title ||
       (workoutType === 'cardio'
         ? 'Cardio Session'
         : `${muscleGroups.join(' + ')} Workout`);
 
+    const resolvedExerciseIds =
+      options?.exerciseIds && options.exerciseIds.length > 0
+        ? options.exerciseIds
+        : existingPlan
+        ? existingPlan.exercises.map((e) => e.exerciseId)
+        : [];
+
     const exerciseEntries: ExerciseEntry[] = [];
-    if (workoutType === 'strength' && options?.exerciseIds && options.exerciseIds.length > 0) {
-      for (const exId of options.exerciseIds) {
+    if (workoutType === 'strength' && resolvedExerciseIds.length > 0) {
+      for (const exId of resolvedExerciseIds) {
         const libEx = exercises.find((e) => e.id === exId);
         if (libEx) {
           const unit: WeightUnit = libEx.isBodyweight
@@ -231,7 +249,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     }
 
-    const newSession: WorkoutSession = {
+    const newSession: WorkoutSession & { plannedWorkoutId?: string } = {
       id: generateId('workout'),
       workoutType,
       title: defaultTitle,
@@ -248,6 +266,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'in_progress',
       notes: options?.notes || '',
       exercises: exerciseEntries,
+      plannedWorkoutId: existingPlan?.id || options?.plannedWorkoutId,
     };
 
     if (activeWorkout) {
@@ -306,6 +325,17 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const meta = getDateMetadata(activeWorkout.actualDate);
 
+    // إزالة الخطة المجدولة (النقطة الصفراء) لهذا اليوم عند إنهاء التمرين بنجاح
+    const linkedPlanId = (activeWorkout as WorkoutSession & { plannedWorkoutId?: string }).plannedWorkoutId;
+    const plansToRemove = workouts.filter(
+      (w) =>
+        (linkedPlanId && w.id === linkedPlanId) ||
+        (w.actualDate === meta.actualDate && (w.status as string) === 'planned')
+    );
+    for (const plan of plansToRemove) {
+      await db.workouts.delete(plan.id);
+    }
+
     const completedSession: WorkoutSession = {
       ...activeWorkout,
       actualDate: meta.actualDate,
@@ -319,6 +349,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       status: 'completed',
       exercises: cleanedExercises,
     };
+    delete (completedSession as WorkoutSession & { plannedWorkoutId?: string }).plannedWorkoutId;
 
     await db.workouts.put(completedSession);
     showToast(
@@ -332,6 +363,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const cancelActiveWorkout = async (): Promise<void> => {
     if (!activeWorkout) return;
+    // حذف الجلسة النشطة فقط مع الإبقاء على أي خطة محفوظة (planned) في التقويم كما هي
     await db.workouts.delete(activeWorkout.id);
     showToast(
       settings.language === 'ar' ? 'تم إلغاء التمرين الحالي.' : 'Active workout cancelled.',
@@ -352,6 +384,8 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       })),
     }));
 
+    const isPlanned = (workout.status as string) === 'planned';
+
     const record: WorkoutSession = {
       ...workout,
       actualDate: meta.actualDate,
@@ -360,14 +394,18 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       dayOfMonth: meta.dayOfMonth,
       dayOfWeek: meta.dayOfWeek,
       timezone: meta.timezone,
-      status: 'completed',
+      status: (isPlanned ? 'planned' : 'completed') as WorkoutSession['status'],
       exercises: cleanedExercises,
     };
 
     await db.workouts.put(record);
     showToast(
       settings.language === 'ar'
-        ? 'تم حفظ بيانات التمرين بنجاح!'
+        ? isPlanned
+          ? 'تم حفظ الخطة بنجاح!'
+          : 'تم حفظ بيانات التمرين بنجاح!'
+        : isPlanned
+        ? 'Workout plan saved!'
         : 'Workout session saved!',
       'success'
     );
@@ -519,6 +557,22 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     workoutType: 'strength' | 'cardio' = 'strength'
   ) => {
     const meta = getDateMetadata(dateStr);
+    const existingPlan = workouts.find(
+      (w) => w.actualDate === dateStr && (w.status as string) === 'planned'
+    );
+
+    if (existingPlan) {
+      await startNewWorkout({
+        workoutType: existingPlan.workoutType,
+        title: existingPlan.title,
+        muscleGroups: existingPlan.muscleGroups,
+        exerciseIds: existingPlan.exercises.map((e) => e.exerciseId),
+        actualDate: dateStr,
+        plannedWorkoutId: existingPlan.id,
+      });
+      return;
+    }
+
     const dayPlan = weeklySchedule.find((d) => d.day === meta.dayOfWeek);
 
     if (dayPlan && dayPlan.workoutType !== 'rest' && workoutType === dayPlan.workoutType) {
