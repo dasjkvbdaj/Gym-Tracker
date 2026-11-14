@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { Dumbbell } from 'lucide-react';
 import { AppNavigation } from './components/navigation/AppNavigation';
