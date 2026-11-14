@@ -33,18 +33,15 @@ const MainRouter: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <AppNavigation />
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-24 md:pb-12">
-        {currentSection === 'dashboard' && <Dashboard />}
-        {currentSection === 'schedule' && <MyWorkout />}
-        {currentSection === 'exercises' && <ExerciseLibrary />}
-        {currentSection === 'start-workout' && <StartWorkout />}
-        {currentSection === 'calendar' && <CalendarPage />}
-        {currentSection === 'progress' && <ProgressPage />}
-        {currentSection === 'settings' && <SettingsPage />}
-      </main>
-    </div>
+    <AppNavigation>
+      {currentSection === 'dashboard' && <Dashboard />}
+      {currentSection === 'schedule' && <MyWorkout />}
+      {currentSection === 'exercises' && <ExerciseLibrary />}
+      {currentSection === 'start-workout' && <StartWorkout />}
+      {currentSection === 'calendar' && <CalendarPage />}
+      {currentSection === 'progress' && <ProgressPage />}
+      {currentSection === 'settings' && <SettingsPage />}
+    </AppNavigation>
   );
 };
 
