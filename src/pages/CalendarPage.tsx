@@ -254,10 +254,10 @@ export const CalendarPage: React.FC = () => {
     [weeklySchedule, selectedDateMeta]
   );
 
-  // التحقق هل التاريخ المحدد هو في المستقبل فقط (من غداً وطالع)
-  const isFutureDate = useMemo(() => {
+  // التحقق هل التاريخ المحدد هو اليوم أو في المستقبل (من اليوم وطالع)
+  const isTodayOrFutureDate = useMemo(() => {
     const todayStr = toLocalDateString(new Date());
-    return selectedCalendarDate > todayStr;
+    return selectedCalendarDate >= todayStr;
   }, [selectedCalendarDate]);
 
   // فتح نافذة التخطيط اليومي (Put a Plan)
@@ -279,6 +279,7 @@ export const CalendarPage: React.FC = () => {
       muscleGroups: defaultMuscleGroups,
       startTimestamp: Date.now(),
       finishTimestamp: null,
+      status: 'planned' as WorkoutSession['status'],
       exercises: [],
       actualDate: selectedCalendarDate,
       year: Number(selectedCalendarDate.split('-')[0]),
@@ -349,9 +350,9 @@ export const CalendarPage: React.FC = () => {
       setForgottenMuscleFilter(targetMuscles[0]);
     }
     const todayStr = toLocalDateString(new Date());
-    const isFuture = session.actualDate > todayStr;
+    const isPlan = (session.status as string) === 'planned' || session.actualDate > todayStr;
 
-    setIsPlanningMode(isFuture);
+    setIsPlanningMode(isPlan);
     setEditingWorkout(
       JSON.parse(JSON.stringify(session)) as WorkoutSession
     );
@@ -521,7 +522,11 @@ export const CalendarPage: React.FC = () => {
   const handleSaveWorkout = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!editingWorkout) return;
-    await saveHistoricalWorkout(editingWorkout);
+    const sessionToSave: WorkoutSession = {
+      ...editingWorkout,
+      status: (isPlanningMode ? 'planned' : 'completed') as WorkoutSession['status'],
+    };
+    await saveHistoricalWorkout(sessionToSave);
     setEditingWorkout(null);
     setIsPlanningMode(false);
     setIsAddForgottenOpen(false);
@@ -697,8 +702,12 @@ export const CalendarPage: React.FC = () => {
             {calendarCells.map((cell) => {
               const dayWorkouts = workoutsByDate.get(cell.dateStr) || [];
               const todayStr = toLocalDateString(new Date());
-              // التحقق مما إذا كان اليوم في المستقبل ويحتوي على خطة/تمرين (Future Plan)
-              const isFuturePlan = cell.dateStr > todayStr && dayWorkouts.length > 0;
+              // التحقق مما إذا كان اليوم يحتوي على خطة (Plan) سواء اليوم أو في المستقبل
+              const isPlannedDay = dayWorkouts.some(
+                (w) =>
+                  (w.status as string) === 'planned' ||
+                  (cell.dateStr > todayStr && w.status !== 'completed')
+              );
 
               const hasStrength = dayWorkouts.some(
                 (w) =>
@@ -752,10 +761,10 @@ export const CalendarPage: React.FC = () => {
                       {cell.dayNumber}
                     </span>
                     
-                    {/* النقطة الصفراء للدلالة على وجود خطة مستقبلية (Future Plan) */}
-                    {isFuturePlan && (
+                    {/* النقطة الصفراء للدلالة على وجود خطة (Plan) */}
+                    {isPlannedDay && (
                       <span
-                        title={lang === 'ar' ? 'يوم مخطط (Future Plan)' : 'Future Plan'}
+                        title={lang === 'ar' ? 'يوم مخطط (Plan)' : 'Planned Day'}
                         className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm ring-1 ring-amber-500/50 shrink-0"
                       />
                     )}
@@ -873,8 +882,8 @@ export const CalendarPage: React.FC = () => {
                     <strong>{selectedDaySchedule.title}</strong>
                   </p>
 
-                  {/* زر تخطيط التمرين (Put a Plan) يظهر حصراً في الأيام المستقبلية */}
-                  {isFutureDate && selectedDaySchedule.workoutType !== 'rest' && (
+                  {/* زر تخطيط التمرين (Put a Plan) يظهر من اليوم وطالع */}
+                  {isTodayOrFutureDate && selectedDaySchedule.workoutType !== 'rest' && (
                     <button
                       onClick={handleOpenPlanDay}
                       className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
