@@ -61,6 +61,21 @@ export const Dashboard: React.FC = () => {
 
   const isRestDay = todayPlan?.workoutType === 'rest';
 
+  // البحث عن خطة مخصصة لليوم في التقويم (Put a Plan)
+  const todayCalendarPlan = useMemo(
+    () =>
+      completedWorkouts.find(
+        (w) => w.actualDate === todayStr && (w.status as string) === 'planned'
+      ),
+    [completedWorkouts, todayStr]
+  );
+
+  // الجلسات المكتملة فعلياً فقط (بدون الخطط غير المنفذة)
+  const actualCompletedWorkouts = useMemo(
+    () => completedWorkouts.filter((w) => (w.status as string) !== 'planned'),
+    [completedWorkouts]
+  );
+
   const weekRange = useMemo(
     () => getCurrentWeekRange(new Date()),
     []
@@ -84,15 +99,15 @@ export const Dashboard: React.FC = () => {
 
   // Core KPI Calculations from actual saved workouts
   const stats = useMemo(() => {
-    const totalSessions = completedWorkouts.length;
+    const totalSessions = actualCompletedWorkouts.length;
 
-    const workoutsThisWeek = completedWorkouts.filter(
+    const workoutsThisWeek = actualCompletedWorkouts.filter(
       (w) =>
         w.actualDate >= weekRange.startOfWeek &&
         w.actualDate <= weekRange.endOfWeek
     ).length;
 
-    const cardioSessions = completedWorkouts.filter(
+    const cardioSessions = actualCompletedWorkouts.filter(
       (w) =>
         w.workoutType === 'cardio' ||
         w.muscleGroups.includes('Cardio')
@@ -103,12 +118,12 @@ export const Dashboard: React.FC = () => {
       workoutsThisWeek,
       cardioSessions,
     };
-  }, [completedWorkouts, weekRange]);
+  }, [actualCompletedWorkouts, weekRange]);
 
   // Weekly Activity Chart Data (Mon - Sun)
   const weeklyChartData = useMemo(() => {
     return weekRange.weekDates.map(({ day, dateStr }) => {
-      const dayWorkouts = completedWorkouts.filter(
+      const dayWorkouts = actualCompletedWorkouts.filter(
         (w) => w.actualDate === dateStr
       );
 
@@ -129,11 +144,11 @@ export const Dashboard: React.FC = () => {
         sets: totalSets,
       };
     });
-  }, [completedWorkouts, weekRange, lang]);
+  }, [actualCompletedWorkouts, weekRange, lang]);
 
   // Recent Exercise Progression
   const recentProgressions = useMemo(() => {
-    if (completedWorkouts.length === 0) return [];
+    if (actualCompletedWorkouts.length === 0) return [];
 
     const seenExerciseIds = new Set<string>();
 
@@ -141,7 +156,7 @@ export const Dashboard: React.FC = () => {
       typeof getExerciseProgressSummary
     >[] = [];
 
-    for (const w of completedWorkouts) {
+    for (const w of actualCompletedWorkouts) {
       for (const exEntry of w.exercises || []) {
         if (!seenExerciseIds.has(exEntry.exerciseId)) {
           seenExerciseIds.add(exEntry.exerciseId);
@@ -157,7 +172,7 @@ export const Dashboard: React.FC = () => {
           const summary = getExerciseProgressSummary(
             exEntry.exerciseId,
             exName,
-            completedWorkouts,
+            actualCompletedWorkouts,
             settings.preferredWeightUnit,
             'all',
             lang
@@ -179,7 +194,7 @@ export const Dashboard: React.FC = () => {
 
     return items;
   }, [
-    completedWorkouts,
+    actualCompletedWorkouts,
     exercises,
     settings.preferredWeightUnit,
     lang,
@@ -188,6 +203,18 @@ export const Dashboard: React.FC = () => {
   const handleStartTodayPlan = async () => {
     if (activeWorkout) {
       setCurrentSection('start-workout');
+      return;
+    }
+
+    if (todayCalendarPlan) {
+      await startNewWorkout({
+        workoutType: todayCalendarPlan.workoutType,
+        title: todayCalendarPlan.title,
+        muscleGroups: todayCalendarPlan.muscleGroups,
+        exerciseIds: todayCalendarPlan.exercises.map((e) => e.exerciseId),
+        actualDate: todayStr,
+        plannedWorkoutId: todayCalendarPlan.id,
+      } as Parameters<typeof startNewWorkout>[0]);
       return;
     }
 
@@ -248,7 +275,28 @@ export const Dashboard: React.FC = () => {
                 isDark ? 'text-gray-400' : 'text-slate-600'
               }`}
             >
-              {todayPlan ? (
+              {todayCalendarPlan ? (
+                <>
+                  <span>
+                    {lang === 'ar'
+                      ? `خطة ${translateDayName(
+                          todayMeta.dayOfWeek,
+                          lang
+                        )} المقترحة: `
+                      : `${todayMeta.dayOfWeek}'s Scheduled Plan: `}
+                  </span>
+
+                  <span
+                    className={`font-semibold ${
+                      isDark
+                        ? 'text-[hsl(75,92%,56%)]'
+                        : 'text-[hsl(76,78%,42%)]'
+                    }`}
+                  >
+                    {todayCalendarPlan.title}
+                  </span>
+                </>
+              ) : todayPlan ? (
                 <>
                   <span>
                     {lang === 'ar'
@@ -287,7 +335,7 @@ export const Dashboard: React.FC = () => {
             ) : (
               <button
                 onClick={handleStartTodayPlan}
-                disabled={isRestDay}
+                disabled={isRestDay && !todayCalendarPlan}
                 className={`w-full sm:w-auto px-5 py-3 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                   isDark
                     ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)] shadow-[hsl(75,92%,56%)]/15'
@@ -296,7 +344,7 @@ export const Dashboard: React.FC = () => {
               >
                 <Play className="w-4 h-4 fill-current" />
                 <span>
-                  {isRestDay
+                  {isRestDay && !todayCalendarPlan
                     ? lang === 'ar'
                       ? 'يوم راحة'
                       : 'Rest Day'
@@ -458,7 +506,7 @@ export const Dashboard: React.FC = () => {
       </div>
 
       {/* LAST COMPLETED WORKOUT BANNER OR EMPTY STATE */}
-      {completedWorkouts.length > 0 ? (
+      {actualCompletedWorkouts.length > 0 ? (
         <div
           className={`rounded-xl p-5 border flex flex-col sm:flex-row sm:items-center justify-between gap-4 ${
             isDark
@@ -479,7 +527,7 @@ export const Dashboard: React.FC = () => {
             </div>
 
             <h2 className="text-lg font-display font-bold">
-              {completedWorkouts[0].title}
+              {actualCompletedWorkouts[0].title}
             </h2>
 
             <div
@@ -495,29 +543,29 @@ export const Dashboard: React.FC = () => {
                   }
                 >
                   {formatFullDate(
-                    completedWorkouts[0].actualDate,
+                    actualCompletedWorkouts[0].actualDate,
                     lang
                   )}
                 </strong>
               </span>
 
-              {completedWorkouts[0].durationMinutes && (
+              {actualCompletedWorkouts[0].durationMinutes && (
                 <span>
                   {lang === 'ar' ? 'المدة:' : 'Duration:'}{' '}
                   <strong className="font-mono-num">
                     {formatDurationMinutes(
-                      completedWorkouts[0].durationMinutes,
+                      actualCompletedWorkouts[0].durationMinutes,
                       lang
                     )}
                   </strong>
                 </span>
               )}
 
-              {completedWorkouts[0].workoutType === 'strength' && (
+              {actualCompletedWorkouts[0].workoutType === 'strength' && (
                 <span>
                   {lang === 'ar' ? 'التمارين:' : 'Exercises:'}{' '}
                   <strong className="font-mono-num">
-                    {completedWorkouts[0].exercises.length}
+                    {actualCompletedWorkouts[0].exercises.length}
                   </strong>
                 </span>
               )}
@@ -526,7 +574,7 @@ export const Dashboard: React.FC = () => {
 
           <button
             onClick={() => {
-              setSelectedCalendarDate(completedWorkouts[0].actualDate);
+              setSelectedCalendarDate(actualCompletedWorkouts[0].actualDate);
               setCurrentSection('calendar');
             }}
             className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 border self-start sm:self-center transition-colors cursor-pointer ${
@@ -575,7 +623,7 @@ export const Dashboard: React.FC = () => {
           <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
             <button
               onClick={handleStartTodayPlan}
-              disabled={isRestDay}
+              disabled={isRestDay && !todayCalendarPlan}
               className={`px-5 py-2.5 rounded-xl font-display font-semibold text-sm flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
                 isDark
                   ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
@@ -584,7 +632,7 @@ export const Dashboard: React.FC = () => {
             >
               <Play className="w-4 h-4 fill-current" />
               <span>
-                {isRestDay
+                {isRestDay && !todayCalendarPlan
                   ? lang === 'ar'
                     ? 'يوم راحة'
                     : 'Rest Day'
@@ -851,7 +899,7 @@ export const Dashboard: React.FC = () => {
             </button>
           </div>
 
-          {completedWorkouts.length === 0 ? (
+          {actualCompletedWorkouts.length === 0 ? (
             <div
               className={`py-8 text-center text-xs ${
                 isDark ? 'text-gray-500' : 'text-slate-400'
@@ -863,7 +911,7 @@ export const Dashboard: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {completedWorkouts.slice(0, 4).map((session) => {
+              {actualCompletedWorkouts.slice(0, 4).map((session) => {
                 const totalSets = (session.exercises || []).reduce(
                   (acc, ex) => acc + (ex.sets ? ex.sets.length : 0),
                   0
