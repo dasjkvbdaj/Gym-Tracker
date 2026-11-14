@@ -8,7 +8,6 @@ import {
   Flame,
   History,
   Play,
-  Scale,
 } from 'lucide-react';
 import {
   Bar,
@@ -80,22 +79,6 @@ export const Dashboard: React.FC = () => {
     () => getCurrentWeekRange(new Date()),
     []
   );
-
-  // Get Latest Recorded Body Weight from localStorage
-  const latestWeightRecord = useMemo(() => {
-    try {
-      const saved = localStorage.getItem('gym_tracker_weight_history');
-      if (saved) {
-        const history = JSON.parse(saved);
-        if (Array.isArray(history) && history.length > 0) {
-          return history[0]; // أحدث وزن مسجل
-        }
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  }, []);
 
   // Core KPI Calculations from actual saved workouts
   const stats = useMemo(() => {
@@ -356,8 +339,8 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 4 KPI SUMMARY CARDS (INCLUDING THE NEW 4TH WEIGHT BOX) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+      {/* 3 KPI SUMMARY CARDS (EXCLUDING WEIGHT BOX) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
 
         {/* TOTAL SESSIONS */}
         <div
@@ -452,54 +435,6 @@ export const Dashboard: React.FC = () => {
             }`}
           >
             {lang === 'ar' ? 'إجمالي جلسات الكارديو' : 'Total cardio sessions'}
-          </p>
-        </div>
-
-        {/* 4TH BOX: CURRENT BODY WEIGHT */}
-        <div
-          onClick={() => setCurrentSection('weight')}
-          className={`p-4 sm:p-5 rounded-xl border cursor-pointer transition-all hover:border-[hsl(75,92%,56%)]/50 ${
-            isDark
-              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
-              : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span
-              className={`text-xs font-medium ${
-                isDark ? 'text-gray-400' : 'text-slate-500'
-              }`}
-            >
-              {lang === 'ar' ? 'وزن الجسم الحالي' : 'Current Body Weight'}
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-purple-500/15 text-purple-400 flex items-center justify-center">
-              <Scale className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 font-mono-num text-2xl sm:text-3xl font-bold flex items-baseline gap-1.5">
-            {latestWeightRecord ? (
-              <>
-                <span>{latestWeightRecord.weight}</span>
-                <span className="text-xs uppercase font-normal text-gray-400">
-                  {latestWeightRecord.unit}
-                </span>
-              </>
-            ) : (
-              <span className="text-sm font-normal text-gray-400 italic">
-                {lang === 'ar' ? 'لم يسجل بعد' : 'Not logged'}
-              </span>
-            )}
-          </div>
-          <p
-            className={`text-xs mt-1 ${
-              isDark ? 'text-gray-500' : 'text-slate-400'
-            }`}
-          >
-            {latestWeightRecord
-              ? latestWeightRecord.date
-              : lang === 'ar'
-              ? 'انقر لتسجيل الوزن'
-              : 'Click to log weight'}
           </p>
         </div>
 
