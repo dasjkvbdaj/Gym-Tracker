@@ -128,10 +128,12 @@ export const StartWorkout: React.FC = () => {
     if (!libEx) return;
 
     const lastPerf = getLastPerformanceForExercise(libEx.id, actualCompletedWorkouts);
-    const initialUnit: WeightUnit = libEx.isBodyweight ? 'none' : lastPerf ? lastPerf.weightType : libEx.defaultWeightUnit || settings.preferredWeightUnit;
     const isCardio = libEx.muscleGroup === 'Cardio' || libEx.name.toLowerCase().includes('treadmill') || libEx.name.toLowerCase().includes('elliptical') || libEx.name.toLowerCase().includes('bike') || libEx.name.toLowerCase().includes('running') || libEx.name.toLowerCase().includes('cardio');
-    const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? null : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 0;
-    const defaultFirstReps = isCardio ? 30 : lastPerf && lastPerf.bestSet ? lastPerf.bestSet.reps : 10;
+    
+    // التعديل هنا: جعل الوزن افتراضياً يعتمد على الكيلو / الرطل (Unit) وليس وزن الجسم، ما لم يكن التمارين كارديو
+    const initialUnit: WeightUnit = isCardio ? 'none' : (lastPerf ? lastPerf.weightType : (libEx.defaultWeightUnit || settings.preferredWeightUnit));
+    const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? 0 : (lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 0);
+    const defaultFirstReps = isCardio ? 30 : (lastPerf && lastPerf.bestSet ? lastPerf.bestSet.reps : 10);
     
     const newEntry: ExerciseEntry = {
       id: generateId('ex_entry'),
