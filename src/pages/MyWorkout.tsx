@@ -7,6 +7,7 @@ import {
   Moon,
   Save,
   X,
+  Copy, // <-- أضيفت أيقونة النسخ
 } from 'lucide-react';
 
 import { useGym } from '../context/GymContext';
@@ -36,8 +37,8 @@ export const MyWorkout: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [draftSchedule, setDraftSchedule] = useState<WeeklyScheduleDay[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [scheduleCopied, setScheduleCopied] = useState(false); // <-- حالة لنسخ الجدول
 
-  // Only display training days.
   const trainingDays = useMemo(() => {
     return weeklySchedule.filter(
       (day) =>
@@ -46,7 +47,6 @@ export const MyWorkout: React.FC = () => {
     );
   }, [weeklySchedule]);
 
-  // Generate a readable title from selected muscle groups.
   const generateDayTitle = (groups: MuscleGroup[]) => {
     if (groups.length === 0) {
       return isArabic ? 'يوم راحة' : 'Rest Day';
@@ -57,7 +57,25 @@ export const MyWorkout: React.FC = () => {
       .join(' + ');
   };
 
-  // Open the schedule editor.
+  // دالة نسخ الجدول الأسبوعي
+  const handleCopySchedule = () => {
+    const scheduleText = weeklySchedule
+      .map((day) => {
+        const dayName = translateDayName(day.day, lang);
+        const details =
+          day.workoutType === 'rest' || day.muscleGroups.length === 0
+            ? isArabic ? 'يوم راحة' : 'Rest Day'
+            : day.muscleGroups.map((mg) => translateMuscleGroup(mg, lang)).join(' + ');
+        return `${dayName}: ${details}`;
+      })
+      .join('\n');
+
+    navigator.clipboard.writeText(scheduleText).then(() => {
+      setScheduleCopied(true);
+      setTimeout(() => setScheduleCopied(false), 2000);
+    });
+  };
+
   const openEditSchedule = () => {
     setDraftSchedule(
       weeklySchedule.map((day) => ({
@@ -69,7 +87,6 @@ export const MyWorkout: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  // Toggle a muscle group for a specific day.
   const toggleMuscleGroup = (
     day: DayName,
     muscleGroup: MuscleGroup
@@ -93,7 +110,6 @@ export const MyWorkout: React.FC = () => {
     );
   };
 
-  // Toggle between training and rest day.
   const toggleRestDay = (day: DayName) => {
     setDraftSchedule((previous) =>
       previous.map((item) => {
@@ -120,7 +136,6 @@ export const MyWorkout: React.FC = () => {
     );
   };
 
-  // Save the complete weekly schedule.
   const handleSaveSchedule = async () => {
     setIsSaving(true);
     try {
@@ -179,18 +194,36 @@ export const MyWorkout: React.FC = () => {
           </p>
         </div>
 
-        {/* EDIT SCHEDULE BUTTON */}
-        <button
-          onClick={openEditSchedule}
-          className={`self-start sm:self-auto px-5 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
-            isDark
-              ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)] shadow-[hsl(75,92%,56%)]/15'
-              : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white shadow-[hsl(76,78%,42%)]/15'
-          }`}
-        >
-          <Edit3 className="w-4 h-4" />
-          {isArabic ? 'تعديل الجدول' : 'Edit Schedule'}
-        </button>
+        {/* أزرار الإجراءات في رأس الصفحة موزعة بـ space-between */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={handleCopySchedule}
+            className={`px-4 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 border transition-all cursor-pointer ${
+              isDark
+                ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200 hover:bg-[hsl(240,5%,15%)]'
+                : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-gray-50'
+            }`}
+          >
+            {scheduleCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            <span>
+              {scheduleCopied
+                ? isArabic ? 'تم النسخ!' : 'Copied!'
+                : isArabic ? 'نسخ الجدول' : 'Copy Schedule'}
+            </span>
+          </button>
+
+          <button
+            onClick={openEditSchedule}
+            className={`px-5 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
+              isDark
+                ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)] shadow-[hsl(75,92%,56%)]/15'
+                : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white shadow-[hsl(76,78%,42%)]/15'
+            }`}
+          >
+            <Edit3 className="w-4 h-4" />
+            {isArabic ? 'تعديل الجدول' : 'Edit Schedule'}
+          </button>
+        </div>
       </div>
 
       {/* WEEKLY SCHEDULE SUMMARY */}
@@ -371,7 +404,6 @@ export const MyWorkout: React.FC = () => {
                 : 'bg-white border-[hsl(40,10%,88%)]'
             }`}
           >
-            {/* MODAL HEADER */}
             <div
               className={`p-5 border-b flex items-center justify-between ${
                 isDark ? 'border-[hsl(240,4%,19%)]' : 'border-[hsl(40,10%,90%)]'
@@ -400,7 +432,6 @@ export const MyWorkout: React.FC = () => {
               </button>
             </div>
 
-            {/* MODAL CONTENT */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
               {draftSchedule.map((dayItem) => {
                 const isRest = dayItem.workoutType === 'rest';
@@ -413,7 +444,6 @@ export const MyWorkout: React.FC = () => {
                         : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
                     }`}
                   >
-                    {/* DAY HEADER */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <CalendarDays
@@ -447,7 +477,6 @@ export const MyWorkout: React.FC = () => {
                       </button>
                     </div>
 
-                    {/* MUSCLE GROUPS */}
                     {!isRest && (
                       <div className="flex flex-wrap gap-2">
                         {MUSCLE_GROUPS.map((mg) => {
@@ -490,7 +519,6 @@ export const MyWorkout: React.FC = () => {
               })}
             </div>
 
-            {/* MODAL FOOTER */}
             <div
               className={`p-4 sm:p-5 border-t flex items-center justify-end gap-2 ${
                 isDark ? 'border-[hsl(240,4%,19%)] bg-[hsl(240,5%,9%)]' : 'border-[hsl(40,10%,90%)] bg-white'
