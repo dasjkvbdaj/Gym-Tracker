@@ -492,7 +492,7 @@ export const AppNavigation: React.FC<{
 
       {/* TOAST NOTIFICATIONS */}
       <div className="fixed bottom-20 lg:bottom-6 end-4 z-50 flex flex-col gap-2 max-w-sm w-full pointer-events-none px-4 sm:px-0">
-        {toasts.io ? null : toasts.map((toast) => (
+        {toasts.map((toast) => (
           <div
             key={toast.id}
             className={`pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-md transition-all ${
