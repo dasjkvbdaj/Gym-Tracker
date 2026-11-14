@@ -260,6 +260,11 @@ export const CalendarPage: React.FC = () => {
     return selectedCalendarDate >= todayStr;
   }, [selectedCalendarDate]);
 
+  // التحقق هل توجد تمارين أو خطط مسجلة في التاريخ المحدد حالياً (لإخفاء زر Put a Plan عند وجودها)
+  const hasWorkoutsOrPlansOnSelectedDate = useMemo(() => {
+    return selectedDateWorkouts.length > 0;
+  }, [selectedDateWorkouts]);
+
   // فتح نافذة التخطيط اليومي (Put a Plan)
   const handleOpenPlanDay = () => {
     if (!selectedDaySchedule || selectedDaySchedule.workoutType === 'rest') {
@@ -299,7 +304,8 @@ export const CalendarPage: React.FC = () => {
     for (const workout of completedWorkouts) {
       if (
         workout.year === viewYear &&
-        workout.month === viewMonth
+        workout.month === viewMonth &&
+        (workout.status as string) !== 'planned'
       ) {
         if (
           workout.workoutType === 'cardio' ||
@@ -712,12 +718,14 @@ export const CalendarPage: React.FC = () => {
               const hasStrength = dayWorkouts.some(
                 (w) =>
                   w.workoutType === 'strength' &&
-                  !w.muscleGroups.includes('Cardio')
+                  !w.muscleGroups.includes('Cardio') &&
+                  (w.status as string) !== 'planned'
               );
               const hasCardio = dayWorkouts.some(
                 (w) =>
-                  w.workoutType === 'cardio' ||
-                  w.muscleGroups.includes('Cardio')
+                  (w.workoutType === 'cardio' ||
+                  w.muscleGroups.includes('Cardio')) &&
+                  (w.status as string) !== 'planned'
               );
               const isScheduledRest = scheduledRestDays.has(cell.dayOfWeek);
               const isSelected = cell.dateStr === selectedCalendarDate;
@@ -882,8 +890,8 @@ export const CalendarPage: React.FC = () => {
                     <strong>{selectedDaySchedule.title}</strong>
                   </p>
 
-                  {/* زر تخطيط التمرين (Put a Plan) يظهر من اليوم وطالع */}
-                  {isTodayOrFutureDate && selectedDaySchedule.workoutType !== 'rest' && (
+                  {/* زر تخطيط التمرين (Put a Plan) يظهر فقط إذا كان اليوم أو في المستقبل وليس لديه خطة/تمرين مسجل حالياً */}
+                  {isTodayOrFutureDate && !hasWorkoutsOrPlansOnSelectedDate && selectedDaySchedule.workoutType !== 'rest' && (
                     <button
                       onClick={handleOpenPlanDay}
                       className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
@@ -927,6 +935,7 @@ export const CalendarPage: React.FC = () => {
               <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {selectedDateWorkouts.map((workout) => {
                   const expanded = expandedWorkoutId === workout.id;
+                  const isPlan = (workout.status as string) === 'planned';
                   return (
                     <div
                       key={workout.id}
@@ -940,8 +949,12 @@ export const CalendarPage: React.FC = () => {
                         <div>
                           <span
                             className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded ${
-                              workout.workoutType === 'cardio' ||
-                              workout.muscleGroups.includes('Cardio')
+                              isPlan
+                                ? isDark
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                                : workout.workoutType === 'cardio' ||
+                                  workout.muscleGroups.includes('Cardio')
                                 ? isDark
                                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
                                   : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
@@ -950,15 +963,21 @@ export const CalendarPage: React.FC = () => {
                                 : 'bg-indigo-100 text-indigo-700'
                             }`}
                           >
-                            {workout.workoutType === 'cardio' ||
-                            workout.muscleGroups.includes('Cardio') ? (
+                            {isPlan ? (
+                              <ClipboardList className="w-3 h-3 text-amber-400" />
+                            ) : workout.workoutType === 'cardio' ||
+                              workout.muscleGroups.includes('Cardio') ? (
                               <Flame className="w-3 h-3 text-cyan-400" />
                             ) : (
                               <Dumbbell className="w-3 h-3" />
                             )}
                             <span>
-                              {workout.workoutType === 'cardio' ||
-                              workout.muscleGroups.includes('Cardio')
+                              {isPlan
+                                ? lang === 'ar'
+                                  ? 'خطة (Plan)'
+                                  : 'Planned'
+                                : workout.workoutType === 'cardio' ||
+                                  workout.muscleGroups.includes('Cardio')
                                 ? lang === 'ar'
                                   ? 'كارديو'
                                   : 'Cardio'
