@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import {
   Activity,
@@ -84,17 +83,13 @@ export const Dashboard: React.FC = () => {
   // Core KPI Calculations from actual saved workouts
   const stats = useMemo(() => {
     const totalSessions = actualCompletedWorkouts.length;
-
     const workoutsThisWeek = actualCompletedWorkouts.filter(
       (w) =>
         w.actualDate >= weekRange.startOfWeek &&
         w.actualDate <= weekRange.endOfWeek
     ).length;
-
     const cardioSessions = actualCompletedWorkouts.filter(
-      (w) =>
-        w.workoutType === 'cardio' ||
-        w.muscleGroups.includes('Cardio')
+      (w) => w.workoutType === 'cardio' || w.muscleGroups.includes('Cardio')
     ).length;
 
     return {
@@ -113,11 +108,9 @@ export const Dashboard: React.FC = () => {
 
       const totalSets = dayWorkouts.reduce((sum, w) => {
         const exSets = (w.exercises || []).reduce(
-          (sAcc, ex) =>
-            sAcc + (ex.sets ? ex.sets.length : 0),
+          (sAcc, ex) => sAcc + (ex.sets ? ex.sets.length : 0),
           0
         );
-
         return sum + exSets;
       }, 0);
 
@@ -135,7 +128,6 @@ export const Dashboard: React.FC = () => {
     if (actualCompletedWorkouts.length === 0) return [];
 
     const seenExerciseIds = new Set<string>();
-
     const items: ReturnType<
       typeof getExerciseProgressSummary
     >[] = [];
@@ -144,15 +136,10 @@ export const Dashboard: React.FC = () => {
       for (const exEntry of w.exercises || []) {
         if (!seenExerciseIds.has(exEntry.exerciseId)) {
           seenExerciseIds.add(exEntry.exerciseId);
-
           const libEx = exercises.find(
             (e) => e.id === exEntry.exerciseId
           );
-
-          const exName = libEx
-            ? libEx.name
-            : exEntry.exerciseNameSnapshot;
-
+          const exName = libEx ? libEx.name : exEntry.exerciseNameSnapshot;
           const summary = getExerciseProgressSummary(
             exEntry.exerciseId,
             exName,
@@ -161,18 +148,12 @@ export const Dashboard: React.FC = () => {
             'all',
             lang
           );
-
-          if (
-            summary.currentSession &&
-            summary.currentSession.bestWeightSet
-          ) {
+          if (summary.currentSession && summary.currentSession.bestWeightSet) {
             items.push(summary);
           }
         }
-
         if (items.length >= 6) break;
       }
-
       if (items.length >= 6) break;
     }
 
@@ -214,7 +195,6 @@ export const Dashboard: React.FC = () => {
         exerciseIds: todayPlan.assignedExerciseIds,
         actualDate: todayStr,
       });
-
       return;
     }
 
@@ -226,7 +206,6 @@ export const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-
       {/* HERO HEADER */}
       <div
         className={`rounded-2xl p-5 sm:p-6 border relative overflow-hidden ${
@@ -247,13 +226,9 @@ export const Dashboard: React.FC = () => {
               <CalendarIcon className="w-3.5 h-3.5" />
               <span>{formatFullDate(todayStr, lang)}</span>
             </div>
-
             <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">
-              {lang === 'ar'
-                ? 'لوحة متابعة التمارين'
-                : 'Personal Training Dashboard'}
+              {lang === 'ar' ? 'لوحة متابعة التمارين' : 'Personal Training Dashboard'}
             </h1>
-
             <p
               className={`text-sm ${
                 isDark ? 'text-gray-400' : 'text-slate-600'
@@ -269,7 +244,6 @@ export const Dashboard: React.FC = () => {
                         )} المقترحة: `
                       : `${todayMeta.dayOfWeek}'s Scheduled Plan: `}
                   </span>
-
                   <span
                     className={`font-semibold ${
                       isDark
@@ -290,7 +264,6 @@ export const Dashboard: React.FC = () => {
                         )} المقترحة: `
                       : `${todayMeta.dayOfWeek}'s Scheduled Plan: `}
                   </span>
-
                   <span
                     className={`font-semibold ${
                       isDark
@@ -304,13 +277,10 @@ export const Dashboard: React.FC = () => {
               ) : null}
             </p>
           </div>
-
           <div className="flex flex-wrap items-center gap-3">
             {activeWorkout ? (
               <button
-                onClick={() =>
-                  setCurrentSection('start-workout')
-                }
+                onClick={() => setCurrentSection('start-workout')}
                 className="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/20 transition-all cursor-pointer"
               >
                 <Play className="w-4 h-4 fill-current" />
@@ -340,9 +310,8 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 3 KPI SUMMARY CARDS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-
+      {/* 3 KPI SUMMARY CARDS (UPDATED TO 3 COLUMNS) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
         {/* TOTAL SESSIONS */}
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
@@ -438,7 +407,6 @@ export const Dashboard: React.FC = () => {
             {lang === 'ar' ? 'إجمالي جلسات الكارديو' : 'Total cardio sessions'}
           </p>
         </div>
-
       </div>
 
       {/* LAST COMPLETED WORKOUT BANNER OR EMPTY STATE */}
@@ -453,19 +421,15 @@ export const Dashboard: React.FC = () => {
           <div className="space-y-1">
             <div
               className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wider ${
-                isDark
-                  ? 'text-[hsl(75,92%,56%)]'
-                  : 'text-[hsl(76,78%,42%)]'
+                isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
               }`}
             >
               <History className="w-3.5 h-3.5" />
               <span>{t.lastCompletedWorkout}</span>
             </div>
-
             <h2 className="text-lg font-display font-bold">
               {actualCompletedWorkouts[0].title}
             </h2>
-
             <div
               className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-xs ${
                 isDark ? 'text-gray-400' : 'text-slate-600'
@@ -474,9 +438,7 @@ export const Dashboard: React.FC = () => {
               <span>
                 {lang === 'ar' ? 'التاريخ:' : 'Date:'}{' '}
                 <strong
-                  className={
-                    isDark ? 'text-gray-200' : 'text-slate-900'
-                  }
+                  className={isDark ? 'text-gray-200' : 'text-slate-900'}
                 >
                   {formatFullDate(
                     actualCompletedWorkouts[0].actualDate,
@@ -484,7 +446,6 @@ export const Dashboard: React.FC = () => {
                   )}
                 </strong>
               </span>
-
               {actualCompletedWorkouts[0].durationMinutes && (
                 <span>
                   {lang === 'ar' ? 'المدة:' : 'Duration:'}{' '}
@@ -496,7 +457,6 @@ export const Dashboard: React.FC = () => {
                   </strong>
                 </span>
               )}
-
               {actualCompletedWorkouts[0].workoutType === 'strength' && (
                 <span>
                   {lang === 'ar' ? 'التمارين:' : 'Exercises:'}{' '}
@@ -507,7 +467,6 @@ export const Dashboard: React.FC = () => {
               )}
             </div>
           </div>
-
           <button
             onClick={() => {
               setSelectedCalendarDate(actualCompletedWorkouts[0].actualDate);
@@ -542,7 +501,6 @@ export const Dashboard: React.FC = () => {
           >
             <Dumbbell className="w-6 h-6" />
           </div>
-
           <div className="max-w-md mx-auto space-y-1.5">
             <h2 className="text-lg font-display font-bold">
               {t.noWorkoutsYet}
@@ -555,7 +513,6 @@ export const Dashboard: React.FC = () => {
               {t.startFirstWorkoutDesc}
             </p>
           </div>
-
           <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
             <button
               onClick={handleStartTodayPlan}
@@ -575,7 +532,6 @@ export const Dashboard: React.FC = () => {
                   : t.startWorkout}
               </span>
             </button>
-
             <button
               onClick={() => setCurrentSection('schedule')}
               className={`px-4 py-2.5 rounded-xl text-sm font-medium border cursor-pointer ${
@@ -584,9 +540,7 @@ export const Dashboard: React.FC = () => {
                   : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700 hover:bg-[hsl(40,15%,95%)]'
               }`}
             >
-              {lang === 'ar'
-                ? 'استعراض جدول الأسبوع'
-                : 'Explore Weekly Schedule'}
+              {lang === 'ar' ? 'استعراض جدول الأسبوع' : 'Explore Weekly Schedule'}
             </button>
           </div>
         </div>
@@ -594,7 +548,6 @@ export const Dashboard: React.FC = () => {
 
       {/* MIDDLE GRID: WEEKLY ACTIVITY + WEEKLY SCHEDULE */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
         {/* WEEKLY ACTIVITY CHART */}
         <div
           className={`lg:col-span-7 rounded-xl p-5 border flex flex-col justify-between ${
@@ -618,7 +571,6 @@ export const Dashboard: React.FC = () => {
                   : 'Actual recorded sets and sessions completed this week'}
               </p>
             </div>
-
             <span
               className={`text-xs font-mono-num px-2.5 py-1 rounded-lg ${
                 isDark
@@ -630,24 +582,16 @@ export const Dashboard: React.FC = () => {
               {formatShortDate(weekRange.endOfWeek, lang)}
             </span>
           </div>
-
           <div className="h-60 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={weeklyChartData}
-                margin={{
-                  top: 10,
-                  right: 10,
-                  left: -20,
-                  bottom: 0,
-                }}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
                   stroke={
-                    isDark
-                      ? 'hsl(240, 4%, 16%)'
-                      : 'hsl(40, 10%, 88%)'
+                    isDark ? 'hsl(240, 4%, 16%)' : 'hsl(40, 10%, 88%)'
                   }
                   vertical={false}
                 />
@@ -696,9 +640,7 @@ export const Dashboard: React.FC = () => {
                   dataKey="sets"
                   name="sets"
                   fill={
-                    isDark
-                      ? 'hsl(75, 92%, 56%)'
-                      : 'hsl(76, 78%, 42%)'
+                    isDark ? 'hsl(75, 92%, 56%)' : 'hsl(76, 78%, 42%)'
                   }
                   radius={[6, 6, 0, 0]}
                   maxBarSize={36}
@@ -738,7 +680,6 @@ export const Dashboard: React.FC = () => {
                   : 'Planning reference — train any workout on any day'}
               </p>
             </div>
-
             <button
               onClick={() => setCurrentSection('schedule')}
               className={`text-xs font-semibold px-3 py-1.5 rounded-lg border ml-2 transition-colors cursor-pointer ${
@@ -750,12 +691,9 @@ export const Dashboard: React.FC = () => {
               {lang === 'ar' ? 'تعديل الجدول' : 'Customize'}
             </button>
           </div>
-
           <div className="space-y-2">
             {weeklySchedule.map((dayPlan) => {
-              const isToday =
-                dayPlan.day === todayMeta.dayOfWeek;
-
+              const isToday = dayPlan.day === todayMeta.dayOfWeek;
               return (
                 <div
                   key={dayPlan.day}
@@ -810,7 +748,6 @@ export const Dashboard: React.FC = () => {
 
       {/* BOTTOM GRID: RECENT ACTIVITY + PROGRESSION */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
         {/* RECENT WORKOUT ACTIVITY */}
         <div
           className={`rounded-xl p-5 border ${
@@ -834,7 +771,6 @@ export const Dashboard: React.FC = () => {
               {lang === 'ar' ? 'عرض الكل' : 'View All'}
             </button>
           </div>
-
           {actualCompletedWorkouts.length === 0 ? (
             <div
               className={`py-8 text-center text-xs ${
@@ -852,7 +788,6 @@ export const Dashboard: React.FC = () => {
                   (acc, ex) => acc + (ex.sets ? ex.sets.length : 0),
                   0
                 );
-
                 return (
                   <div
                     key={session.id}
@@ -890,7 +825,6 @@ export const Dashboard: React.FC = () => {
                           {formatFullDate(session.actualDate, lang)}
                         </p>
                       </div>
-
                       <div className="text-end font-mono-num text-xs">
                         {session.workoutType === 'cardio' ? (
                           <span className="px-2 py-0.5 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/30">
@@ -915,7 +849,6 @@ export const Dashboard: React.FC = () => {
                         )}
                       </div>
                     </div>
-
                     {session.muscleGroups.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2.5">
                         {session.muscleGroups.map((mg) => (
@@ -962,7 +895,6 @@ export const Dashboard: React.FC = () => {
               {lang === 'ar' ? 'تحليل التطور' : 'Full Progress'}
             </button>
           </div>
-
           {recentProgressions.length === 0 ? (
             <div
               className={`py-8 text-center text-xs ${
@@ -978,7 +910,6 @@ export const Dashboard: React.FC = () => {
               {recentProgressions.map((prog) => {
                 const cur = prog.currentSession!;
                 const prev = prog.previousSession;
-
                 return (
                   <div
                     key={prog.exerciseId}
@@ -1003,7 +934,6 @@ export const Dashboard: React.FC = () => {
                         {formatShortDate(cur.actualDate, lang)}
                       </span>
                     </div>
-
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
                       <div className="flex items-center gap-2">
                         <span
@@ -1030,7 +960,6 @@ export const Dashboard: React.FC = () => {
                             : '—'}
                         </span>
                       </div>
-
                       {prev && prev.bestWeightSet ? (
                         <div className="flex items-center gap-1.5 text-[11px]">
                           <span
@@ -1055,9 +984,7 @@ export const Dashboard: React.FC = () => {
                             isDark ? 'text-gray-500' : 'text-slate-400'
                           }`}
                         >
-                          {lang === 'ar'
-                            ? 'أول جلسة مسجلة'
-                            : 'First logged session'}
+                          {lang === 'ar' ? 'أول جلسة مسجلة' : 'First logged session'}
                         </span>
                       )}
                     </div>
@@ -1067,9 +994,7 @@ export const Dashboard: React.FC = () => {
             </div>
           )}
         </div>
-
       </div>
-
     </div>
   );
 };
