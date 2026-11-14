@@ -9,6 +9,8 @@ import {
   Trash2,
   TrendingUp,
   X,
+  Copy, // <-- أضيفت أيقونة النسخ
+  Check, // <-- أيقونة التأكيد عند النسخ
 } from 'lucide-react';
 import { useGym } from '../context/GymContext';
 import {
@@ -36,7 +38,7 @@ export const ExerciseLibrary: React.FC = () => {
     updateExercise,
     deleteExercise,
     openProgressForExercise,
-    saveHistoricalWorkout, // <-- أضيفت لتحديث السجلات التاريخية والتقويم تلقائياً عند تغيير اسم التمرين
+    saveHistoricalWorkout,
   } = useGym();
 
   const lang = settings.language;
@@ -44,6 +46,7 @@ export const ExerciseLibrary: React.FC = () => {
 
   const [selectedCategory, setSelectedCategory] = useState<MuscleGroup | 'ALL'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [copied, setCopied] = useState(false); // <-- حالة للتحكم برسالة النسخ
 
   // Add / Edit Exercise Modal State
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -82,6 +85,15 @@ export const ExerciseLibrary: React.FC = () => {
     return counts;
   }, [completedWorkouts]);
 
+  // دالة نسخ أسماء التمارين الحالية (المفلترة أو كل المكتبة بناءً على المعروض)
+  const handleCopyExerciseNames = () => {
+    const namesText = filteredExercises.map((ex) => ex.name).join('\n');
+    navigator.clipboard.writeText(namesText).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
+
   const openAddModal = () => {
     setEditingExercise(null);
     setFormName('');
@@ -102,14 +114,12 @@ export const ExerciseLibrary: React.FC = () => {
     if (!trimmedName) return;
 
     if (editingExercise) {
-      // 1. تحديث التمرين في المكتبة الأساسية
       await updateExercise({
         ...editingExercise,
         name: trimmedName,
         muscleGroup: formMuscleGroup,
       });
 
-      // 2. إذا تم تغيير اسم التمرين، قم بتحديثه تلقائياً في جميع الجلسات السابقة (التقويم والسجلات)
       if (editingExercise.name !== trimmedName) {
         const workoutsToUpdate = completedWorkouts.filter((workout) =>
           workout.exercises.some((ex) => ex.exerciseId === editingExercise.id)
@@ -136,7 +146,6 @@ export const ExerciseLibrary: React.FC = () => {
     setIsFormOpen(false);
   };
 
-  // Historical records for selected exercise in history modal
   const selectedExerciseHistory = useMemo(() => {
     if (!historyModalExercise) return [];
     const logs: {
@@ -179,17 +188,37 @@ export const ExerciseLibrary: React.FC = () => {
               : 'Organize and manage exercises by muscle group.'}
           </p>
         </div>
-        <button
-          onClick={openAddModal}
-          className={`self-start sm:self-auto px-4 py-2.5 rounded-xl font-display font-bold text-sm flex items-center gap-2 shadow-lg transition-all cursor-pointer ${
-            isDark
-              ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,62%)] text-[hsl(240,6%,4%)] shadow-[hsl(75,92%,56%)]/20'
-              : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,38%)] text-white shadow-[hsl(76,78%,42%)]/20'
-          }`}
-        >
-          <Plus className="w-4 h-4" />
-          <span>{lang === 'ar' ? 'إضافة تمرين جديد' : 'Add New Exercise'}</span>
-        </button>
+        
+        {/* أزرار الإجراءات في رأس الصفحة موزعة بـ space-between */}
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={handleCopyExerciseNames}
+            className={`px-4 py-2.5 rounded-xl font-display font-bold text-sm flex items-center gap-2 border transition-all cursor-pointer ${
+              isDark
+                ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200 hover:bg-[hsl(240,5%,15%)]'
+                : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-gray-50'
+            }`}
+          >
+            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+            <span>
+              {copied
+                ? lang === 'ar' ? 'تم النسخ!' : 'Copied!'
+                : lang === 'ar' ? 'نسخ الأسماء' : 'Copy Names'}
+            </span>
+          </button>
+
+          <button
+            onClick={openAddModal}
+            className={`px-4 py-2.5 rounded-xl font-display font-bold text-sm flex items-center gap-2 shadow-lg transition-all cursor-pointer ${
+              isDark
+                ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,62%)] text-[hsl(240,6%,4%)] shadow-[hsl(75,92%,56%)]/20'
+                : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,38%)] text-white shadow-[hsl(76,78%,42%)]/20'
+            }`}
+          >
+            <Plus className="w-4 h-4" />
+            <span>{lang === 'ar' ? 'إضافة تمرين جديد' : 'Add New Exercise'}</span>
+          </button>
+        </div>
       </div>
 
       {/* SEARCH & MUSCLE GROUP FILTER BAR */}
@@ -223,7 +252,6 @@ export const ExerciseLibrary: React.FC = () => {
           />
         </div>
 
-        {/* Muscle Group Category Tabs */}
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1">
           <button
             onClick={() => setSelectedCategory('ALL')}
@@ -328,7 +356,6 @@ export const ExerciseLibrary: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Assigned Weekly Days badges */}
                   {assignedDays.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1 pt-1">
                       <Calendar className="w-3 h-3 text-gray-400 me-0.5" />
@@ -348,7 +375,6 @@ export const ExerciseLibrary: React.FC = () => {
                   )}
                 </div>
 
-                {/* Card Footer Actions */}
                 <div className="pt-3 border-t border-inherit flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5">
                     <button
