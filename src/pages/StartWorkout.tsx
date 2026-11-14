@@ -78,7 +78,7 @@ export const StartWorkout: React.FC = () => {
 
   const [showQuickCreateEx, setShowQuickCreateEx] = useState(false);
   const [newExName, setNewExName] = useState('');
-  const [newExMuscle, setNewExMuscle] = useState('Cardio');
+  const [newExMuscle, setNewExMuscle] = useState<MuscleGroup>('Cardio');
 
   const isCardioExercise = (entry: ExerciseEntry) => {
     return (

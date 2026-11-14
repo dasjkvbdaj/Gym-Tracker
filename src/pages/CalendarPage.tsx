@@ -178,15 +178,12 @@ export const CalendarPage: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] =
     useState<string | null>(null);
 
-  const [isAddForgottenOpen, setIsAddForgottenOpen] =
-    useState(false);
-
   // استخراج عضلات اليوم المحدد وتحديد أول عضلة افتراضياً
   const selectedDateMetaForFilter = getDateMetadata(selectedCalendarDate);
   const currentDayScheduleForFilter = weeklySchedule.find(
     (d) => d.day === selectedDateMetaForFilter.dayOfWeek
   );
-  const allowedMuscles = currentDayScheduleForFilter?.targetMuscles || currentDayScheduleForFilter?.muscleGroups || [];
+  const allowedMuscles = currentDayScheduleForFilter?.muscleGroups || [];
   const defaultMuscle = allowedMuscles.length > 0 ? allowedMuscles[0] : ('Back' as MuscleGroup);
 
   const [forgottenMuscleFilter, setForgottenMuscleFilter] =
@@ -271,7 +268,7 @@ export const CalendarPage: React.FC = () => {
       return;
     }
 
-    const targetMuscles = selectedDaySchedule.targetMuscles || selectedDaySchedule.muscleGroups || [];
+    const targetMuscles = selectedDaySchedule.muscleGroups || [];
     const defaultMuscleGroups = targetMuscles.length > 0 ? targetMuscles : ['Back' as MuscleGroup];
 
     setForgottenMuscleFilter(defaultMuscleGroups[0]);
@@ -289,11 +286,14 @@ export const CalendarPage: React.FC = () => {
       actualDate: selectedCalendarDate,
       year: Number(selectedCalendarDate.split('-')[0]),
       month: Number(selectedCalendarDate.split('-')[1]),
-      day: Number(selectedCalendarDate.split('-')[2]),
+      dayOfMonth: Number(selectedCalendarDate.split('-')[2]),
+      dayOfWeek: selectedDateMeta.dayOfWeek,
+      durationMinutes: null,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      notes: '',
     };
 
     setEditingWorkout(newSession);
-    setIsAddForgottenOpen(false);
   };
 
   // MONTH STATISTICS
@@ -351,7 +351,7 @@ export const CalendarPage: React.FC = () => {
   };
 
   const handleOpenEdit = (session: WorkoutSession) => {
-    const targetMuscles = selectedDaySchedule?.targetMuscles || selectedDaySchedule?.muscleGroups || [];
+    const targetMuscles = selectedDaySchedule?.muscleGroups || [];
     if (targetMuscles.length > 0) {
       setForgottenMuscleFilter(targetMuscles[0]);
     }
@@ -362,13 +362,11 @@ export const CalendarPage: React.FC = () => {
     setEditingWorkout(
       JSON.parse(JSON.stringify(session)) as WorkoutSession
     );
-    setIsAddForgottenOpen(false);
   };
 
   const handleCloseEdit = () => {
     setEditingWorkout(null);
     setIsPlanningMode(false);
-    setIsAddForgottenOpen(false);
   };
 
   const handleEditSetChange = (
@@ -535,7 +533,6 @@ export const CalendarPage: React.FC = () => {
     await saveHistoricalWorkout(sessionToSave);
     setEditingWorkout(null);
     setIsPlanningMode(false);
-    setIsAddForgottenOpen(false);
   };
 
   const handleDeleteWorkout = async () => {
@@ -556,7 +553,7 @@ export const CalendarPage: React.FC = () => {
 
   const allowedMuscleGroupsForDay = useMemo(() => {
     if (selectedDaySchedule) {
-      return selectedDaySchedule.targetMuscles || selectedDaySchedule.muscleGroups || [];
+      return selectedDaySchedule.muscleGroups || [];
     }
     return [];
   }, [selectedDaySchedule]);
@@ -1494,7 +1491,7 @@ export const CalendarPage: React.FC = () => {
                     }
                     className={fieldClass}
                   >
-                    {allowedMuscleGroupsForDay.map((muscle) => (
+                    {allowedMuscleGroupsForDay.map((muscle: MuscleGroup) => (
                       <option key={muscle} value={muscle}>
                         {translateMuscleGroup(muscle, lang)}
                       </option>

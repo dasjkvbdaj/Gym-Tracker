@@ -187,7 +187,7 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    if (todayPlan) {
+    if (todayPlan && todayPlan.workoutType !== 'rest') {
       await startNewWorkout({
         workoutType: todayPlan.workoutType,
         title: todayPlan.title,

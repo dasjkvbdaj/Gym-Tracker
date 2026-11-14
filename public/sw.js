@@ -55,10 +55,11 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((networkResponse) => {
           if (networkResponse && networkResponse.status === 200) {
-            const clone = networkResponse.clone();
+            const clone1 = networkResponse.clone();
+            const clone2 = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put('/index.html', clone);
-              cache.put('/', clone.clone());
+              cache.put('/index.html', clone1);
+              cache.put('/', clone2);
             });
           }
           return networkResponse;

@@ -33,13 +33,16 @@ export type AppSection =
   | 'settings';
 
 export interface SetEntry {
-  caloriesBurned: boolean;
   id: string;
   setNumber: number;
   weight: number | null; // null when weightType === 'none' (Bodyweight)
   reps: number;
   completed?: boolean;
+  caloriesBurned?: number;
   restDurationSeconds?: number; // وقت الراحة المستغرق بعد هذه المجموعة (اختياري)
+  startedAt?: number;
+  completedAt?: number;
+  restSecondsBefore?: number;
 }
 
 export interface ExerciseEntry {
@@ -75,10 +78,14 @@ export interface WorkoutSession {
   finishTimestamp: number | null;
   durationMinutes: number | null;
   timezone: string;
-  status: 'in_progress' | 'completed';
+  status: 'in_progress' | 'completed' | 'planned';
   notes: string;
   exercises: ExerciseEntry[];
   cardioDetails?: CardioDetails;
+  userWeightAtWorkout?: number;
+  activeLiftingSeconds?: number;
+  totalRestSeconds?: number;
+  caloriesBurned?: number;
 }
 
 export interface Exercise {
