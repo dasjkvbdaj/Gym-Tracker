@@ -18,6 +18,7 @@ import { useGym } from '../context/GymContext';
 import { generateId } from '../database/db';
 
 import {
+  Exercise,
   ExerciseEntry,
   MuscleGroup,
   SetEntry,
@@ -183,12 +184,11 @@ export const CalendarPage: React.FC = () => {
   const defaultMuscle = allowedMuscles.length > 0 ? allowedMuscles[0] : ('Back' as MuscleGroup);
 
   const [forgottenMuscleFilter, setForgottenMuscleFilter] =
-    useState<MuscleGroup>(defaultMuscle);
+    useState(defaultMuscle);
 
   const [expandedWorkoutId, setExpandedWorkoutId] =
     useState<string | null>(null);
 
-  // خريطة لربط معرف التمرين باسمه والعضلة المستهدفة بدقة
   const exerciseMap = useMemo(() => {
     const map = new Map<string, Exercise>();
     for (const ex of exercises) {
@@ -262,10 +262,8 @@ export const CalendarPage: React.FC = () => {
 
     const targetMuscles = selectedDaySchedule.muscleGroups || [];
     const defaultMuscleGroups = targetMuscles.length > 0 ? targetMuscles : ['Back' as MuscleGroup];
-
     setForgottenMuscleFilter(defaultMuscleGroups[0]);
     setIsPlanningMode(true);
-
     const newSession: WorkoutSession = {
       id: generateId('workout'),
       title: selectedDaySchedule.title || (lang === 'ar' ? 'تمرين مخطط' : 'Scheduled Workout'),
@@ -284,7 +282,6 @@ export const CalendarPage: React.FC = () => {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       notes: '',
     };
-
     setEditingWorkout(newSession);
   };
 
@@ -377,8 +374,7 @@ export const CalendarPage: React.FC = () => {
           if (field === 'weight') {
             return {
               ...set,
-              weight:
-                ex.weightType === 'none' ? null : Math.max(0, value),
+              weight: ex.weightType === 'none' ? null : Math.max(0, value),
             };
           }
           return { ...set, reps: Math.max(0, Math.round(value)) };
@@ -429,10 +425,7 @@ export const CalendarPage: React.FC = () => {
       const newSet: SetEntry = {
         id: generateId('set'),
         setNumber: ex.sets.length + 1,
-        weight:
-          isCardio || ex.weightType === 'none'
-            ? null
-            : previousSet?.weight ?? 0,
+        weight: isCardio || ex.weightType === 'none' ? null : previousSet?.weight ?? 0,
         reps: isCardio ? 30 : previousSet?.reps ?? 10,
         completed: true,
       };
@@ -465,35 +458,28 @@ export const CalendarPage: React.FC = () => {
       (ex) => ex.exerciseId === exerciseId
     );
     if (alreadyExists) return;
-
     const isCardio = isCardioExercise(exercise.name, exercise.muscleGroup);
     const unit: WeightUnit = exercise.isBodyweight || isCardio ? 'none' : exercise.defaultWeightUnit || settings.preferredWeightUnit;
-    
     const newEntry: ExerciseEntry = {
       id: generateId('ex_entry'),
       exerciseId: exercise.id,
       exerciseNameSnapshot: exercise.name,
       muscleGroup: exercise.muscleGroup,
-      targetMuscleSnapshot: exercise.targetMuscle || '', // حفظ العضلة المستهدفة بدقة
+      targetMuscleSnapshot: exercise.targetMuscle || '',
       weightType: unit,
-      sets: isPlanningMode
-        ? []
-        : [
-            {
-              id: generateId('set'),
-              setNumber: 1,
-              weight: null,
-              reps: isCardio ? 30 : 10,
-              completed: true,
-            },
-          ],
+      sets: isPlanningMode ? [] : [
+        {
+          id: generateId('set'),
+          setNumber: 1,
+          weight: null,
+          reps: isCardio ? 30 : 10,
+          completed: true,
+        },
+      ],
       caloriesBurned: isCardio ? 0 : undefined,
       notes: '',
     };
-
-    const groups = editingWorkout.muscleGroups.includes(exercise.muscleGroup)
-      ? editingWorkout.muscleGroups
-      : [...editingWorkout.muscleGroups, exercise.muscleGroup];
+    const groups = editingWorkout.muscleGroups.includes(exercise.muscleGroup) ? editingWorkout.muscleGroups : [...editingWorkout.muscleGroups, exercise.muscleGroup];
     setEditingWorkout({
       ...editingWorkout,
       muscleGroups: groups,
@@ -561,10 +547,10 @@ export const CalendarPage: React.FC = () => {
     : [];
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold">
+          <h1 className="text-xl sm:text-2xl font-display font-bold">
             {lang === 'ar' ? 'تقويم التمارين الشهري' : 'Workout Activity Calendar'}
           </h1>
           <p
@@ -585,15 +571,13 @@ export const CalendarPage: React.FC = () => {
               : 'bg-indigo-700 hover:bg-indigo-800 text-white border-indigo-700 shadow-sm'
           }`}
         >
-          <CalendarIcon className="w-3.5 h-3.5" />
+          <CalendarIcon className="w-4 h-4" />
           <span>{lang === 'ar' ? 'الانتقال إلى اليوم' : 'Jump to Today'}</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div
-          className={`lg:col-span-8 rounded-2xl border p-4 sm:p-6 space-y-5 ${panelClass}`}
-        >
+        <div className={`lg:col-span-8 rounded-2xl border p-4 sm:p-6 space-y-5 ${panelClass}`}>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
@@ -655,7 +639,6 @@ export const CalendarPage: React.FC = () => {
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
-
             <div className="flex items-center gap-2 text-xs font-mono-num">
               <span
                 className={`px-2.5 py-1 rounded-lg border font-semibold ${
@@ -692,22 +675,13 @@ export const CalendarPage: React.FC = () => {
               const dayWorkouts = workoutsByDate.get(cell.dateStr) || [];
               const todayStr = toLocalDateString(new Date());
               const isPlannedDay = dayWorkouts.some(
-                (w) =>
-                  (w.status as string) === 'planned' ||
-                  (cell.dateStr > todayStr && w.status !== 'completed')
+                (w) => (w.status as string) === 'planned' || (cell.dateStr > todayStr && w.status !== 'completed')
               );
-
               const hasStrength = dayWorkouts.some(
-                (w) =>
-                  w.workoutType === 'strength' &&
-                  !w.muscleGroups.includes('Cardio') &&
-                  (w.status as string) !== 'planned'
+                (w) => w.workoutType === 'strength' && !w.muscleGroups.includes('Cardio') && (w.status as string) !== 'planned'
               );
               const hasCardio = dayWorkouts.some(
-                (w) =>
-                  (w.workoutType === 'cardio' ||
-                  w.muscleGroups.includes('Cardio')) &&
-                  (w.status as string) !== 'planned'
+                (w) => (w.workoutType === 'cardio' || w.muscleGroups.includes('Cardio')) && (w.status as string) !== 'planned'
               );
               const isScheduledRest = scheduledRestDays.has(cell.dayOfWeek);
               const isSelected = cell.dateStr === selectedCalendarDate;
@@ -750,14 +724,12 @@ export const CalendarPage: React.FC = () => {
                     >
                       {cell.dayNumber}
                     </span>
-                    
                     {isPlannedDay && (
                       <span
                         title={lang === 'ar' ? 'يوم مخطط (Plan)' : 'Planned Day'}
                         className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm ring-1 ring-amber-500/50 shrink-0"
                       />
                     )}
-
                     {isScheduledRest && dayWorkouts.length === 0 && (
                       <span title="Scheduled Rest Day">
                         <Moon className="w-3 h-3 text-gray-500 opacity-60" />
@@ -776,9 +748,7 @@ export const CalendarPage: React.FC = () => {
                       >
                         <span
                           className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                            isDark
-                              ? 'bg-[hsl(75,92%,56%)]'
-                              : 'bg-indigo-600'
+                            isDark ? 'bg-[hsl(75,92%,56%)]' : 'bg-indigo-600'
                           }`}
                         />
                         <span className="hidden sm:inline truncate">
@@ -836,9 +806,7 @@ export const CalendarPage: React.FC = () => {
           </div>
         </div>
 
-        <div
-          className={`lg:col-span-4 rounded-2xl border p-5 flex flex-col justify-between gap-5 ${panelClass}`}
-        >
+        <div className={`lg:col-span-4 rounded-2xl border p-5 flex flex-col justify-between gap-5 ${panelClass}`}>
           <div className="space-y-4">
             <div className="pb-4 border-b border-inherit">
               <span className="text-xs font-semibold uppercase tracking-wider text-[hsl(75,92%,56%)]">
@@ -866,7 +834,6 @@ export const CalendarPage: React.FC = () => {
                     {lang === 'ar' ? 'الخطة المرجعية لهذا اليوم:' : 'Reference plan:'}{' '}
                     <strong>{selectedDaySchedule.title}</strong>
                   </p>
-
                   {isTodayOrFutureDate && !hasWorkoutsOrPlansOnSelectedDate && selectedDaySchedule.workoutType !== 'rest' && (
                     <button
                       onClick={handleOpenPlanDay}
@@ -889,21 +856,15 @@ export const CalendarPage: React.FC = () => {
             {selectedDateWorkouts.length === 0 ? (
               <div
                 className={`py-8 px-4 rounded-xl border border-dashed text-center space-y-2 ${
-                  isDark
-                    ? 'border-[hsl(240,4%,19%)] text-gray-400'
-                    : 'border-[hsl(40,10%,82%)] text-slate-500'
+                  isDark ? 'border-[hsl(240,4%,19%)] text-gray-400' : 'border-[hsl(40,10%,82%)] text-slate-500'
                 }`}
               >
                 <CalendarIcon className="w-6 h-6 mx-auto opacity-40" />
                 <p className="text-xs font-medium">
-                  {lang === 'ar'
-                    ? 'لا توجد تمارين مسجلة في هذا التاريخ.'
-                    : 'No workouts recorded on this date.'}
+                  {lang === 'ar' ? 'لا توجد تمارين مسجلة في هذا التاريخ.' : 'No workouts recorded on this date.'}
                 </p>
                 <p className="text-[11px] opacity-75">
-                  {lang === 'ar'
-                    ? 'يمكنك إضافة تمرين أو وضع خطة لهذا التاريخ.'
-                    : 'You can record or plan a session on this date.'}
+                  {lang === 'ar' ? 'يمكنك إضافة تمرين أو وضع خطة لهذا التاريخ.' : 'You can record or plan a session on this date.'}
                 </p>
               </div>
             ) : (
@@ -911,6 +872,7 @@ export const CalendarPage: React.FC = () => {
                 {selectedDateWorkouts.map((workout) => {
                   const expanded = expandedWorkoutId === workout.id;
                   const isPlan = (workout.status as string) === 'planned';
+
                   return (
                     <div
                       key={workout.id}
@@ -928,8 +890,7 @@ export const CalendarPage: React.FC = () => {
                                 ? isDark
                                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                   : 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : workout.workoutType === 'cardio' ||
-                                  workout.muscleGroups.includes('Cardio')
+                                : workout.workoutType === 'cardio' || workout.muscleGroups.includes('Cardio')
                                 ? isDark
                                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
                                   : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
@@ -940,22 +901,16 @@ export const CalendarPage: React.FC = () => {
                           >
                             {isPlan ? (
                               <ClipboardList className="w-3 h-3 text-amber-400" />
-                            ) : workout.workoutType === 'cardio' ||
-                              workout.muscleGroups.includes('Cardio') ? (
+                            ) : workout.workoutType === 'cardio' || workout.muscleGroups.includes('Cardio') ? (
                               <Flame className="w-3 h-3 text-cyan-400" />
                             ) : (
                               <Dumbbell className="w-3 h-3" />
                             )}
                             <span>
                               {isPlan
-                                ? lang === 'ar'
-                                  ? 'خطة (Plan)'
-                                  : 'Planned'
-                                : workout.workoutType === 'cardio' ||
-                                  workout.muscleGroups.includes('Cardio')
-                                ? lang === 'ar'
-                                  ? 'كارديو'
-                                  : 'Cardio'
+                                ? lang === 'ar' ? 'خطة (Plan)' : 'Planned'
+                                : workout.workoutType === 'cardio' || workout.muscleGroups.includes('Cardio')
+                                ? lang === 'ar' ? 'كارديو' : 'Cardio'
                                 : 'Strength'}
                             </span>
                           </span>
@@ -964,18 +919,10 @@ export const CalendarPage: React.FC = () => {
                           </h3>
                         </div>
                         <button
-                          onClick={() =>
-                            setExpandedWorkoutId(expanded ? null : workout.id)
-                          }
+                          onClick={() => setExpandedWorkoutId(expanded ? null : workout.id)}
                           className="text-xs text-[hsl(75,92%,56%)] font-semibold cursor-pointer"
                         >
-                          {expanded
-                            ? lang === 'ar'
-                              ? 'إخفاء'
-                              : 'Hide'
-                            : lang === 'ar'
-                            ? 'التفاصيل'
-                            : 'Details'}
+                          {expanded ? lang === 'ar' ? 'إخفاء' : 'Hide' : lang === 'ar' ? 'التفاصيل' : 'Details'}
                         </button>
                       </div>
 
@@ -986,12 +933,10 @@ export const CalendarPage: React.FC = () => {
                             workout.startTimestamp,
                             lang
                           )}
-                          {workout.finishTimestamp
-                            ? ` – ${formatTimeFromTimestamp(
-                                workout.finishTimestamp,
-                                lang
-                              )}`
-                            : ''}
+                          {workout.finishTimestamp ? ` – ${formatTimeFromTimestamp(
+                            workout.finishTimestamp,
+                            lang
+                          )}` : ''}
                         </div>
                       </div>
 
@@ -1014,89 +959,105 @@ export const CalendarPage: React.FC = () => {
 
                       {expanded && (
                         <div className="space-y-3 pt-2 border-t border-inherit">
-                          {workout.exercises.map((ex) => {
-                            const exObj = exerciseMap.get(ex.exerciseId);
-                            const displayName =
-                              exObj?.name ||
-                              ex.exerciseNameSnapshot;
-                            const targetMuscle =
-                              exObj?.targetMuscle ||
-                              ex.targetMuscleSnapshot;
-                            const isCardio = isCardioExercise(
-                              displayName,
-                              ex.muscleGroup
-                            );
-                            return (
-                              <div key={ex.id} className="space-y-1.5">
-                                <div
-                                  className={`font-semibold text-xs flex items-center justify-between ${
-                                    isCardio
-                                      ? isDark
-                                        ? 'text-cyan-400'
-                                        : 'text-cyan-700 font-bold'
-                                      : isDark
-                                      ? 'text-[hsl(75,92%,56%)]'
-                                      : 'text-indigo-700'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span>{displayName}</span>
-                                    {targetMuscle && (
-                                      <span className={`text-[10px] px-1.5 py-0.2 rounded border ${isDark ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                                        🎯 {targetMuscle}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {isCardio && ex.caloriesBurned ? (
-                                    <span className="text-cyan-400 font-mono-num text-[11px] flex items-center gap-1">
-                                      <Flame className="w-3 h-3" />{' '}
-                                      {ex.caloriesBurned} kcal
-                                    </span>
-                                  ) : null}
-                                </div>
-                                <div className="flex flex-wrap gap-1.5 font-mono-num text-[11px]">
-                                  {isCardio ? (
-                                    <span
-                                      className={`px-2 py-1 rounded flex items-center gap-1.5 text-xs font-semibold ${
-                                        isDark
-                                          ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-                                          : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
+                          {(() => {
+                            let lastGroup: string | null = null;
+                            return workout.exercises.map((ex) => {
+                              const exObj = exerciseMap.get(ex.exerciseId);
+                              const displayName = exObj?.name || ex.exerciseNameSnapshot;
+                              const targetMuscle = exObj?.targetMuscle || ex.targetMuscleSnapshot;
+                              const isCardio = isCardioExercise(
+                                displayName,
+                                ex.muscleGroup
+                              );
+                              
+                              const showGroupDivider = lastGroup !== ex.muscleGroup;
+                              lastGroup = ex.muscleGroup;
+
+                              return (
+                                <React.Fragment key={ex.id}>
+                                  {showGroupDivider && (
+                                    <div className="pt-2 pb-1 first:pt-0">
+                                      <div className="flex items-center gap-2">
+                                        <div className={`h-[1px] flex-1 ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
+                                        <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                                          isDark ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]' : 'bg-indigo-50 text-indigo-700'
+                                        }`}>
+                                          {translateMuscleGroup(ex.muscleGroup, lang)}
+                                        </span>
+                                        <div className={`h-[1px] flex-1 ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
+                                      </div>
+                                    </div>
+                                  )}
+                                  <div className="space-y-1.5 pl-1">
+                                    <div
+                                      className={`font-semibold text-xs flex items-center justify-between ${
+                                        isCardio
+                                          ? isDark
+                                            ? 'text-cyan-400'
+                                            : 'text-cyan-700 font-bold'
+                                          : isDark
+                                          ? 'text-[hsl(75,92%,56%)]'
+                                          : 'text-indigo-700'
                                       }`}
                                     >
-                                      <Clock className="w-3.5 h-3.5 text-cyan-500" />
-                                      <span>
-                                        {ex.sets[0]?.reps || 30}{' '}
-                                        {lang === 'ar' ? 'دقائق' : 'minutes'}
-                                      </span>
-                                    </span>
-                                  ) : (
-                                    ex.sets.map((s) => (
-                                      <span
-                                        key={s.id}
-                                        className={`px-1.5 py-0.5 rounded ${
-                                          isDark
-                                            ? 'bg-[hsl(240,6%,4%)]'
-                                            : 'bg-white'
-                                        }`}
-                                      >
-                                        {formatSetPerformance(
-                                          s.weight,
-                                          ex.weightType,
-                                          s.reps,
-                                          lang
+                                      <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span>{displayName}</span>
+                                        {targetMuscle && (
+                                          <span className={`text-[10px] px-1.5 py-0.2 rounded border ${isDark ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                            🎯 {targetMuscle}
+                                          </span>
                                         )}
-                                      </span>
-                                    ))
-                                  )}
-                                </div>
-                                {ex.notes && (
-                                  <p className="text-xs text-gray-400 italic">
-                                    {ex.notes}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })}
+                                      </div>
+                                      {isCardio && ex.caloriesBurned ? (
+                                        <span className="text-cyan-400 font-mono-num text-[11px] flex items-center gap-1">
+                                          <Flame className="w-3 h-3" />{' '}
+                                          {ex.caloriesBurned} kcal
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    <div className="flex flex-wrap gap-1.5 font-mono-num text-[11px]">
+                                      {isCardio ? (
+                                        <span
+                                          className={`px-2 py-1 rounded flex items-center gap-1.5 text-xs font-semibold ${
+                                            isDark
+                                              ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                                              : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
+                                          }`}
+                                        >
+                                          <Clock className="w-3.5 h-3.5 text-cyan-500" />
+                                          <span>
+                                            {ex.sets[0]?.reps || 30}{' '}
+                                            {lang === 'ar' ? 'دقائق' : 'minutes'}
+                                          </span>
+                                        </span>
+                                      ) : (
+                                        ex.sets.map((s) => (
+                                          <span
+                                            key={s.id}
+                                            className={`px-1.5 py-0.5 rounded ${
+                                              isDark ? 'bg-[hsl(240,6%,4%)]' : 'bg-white'
+                                            }`}
+                                          >
+                                            {formatSetPerformance(
+                                              s.weight,
+                                              ex.weightType,
+                                              s.reps,
+                                              lang
+                                            )}
+                                          </span>
+                                        ))
+                                      )}
+                                    </div>
+                                    {ex.notes && (
+                                      <p className="text-xs text-gray-400 italic">
+                                        {ex.notes}
+                                      </p>
+                                    )}
+                                  </div>
+                                </React.Fragment>
+                              );
+                            });
+                          })()}
                         </div>
                       )}
 
@@ -1190,290 +1151,285 @@ export const CalendarPage: React.FC = () => {
                 </div>
               </div>
 
-              {editingWorkout.exercises.map((ex) => {
-                const exObj = exerciseMap.get(ex.exerciseId);
-                const displayName =
-                  exObj?.name ||
-                  ex.exerciseNameSnapshot;
-                const targetMuscle =
-                  exObj?.targetMuscle ||
-                  ex.targetMuscleSnapshot;
-                const isCardio = isCardioExercise(
-                  displayName,
-                  ex.muscleGroup
-                );
-
-                if (isPlanningMode) {
-                  return (
-                    <div
-                      key={ex.id}
-                      className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
-                        isDark
-                          ? 'bg-[hsl(240,5%,11%)] border-gray-800'
-                          : 'bg-slate-50 border-slate-200'
-                      }`}
-                    >
-                      <div>
-                        <h4 className="font-bold text-sm flex items-center gap-2">
-                          <span>{displayName}</span>
-                          {targetMuscle && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
-                              🎯 {targetMuscle}
-                            </span>
-                          )}
-                        </h4>
-                        <span className="text-[11px] text-gray-400">
-                          {translateMuscleGroup(ex.muscleGroup, lang)}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveExercise(ex.id)}
-                        className="p-1.5 text-red-500 cursor-pointer hover:bg-red-500/10 rounded-lg transition-colors"
-                        title="Remove exercise"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+              {(() => {
+                let lastGroupEdit: string | null = null;
+                return editingWorkout.exercises.map((ex) => {
+                  const exObj = exerciseMap.get(ex.exerciseId);
+                  const displayName = exObj?.name || ex.exerciseNameSnapshot;
+                  const targetMuscle = exObj?.targetMuscle || ex.targetMuscleSnapshot;
+                  const isCardio = isCardioExercise(
+                    displayName,
+                    ex.muscleGroup
                   );
-                }
 
-                return (
-                  <div
-                    key={ex.id}
-                    className={`p-3.5 rounded-xl border space-y-3 ${
-                      isDark
-                        ? 'bg-[hsl(240,5%,11%)] border-gray-800'
-                        : 'bg-slate-50 border-slate-200'
-                    }`}
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <h4 className="font-bold text-sm flex items-center gap-2">
-                          <span>{displayName}</span>
-                          {targetMuscle && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
-                              🎯 {targetMuscle}
+                  const showGroupDividerEdit = lastGroupEdit !== ex.muscleGroup;
+                  lastGroupEdit = ex.muscleGroup;
+
+                  return (
+                    <React.Fragment key={ex.id}>
+                      {showGroupDividerEdit && (
+                        <div className="pt-2 pb-1">
+                          <div className="flex items-center gap-2">
+                            <div className={`h-[1px] flex-1 ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
+                            <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded ${
+                              isDark ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]' : 'bg-indigo-50 text-indigo-700'
+                            }`}>
+                              {translateMuscleGroup(ex.muscleGroup, lang)}
                             </span>
-                          )}
-                          {isCardio && <span className="text-xs">🏃‍♂️</span>}
-                        </h4>
-                        <span className="text-[11px] text-gray-400">
-                          {translateMuscleGroup(ex.muscleGroup, lang)}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        {!isCardio &&
-                          (['kg', 'lbs', 'none'] as const).map((unit) => (
-                            <button
-                              key={unit}
-                              type="button"
-                              onClick={() =>
-                                handleEditExerciseUnit(ex.id, unit)
-                              }
-                              className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${
-                                ex.weightType === unit
-                                  ? 'bg-indigo-700 text-white border-indigo-700'
-                                  : 'border-gray-500/30'
-                              }`}
-                            >
-                              {unit === 'none'
-                                ? lang === 'ar'
-                                  ? 'وزن الجسم'
-                                  : 'Bodyweight'
-                                : unit.toUpperCase()}
-                            </button>
-                          ))}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveExercise(ex.id)}
-                          className="p-1.5 text-red-500 cursor-pointer"
-                          title="Remove exercise"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
+                            <div className={`h-[1px] flex-1 ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
+                          </div>
+                        </div>
+                      )}
 
-                    {isCardio ? (
-                      <div className="space-y-3 pt-2">
-                        {ex.sets.map((set) => (
-                          <div
-                            key={set.id}
-                            className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
-                              isDark
-                                ? 'bg-[hsl(240,5%,15%)] border-cyan-500/30'
-                                : 'bg-cyan-50/50 border-cyan-200'
-                            }`}
+                      {isPlanningMode ? (
+                        <div
+                          className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+                            isDark
+                              ? 'bg-[hsl(240,5%,11%)] border-gray-800'
+                              : 'bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <div>
+                            <h4 className="font-bold text-sm flex items-center gap-2">
+                              <span>{displayName}</span>
+                              {targetMuscle && (
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
+                                  🎯 {targetMuscle}
+                                </span>
+                              )}
+                            </h4>
+                            <span className="text-[11px] text-gray-400">
+                              {translateMuscleGroup(ex.muscleGroup, lang)}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExercise(ex.id)}
+                            className="p-1.5 text-red-500 cursor-pointer hover:bg-red-500/10 rounded-lg transition-colors"
+                            title="Remove exercise"
                           >
-                            <div className="flex items-center gap-2 flex-1">
-                              <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
-                              <label className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 whitespace-nowrap">
-                                {lang === 'ar' ? 'المدة (دقائق):' : 'Duration:'}
-                              </label>
-                              <input
-                                type="number"
-                                min="1"
-                                value={set.reps || 30}
-                                onChange={(e) =>
-                                  handleEditSetChange(
-                                    ex.id,
-                                    set.id,
-                                    'reps',
-                                    Number(e.target.value)
-                                  )
-                                }
-                                className={`w-full sm:w-24 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-cyan-400 ${
-                                  isDark
-                                    ? 'bg-[hsl(240,5%,10%)] border-gray-700 text-cyan-300'
-                                    : 'bg-white border-cyan-200 text-cyan-800'
-                                }`}
-                              />
-                              <span className="text-xs text-cyan-500 font-semibold shrink-0">
-                                {lang === 'ar' ? 'دقيقة' : 'min'}
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div
+                          className={`p-3.5 rounded-xl border space-y-3 ${
+                            isDark
+                              ? 'bg-[hsl(240,5%,11%)] border-gray-800'
+                              : 'bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <h4 className="font-bold text-sm flex items-center gap-2">
+                                <span>{displayName}</span>
+                                {targetMuscle && (
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
+                                    🎯 {targetMuscle}
+                                  </span>
+                                )}
+                                {isCardio && <span className="text-xs">🏃‍♂️</span>}
+                              </h4>
+                              <span className="text-[11px] text-gray-400">
+                                {translateMuscleGroup(ex.muscleGroup, lang)}
                               </span>
                             </div>
-                            <div className="flex items-center gap-2 flex-1">
-                              <Flame className="w-4 h-4 text-orange-400 shrink-0" />
-                              <label className="text-xs font-semibold text-orange-600 dark:text-orange-400 whitespace-nowrap">
-                                {lang === 'ar'
-                                  ? 'السعرات (Calories):'
-                                  : 'Calories (kcal):'}
-                              </label>
-                              <input
-                                type="number"
-                                min="0"
-                                placeholder="e.g. 250"
-                                value={ex.caloriesBurned ?? ''}
-                                onChange={(e) =>
-                                  handleEditCaloriesChange(
-                                    ex.id,
-                                    e.target.value === ''
-                                      ? 0
-                                      : Number(e.target.value)
-                                  )
-                                }
-                                className={`w-full sm:w-28 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-orange-400 ${
-                                  isDark
-                                    ? 'bg-[hsl(240,5%,10%)] border-gray-700 text-orange-300'
-                                    : 'bg-white border-orange-200 text-orange-800'
-                                }`}
-                              />
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="grid grid-cols-12 gap-2 text-[10px] font-semibold text-gray-400">
-                          <span className="col-span-2">
-                            {lang === 'ar' ? 'مجموعة' : 'SET'}
-                          </span>
-                          <span className="col-span-4">
-                            {ex.weightType === 'none'
-                              ? lang === 'ar'
-                                ? 'النوع'
-                                : 'TYPE'
-                              : lang === 'ar'
-                              ? 'الوزن'
-                              : 'WEIGHT'}
-                          </span>
-                          <span className="col-span-4">
-                            {lang === 'ar' ? 'التكرارات' : 'REPS'}
-                          </span>
-                          <span className="col-span-2" />
-                        </div>
-                        {ex.sets.map((set) => (
-                          <div
-                            key={set.id}
-                            className="grid grid-cols-12 gap-2 items-center"
-                          >
-                            <span className="col-span-2 text-xs font-mono-num">
-                              #{set.setNumber}
-                            </span>
-                            <div className="col-span-4">
-                              {ex.weightType === 'none' ? (
-                                <span className="text-xs text-purple-400">
-                                  {lang === 'ar'
-                                    ? 'وزن الجسم'
-                                    : 'Bodyweight'}
-                                </span>
-                              ) : (
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="any"
-                                  value={set.weight ?? 0}
-                                  onChange={(e) =>
-                                    handleEditSetChange(
-                                      ex.id,
-                                      set.id,
-                                      'weight',
-                                      Number(e.target.value)
-                                    )
-                                  }
-                                  className={fieldClass}
-                                  placeholder={
-                                    lang === 'ar' ? 'الوزن' : 'Weight'
-                                  }
-                                />
-                              )}
-                            </div>
-                            <div className="col-span-4">
-                              <input
-                                type="number"
-                                min="0"
-                                value={set.reps}
-                                onChange={(e) =>
-                                  handleEditSetChange(
-                                    ex.id,
-                                    set.id,
-                                    'reps',
-                                    Number(e.target.value)
-                                  )
-                                }
-                                className={fieldClass}
-                                placeholder={
-                                  lang === 'ar' ? 'التكرارات' : 'Reps'
-                                }
-                              />
-                            </div>
-                            <div className="col-span-2 text-center">
-                              {ex.sets.length > 1 && (
+                            <div className="flex items-center gap-1">
+                              {!isCardio && (['kg', 'lbs', 'none'] as const).map((unit) => (
                                 <button
+                                  key={unit}
                                   type="button"
-                                  onClick={() =>
-                                    handleRemoveSet(ex.id, set.id)
-                                  }
-                                  className="text-red-500 cursor-pointer"
-                                  aria-label="Remove set"
+                                  onClick={() => handleEditExerciseUnit(ex.id, unit)}
+                                  className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${
+                                    ex.weightType === unit
+                                      ? 'bg-indigo-700 text-white border-indigo-700'
+                                      : 'border-gray-500/30'
+                                  }`}
                                 >
-                                  <X className="w-4 h-4" />
+                                  {unit === 'none' ? lang === 'ar' ? 'وزن الجسم' : 'Bodyweight' : unit.toUpperCase()}
                                 </button>
-                              )}
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveExercise(ex.id)}
+                                className="p-1.5 text-red-500 cursor-pointer"
+                                title="Remove exercise"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
                             </div>
                           </div>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => handleAddSet(ex.id)}
-                          className="text-xs font-bold text-indigo-500 flex items-center gap-1 cursor-pointer pt-1"
-                        >
-                          <Plus className="w-4 h-4" />{' '}
-                          {lang === 'ar' ? 'إضافة مجموعة' : 'Add Set'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+
+                          {isCardio ? (
+                            <div className="space-y-3 pt-2">
+                              {ex.sets.map((set) => (
+                                <div
+                                  key={set.id}
+                                  className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                                    isDark
+                                      ? 'bg-[hsl(240,5%,15%)] border-cyan-500/30'
+                                      : 'bg-cyan-50/50 border-cyan-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <Clock className="w-4 h-4 text-cyan-400 shrink-0" />
+                                    <label className="text-xs font-semibold text-cyan-600 dark:text-cyan-400 whitespace-nowrap">
+                                      {lang === 'ar' ? 'المدة (دقائق):' : 'Duration:'}
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={set.reps || 30}
+                                      onChange={(e) =>
+                                        handleEditSetChange(
+                                          ex.id,
+                                          set.id,
+                                          'reps',
+                                          Number(e.target.value)
+                                        )
+                                      }
+                                      className={`w-full sm:w-24 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-cyan-400 ${
+                                        isDark
+                                          ? 'bg-[hsl(240,5%,10%)] border-gray-700 text-cyan-300'
+                                          : 'bg-white border-cyan-200 text-cyan-800'
+                                      }`}
+                                    />
+                                    <span className="text-xs text-cyan-500 font-semibold shrink-0">
+                                      {lang === 'ar' ? 'دقيقة' : 'min'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <Flame className="w-4 h-4 text-orange-400 shrink-0" />
+                                    <label className="text-xs font-semibold text-orange-600 dark:text-orange-400 whitespace-nowrap">
+                                      {lang === 'ar' ? 'السعرات (Calories):' : 'Calories (kcal):'}
+                                    </label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      placeholder="e.g. 250"
+                                      value={ex.caloriesBurned ?? ''}
+                                      onChange={(e) =>
+                                        handleEditCaloriesChange(
+                                          ex.id,
+                                          e.target.value === '' ? 0 : Number(e.target.value)
+                                        )
+                                      }
+                                      className={`w-full sm:w-28 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-orange-400 ${
+                                        isDark
+                                          ? 'bg-[hsl(240,5%,10%)] border-gray-700 text-orange-300'
+                                          : 'bg-white border-orange-200 text-orange-800'
+                                      }`}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-12 gap-2 text-[10px] font-semibold text-gray-400">
+                                <span className="col-span-2">
+                                  {lang === 'ar' ? 'مجموعة' : 'SET'}
+                                </span>
+                                <span className="col-span-4">
+                                  {ex.weightType === 'none'
+                                    ? lang === 'ar' ? 'النوع' : 'TYPE'
+                                    : lang === 'ar' ? 'الوزن' : 'WEIGHT'}
+                                </span>
+                                <span className="col-span-4">
+                                  {lang === 'ar' ? 'التكرارات' : 'REPS'}
+                                </span>
+                                <span className="col-span-2" />
+                              </div>
+                              {ex.sets.map((set) => (
+                                <div
+                                  key={set.id}
+                                  className="grid grid-cols-12 gap-2 items-center"
+                                >
+                                  <span className="col-span-2 text-xs font-mono-num">
+                                    #{set.setNumber}
+                                  </span>
+                                  <div className="col-span-4">
+                                    {ex.weightType === 'none' ? (
+                                      <span className="text-xs text-purple-400">
+                                        {lang === 'ar' ? 'وزن الجسم' : 'Bodyweight'}
+                                      </span>
+                                    ) : (
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="any"
+                                        value={set.weight ?? 0}
+                                        onChange={(e) =>
+                                          handleEditSetChange(
+                                            ex.id,
+                                            set.id,
+                                            'weight',
+                                            Number(e.target.value)
+                                          )
+                                        }
+                                        className={fieldClass}
+                                        placeholder={
+                                          lang === 'ar' ? 'الوزن' : 'Weight'
+                                        }
+                                      />
+                                    )}
+                                  </div>
+                                  <div className="col-span-4">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={set.reps}
+                                      onChange={(e) =>
+                                        handleEditSetChange(
+                                          ex.id,
+                                          set.id,
+                                          'reps',
+                                          Number(e.target.value)
+                                        )
+                                      }
+                                      className={fieldClass}
+                                      placeholder={
+                                        lang === 'ar' ? 'التكرارات' : 'Reps'
+                                      }
+                                    />
+                                  </div>
+                                  <div className="col-span-2 text-center">
+                                    {ex.sets.length > 1 && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleRemoveSet(ex.id, set.id)
+                                        }
+                                        className="text-red-500 cursor-pointer"
+                                        aria-label="Remove set"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => handleAddSet(ex.id)}
+                                className="text-xs font-bold text-indigo-500 flex items-center gap-1 cursor-pointer pt-1"
+                              >
+                                <Plus className="w-4 h-4" />{' '}
+                                {lang === 'ar' ? 'إضافة مجموعة' : 'Add Set'}
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                });
+              })()}
 
               <div className="p-4 rounded-xl border border-indigo-500/30 space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold">
-                    {lang === 'ar'
-                      ? 'تصفية حسب عضلة اليوم'
-                      : 'Filter by Day Muscle Group'}
+                    {lang === 'ar' ? 'تصفية حسب عضلة اليوم' : 'Filter by Day Muscle Group'}
                   </label>
                   <select
                     value={forgottenMuscleFilter}
@@ -1491,7 +1447,6 @@ export const CalendarPage: React.FC = () => {
                     ))}
                   </select>
                 </div>
-
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold">
                     {lang === 'ar' ? 'التمارين المتاحة (اضغط إضافة):' : 'Available Exercises:'}
@@ -1499,9 +1454,7 @@ export const CalendarPage: React.FC = () => {
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                     {availableForgottenExercises.length === 0 ? (
                       <p className="text-xs text-gray-400 py-2 text-center">
-                        {lang === 'ar'
-                          ? 'تمت إضافة جميع تمارين هذه العضلة أو لا توجد تمارين متاحة.'
-                          : 'No available exercises in this muscle group.'}
+                        {lang === 'ar' ? 'تمت إضافة جميع تمارين هذه العضلة أو لا توجد تمارين متاحة.' : 'No available exercises in this muscle group.'}
                       </p>
                     ) : (
                       availableForgottenExercises.map((exercise) => (
@@ -1556,12 +1509,8 @@ export const CalendarPage: React.FC = () => {
                 className="px-5 py-2 rounded-xl bg-indigo-700 hover:bg-indigo-600 text-white text-xs font-bold cursor-pointer"
               >
                 {isPlanningMode
-                  ? lang === 'ar'
-                    ? 'حفظ الخطة'
-                    : 'Save Plan'
-                  : lang === 'ar'
-                  ? 'تحديث التمرين'
-                  : 'Update Workout'}
+                  ? lang === 'ar' ? 'حفظ الخطة' : 'Save Plan'
+                  : lang === 'ar' ? 'تحديث التمرين' : 'Update Workout'}
               </button>
             </div>
           </form>
@@ -1575,9 +1524,7 @@ export const CalendarPage: React.FC = () => {
               {lang === 'ar' ? 'حذف جلسة التمرين؟' : 'Delete Workout Session?'}
             </h3>
             <p className="text-sm text-gray-400">
-              {lang === 'ar'
-                ? 'هل أنت متأكد؟ لا يمكن التراجع عن هذا الإجراء.'
-                : 'Are you sure you want to permanently delete this workout?'}
+              {lang === 'ar' ? 'هل أنت متأكد؟ لا يمكن التراجع عن هذا الإجراء.' : 'Are you sure you want to permanently delete this workout?'}
             </p>
             <div className="flex justify-end gap-2">
               <button
