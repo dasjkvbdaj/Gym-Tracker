@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import {
   CalendarDays,
@@ -7,7 +8,7 @@ import {
   Moon,
   Save,
   X,
-  Copy, // <-- أضيفت أيقونة النسخ
+  Copy,
 } from 'lucide-react';
 
 import { useGym } from '../context/GymContext';
@@ -37,7 +38,7 @@ export const MyWorkout: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [draftSchedule, setDraftSchedule] = useState<WeeklyScheduleDay[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [scheduleCopied, setScheduleCopied] = useState(false); // <-- حالة لنسخ الجدول
+  const [scheduleCopied, setScheduleCopied] = useState(false);
 
   const trainingDays = useMemo(() => {
     return weeklySchedule.filter(
@@ -57,7 +58,7 @@ export const MyWorkout: React.FC = () => {
       .join(' + ');
   };
 
-  // دالة نسخ الجدول الأسبوعي
+  // Copy weekly schedule
   const handleCopySchedule = () => {
     const scheduleText = weeklySchedule
       .map((day) => {
@@ -66,6 +67,7 @@ export const MyWorkout: React.FC = () => {
           day.workoutType === 'rest' || day.muscleGroups.length === 0
             ? isArabic ? 'يوم راحة' : 'Rest Day'
             : day.muscleGroups.map((mg) => translateMuscleGroup(mg, lang)).join(' + ');
+
         return `${dayName}: ${details}`;
       })
       .join('\n');
@@ -194,24 +196,9 @@ export const MyWorkout: React.FC = () => {
           </p>
         </div>
 
-        {/* أزرار الإجراءات في رأس الصفحة موزعة بـ space-between */}
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button
-            onClick={handleCopySchedule}
-            className={`px-4 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 border transition-all cursor-pointer ${
-              isDark
-                ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200 hover:bg-[hsl(240,5%,15%)]'
-                : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-gray-50'
-            }`}
-          >
-            {scheduleCopied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-            <span>
-              {scheduleCopied
-                ? isArabic ? 'تم النسخ!' : 'Copied!'
-                : isArabic ? 'نسخ الجدول' : 'Copy Schedule'}
-            </span>
-          </button>
-
+        {/* HEADER ACTIONS - SPACE BETWEEN */}
+        <div className="flex items-center justify-between w-full sm:w-auto sm:min-w-[320px] gap-2">
+          {/* EDIT SCHEDULE - LEFT */}
           <button
             onClick={openEditSchedule}
             className={`px-5 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
@@ -222,6 +209,27 @@ export const MyWorkout: React.FC = () => {
           >
             <Edit3 className="w-4 h-4" />
             {isArabic ? 'تعديل الجدول' : 'Edit Schedule'}
+          </button>
+
+          {/* COPY SCHEDULE - RIGHT */}
+          <button
+            onClick={handleCopySchedule}
+            className={`px-4 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 border transition-all cursor-pointer ${
+              isDark
+                ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200 hover:bg-[hsl(240,5%,15%)]'
+                : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-gray-50'
+            }`}
+          >
+            {scheduleCopied ? (
+              <Check className="w-4 h-4 text-green-500" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+            <span>
+              {scheduleCopied
+                ? isArabic ? 'تم النسخ!' : 'Copied!'
+                : isArabic ? 'نسخ الجدول' : 'Copy Schedule'}
+            </span>
           </button>
         </div>
       </div>
