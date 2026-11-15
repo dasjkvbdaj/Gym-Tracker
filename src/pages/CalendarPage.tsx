@@ -260,7 +260,6 @@ export const CalendarPage: React.FC = () => {
     return selectedDateWorkouts.length > 0;
   }, [selectedDateWorkouts]);
 
-  // Helper function to format and copy workout details to clipboard
   const handleCopyWorkoutDetails = (workout: WorkoutSession, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     
@@ -280,8 +279,12 @@ export const CalendarPage: React.FC = () => {
     }
     text += `-----------------------------------\n`;
 
+    const sortedExercisesForCopy = [...workout.exercises].sort((a, b) => 
+      a.muscleGroup.localeCompare(b.muscleGroup)
+    );
+
     let currentGroup = '';
-    workout.exercises.forEach((ex) => {
+    sortedExercisesForCopy.forEach((ex) => {
       const exObj = exerciseMap.get(ex.exerciseId);
       const displayName = exObj?.name || ex.exerciseNameSnapshot;
       const targetMuscle = exObj?.targetMuscle || ex.targetMuscleSnapshot;
@@ -1049,8 +1052,13 @@ export const CalendarPage: React.FC = () => {
                       {expanded && (
                         <div className="space-y-3 pt-2 border-t border-inherit">
                           {(() => {
+                            // ترتيب التمارين تصاعدياً حسب الـ muscleGroup لمنع تشتت العضلات
+                            const sortedExercises = [...workout.exercises].sort((a, b) =>
+                              a.muscleGroup.localeCompare(b.muscleGroup)
+                            );
+
                             let lastGroup: string | null = null;
-                            return workout.exercises.map((ex) => {
+                            return sortedExercises.map((ex) => {
                               const exObj = exerciseMap.get(ex.exerciseId);
                               const displayName = exObj?.name || ex.exerciseNameSnapshot;
                               const targetMuscle = exObj?.targetMuscle || ex.targetMuscleSnapshot;
@@ -1258,8 +1266,13 @@ export const CalendarPage: React.FC = () => {
               </div>
 
               {(() => {
+                // ترتيب التمارين تصاعدياً حسب الـ muscleGroup في نافذة التعديل لتجنب تفكك الأقسام
+                const sortedEditExercises = [...editingWorkout.exercises].sort((a, b) =>
+                  a.muscleGroup.localeCompare(b.muscleGroup)
+                );
+
                 let lastGroupEdit: string | null = null;
-                return editingWorkout.exercises.map((ex) => {
+                return sortedEditExercises.map((ex) => {
                   const exObj = exerciseMap.get(ex.exerciseId);
                   const displayName = exObj?.name || ex.exerciseNameSnapshot;
                   const targetMuscle = exObj?.targetMuscle || ex.targetMuscleSnapshot;
