@@ -50,9 +50,10 @@ export interface ExerciseEntry {
   exerciseId: string;
   exerciseNameSnapshot: string;
   muscleGroup: MuscleGroup;
-  weightType: WeightUnit; // 'kg' | 'lbs' | 'none'
+  targetMuscle?: string; // Specific Target Muscle
+  weightType: WeightUnit;
   sets: SetEntry[];
-  caloriesBurned?: number; // إجمالي السعرات الحرارية المحروقة لهذا التمرين
+  caloriesBurned?: number;
   notes: string;
 }
 
