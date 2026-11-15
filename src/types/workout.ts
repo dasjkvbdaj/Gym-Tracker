@@ -1,3 +1,4 @@
+
 export type MuscleGroup =
   | 'Back'
   | 'Chest'
@@ -7,6 +8,8 @@ export type MuscleGroup =
   | 'Traps'
   | 'Forearms'
   | 'Abs'
+  | 'Obliques'
+  | 'Neck'
   | 'Legs'
   | 'Cardio';
 
