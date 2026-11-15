@@ -93,6 +93,7 @@ export interface Exercise {
   id: string;
   name: string;
   muscleGroup: MuscleGroup;
+  targetMuscle?: string; // Specific Target Muscle
   defaultWeightUnit: WeightUnit;
   isBodyweight: boolean;
   notes: string;
