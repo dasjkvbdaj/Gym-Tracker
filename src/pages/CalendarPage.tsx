@@ -71,7 +71,6 @@ const MONTH_NAMES_AR = [
   'ديسمبر',
 ];
 
-// RELATIVE DATE LABEL
 const getRelativeDateLabel = (
   dateString: string,
   lang: string
@@ -134,7 +133,6 @@ const getRelativeDateLabel = (
   return isArabic ? `بعد ${daysUntil} أيام` : `In ${daysUntil} days`;
 };
 
-// دالة مساعدة للتحقق مما إذا كان التمرين كارديو
 const isCardioExercise = (exerciseName: string, muscleGroup: string) => {
   const name = exerciseName.toLowerCase();
   return (
@@ -172,13 +170,11 @@ export const CalendarPage: React.FC = () => {
   const [editingWorkout, setEditingWorkout] =
     useState<WorkoutSession | null>(null);
 
-  // هل نحن في وضع التخطيط (Put a Plan) أم التعديل العادي
   const [isPlanningMode, setIsPlanningMode] = useState(false);
 
   const [deleteConfirmId, setDeleteConfirmId] =
     useState<string | null>(null);
 
-  // استخراج عضلات اليوم المحدد وتحديد أول عضلة افتراضياً
   const selectedDateMetaForFilter = getDateMetadata(selectedCalendarDate);
   const currentDayScheduleForFilter = weeklySchedule.find(
     (d) => d.day === selectedDateMetaForFilter.dayOfWeek
@@ -192,16 +188,15 @@ export const CalendarPage: React.FC = () => {
   const [expandedWorkoutId, setExpandedWorkoutId] =
     useState<string | null>(null);
 
-  // خريطة لربط معرف التمرين باسمه الحالي المحدث من مكتبة التمارين
-  const exerciseNameMap = useMemo(() => {
-    const map = new Map<string, string>();
+  // خريطة لربط معرف التمرين باسمه والعضلة المستهدفة بدقة
+  const exerciseMap = useMemo(() => {
+    const map = new Map<string, Exercise>();
     for (const ex of exercises) {
-      map.set(ex.id, ex.name);
+      map.set(ex.id, ex);
     }
     return map;
   }, [exercises]);
 
-  // CALENDAR DATA
   const calendarCells = useMemo(
     () => getMonthCalendarGrid(viewYear, viewMonth),
     [viewYear, viewMonth]
@@ -251,18 +246,15 @@ export const CalendarPage: React.FC = () => {
     [weeklySchedule, selectedDateMeta]
   );
 
-  // التحقق هل التاريخ المحدد هو اليوم أو في المستقبل (من اليوم وطالع)
   const isTodayOrFutureDate = useMemo(() => {
     const todayStr = toLocalDateString(new Date());
     return selectedCalendarDate >= todayStr;
   }, [selectedCalendarDate]);
 
-  // التحقق هل توجد تمارين أو خطط مسجلة في التاريخ المحدد حالياً (لإخفاء زر Put a Plan عند وجودها)
   const hasWorkoutsOrPlansOnSelectedDate = useMemo(() => {
     return selectedDateWorkouts.length > 0;
   }, [selectedDateWorkouts]);
 
-  // فتح نافذة التخطيط اليومي (Put a Plan)
   const handleOpenPlanDay = () => {
     if (!selectedDaySchedule || selectedDaySchedule.workoutType === 'rest') {
       return;
@@ -296,7 +288,6 @@ export const CalendarPage: React.FC = () => {
     setEditingWorkout(newSession);
   };
 
-  // MONTH STATISTICS
   const monthStats = useMemo(() => {
     let strengthCount = 0;
     let cardioCount = 0;
@@ -431,8 +422,8 @@ export const CalendarPage: React.FC = () => {
 
     const updatedExercises = editingWorkout.exercises.map((ex) => {
       if (ex.id !== entryId) return ex;
-      const currentName =
-        exerciseNameMap.get(ex.exerciseId) || ex.exerciseNameSnapshot;
+      const exObj = exerciseMap.get(ex.exerciseId);
+      const currentName = exObj?.name || ex.exerciseNameSnapshot;
       const isCardio = isCardioExercise(currentName, ex.muscleGroup);
       const previousSet = ex.sets[ex.sets.length - 1];
       const newSet: SetEntry = {
@@ -483,6 +474,7 @@ export const CalendarPage: React.FC = () => {
       exerciseId: exercise.id,
       exerciseNameSnapshot: exercise.name,
       muscleGroup: exercise.muscleGroup,
+      targetMuscleSnapshot: exercise.targetMuscle || '', // حفظ العضلة المستهدفة بدقة
       weightType: unit,
       sets: isPlanningMode
         ? []
@@ -570,7 +562,6 @@ export const CalendarPage: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
-      {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-display font-bold">
@@ -582,8 +573,8 @@ export const CalendarPage: React.FC = () => {
             }`}
           >
             {lang === 'ar'
-              ? 'يعرض التمارين المسجلة فعلياً حسب التاريخ. اضغط على أي يوم لعرض التفاصيل أو إضافة/تخطيط تمرين.'
-              : 'Displays actual recorded workout dates. Select any date to inspect sessions or plan a workout.'}
+              ? 'يعرض التمارين المسجلة فعلياً والعضلات المستهدفة حسب التاريخ.'
+              : 'Displays actual recorded workouts and target muscles by date.'}
           </p>
         </div>
         <button
@@ -600,11 +591,9 @@ export const CalendarPage: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT: CALENDAR */}
         <div
           className={`lg:col-span-8 rounded-2xl border p-4 sm:p-6 space-y-5 ${panelClass}`}
         >
-          {/* MONTH NAVIGATION */}
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <button
@@ -667,7 +656,6 @@ export const CalendarPage: React.FC = () => {
               </button>
             </div>
 
-            {/* MONTH STATISTICS */}
             <div className="flex items-center gap-2 text-xs font-mono-num">
               <span
                 className={`px-2.5 py-1 rounded-lg border font-semibold ${
@@ -686,7 +674,6 @@ export const CalendarPage: React.FC = () => {
             </div>
           </div>
 
-          {/* WEEKDAYS */}
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2 text-center">
             {ORDERED_WEEK_DAYS.map((dayName) => (
               <div
@@ -700,12 +687,10 @@ export const CalendarPage: React.FC = () => {
             ))}
           </div>
 
-          {/* CALENDAR GRID */}
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {calendarCells.map((cell) => {
               const dayWorkouts = workoutsByDate.get(cell.dateStr) || [];
               const todayStr = toLocalDateString(new Date());
-              // التحقق مما إذا كان اليوم يحتوي على خطة (Plan) سواء اليوم أو في المستقبل
               const isPlannedDay = dayWorkouts.some(
                 (w) =>
                   (w.status as string) === 'planned' ||
@@ -766,7 +751,6 @@ export const CalendarPage: React.FC = () => {
                       {cell.dayNumber}
                     </span>
                     
-                    {/* النقطة الصفراء للدلالة على وجود خطة (Plan) */}
                     {isPlannedDay && (
                       <span
                         title={lang === 'ar' ? 'يوم مخطط (Plan)' : 'Planned Day'}
@@ -781,7 +765,6 @@ export const CalendarPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* ACTIVITY INDICATORS */}
                   <div className="space-y-1 mt-1 w-full">
                     {hasStrength && (
                       <div
@@ -817,7 +800,6 @@ export const CalendarPage: React.FC = () => {
             })}
           </div>
 
-          {/* LEGEND */}
           <div
             className={`pt-3 border-t flex flex-wrap items-center gap-4 text-xs ${
               isDark ? 'border-[hsl(240,4%,16%)] text-gray-400' : 'border-[hsl(40,10%,88%)] text-slate-600'
@@ -854,12 +836,10 @@ export const CalendarPage: React.FC = () => {
           </div>
         </div>
 
-        {/* RIGHT: SELECTED DATE DETAILS */}
         <div
           className={`lg:col-span-4 rounded-2xl border p-5 flex flex-col justify-between gap-5 ${panelClass}`}
         >
           <div className="space-y-4">
-            {/* SELECTED DATE */}
             <div className="pb-4 border-b border-inherit">
               <span className="text-xs font-semibold uppercase tracking-wider text-[hsl(75,92%,56%)]">
                 {lang === 'ar' ? 'التاريخ المحدد' : 'Selected Date'}
@@ -887,7 +867,6 @@ export const CalendarPage: React.FC = () => {
                     <strong>{selectedDaySchedule.title}</strong>
                   </p>
 
-                  {/* زر تخطيط التمرين (Put a Plan) يظهر فقط إذا كان اليوم أو في المستقبل وليس لديه خطة/تمرين مسجل حالياً */}
                   {isTodayOrFutureDate && !hasWorkoutsOrPlansOnSelectedDate && selectedDaySchedule.workoutType !== 'rest' && (
                     <button
                       onClick={handleOpenPlanDay}
@@ -907,7 +886,6 @@ export const CalendarPage: React.FC = () => {
               )}
             </div>
 
-            {/* SELECTED DATE WORKOUTS */}
             {selectedDateWorkouts.length === 0 ? (
               <div
                 className={`py-8 px-4 rounded-xl border border-dashed text-center space-y-2 ${
@@ -1001,7 +979,6 @@ export const CalendarPage: React.FC = () => {
                         </button>
                       </div>
 
-                      {/* TIME ONLY */}
                       <div className="flex flex-wrap items-center justify-between text-[11px] text-gray-400 font-mono-num gap-2">
                         <div className="flex items-center gap-1">
                           <Clock className="w-3 h-3" />
@@ -1018,7 +995,6 @@ export const CalendarPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* MUSCLE GROUPS */}
                       {workout.muscleGroups.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {workout.muscleGroups.map((mg) => (
@@ -1036,13 +1012,16 @@ export const CalendarPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* EXERCISE SUMMARY / DETAILS */}
                       {expanded && (
                         <div className="space-y-3 pt-2 border-t border-inherit">
                           {workout.exercises.map((ex) => {
+                            const exObj = exerciseMap.get(ex.exerciseId);
                             const displayName =
-                              exerciseNameMap.get(ex.exerciseId) ||
+                              exObj?.name ||
                               ex.exerciseNameSnapshot;
+                            const targetMuscle =
+                              exObj?.targetMuscle ||
+                              ex.targetMuscleSnapshot;
                             const isCardio = isCardioExercise(
                               displayName,
                               ex.muscleGroup
@@ -1060,7 +1039,14 @@ export const CalendarPage: React.FC = () => {
                                       : 'text-indigo-700'
                                   }`}
                                 >
-                                  <span>{displayName}</span>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span>{displayName}</span>
+                                    {targetMuscle && (
+                                      <span className={`text-[10px] px-1.5 py-0.2 rounded border ${isDark ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                        🎯 {targetMuscle}
+                                      </span>
+                                    )}
+                                  </div>
                                   {isCardio && ex.caloriesBurned ? (
                                     <span className="text-cyan-400 font-mono-num text-[11px] flex items-center gap-1">
                                       <Flame className="w-3 h-3" />{' '}
@@ -1114,7 +1100,6 @@ export const CalendarPage: React.FC = () => {
                         </div>
                       )}
 
-                      {/* EDIT / DELETE */}
                       <div className="flex gap-2 pt-2 border-t border-inherit">
                         <button
                           onClick={() => handleOpenEdit(workout)}
@@ -1140,7 +1125,6 @@ export const CalendarPage: React.FC = () => {
         </div>
       </div>
 
-      {/* EDIT / PLAN WORKOUT MODAL */}
       {editingWorkout && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 overflow-y-auto">
           <form
@@ -1151,7 +1135,6 @@ export const CalendarPage: React.FC = () => {
                 : 'bg-white border-slate-200 text-slate-900'
             }`}
           >
-            {/* MODAL HEADER */}
             <div className="flex items-center justify-between border-b border-inherit pb-3 shrink-0">
               <div>
                 <h3 className="font-bold text-lg">
@@ -1170,9 +1153,7 @@ export const CalendarPage: React.FC = () => {
               </button>
             </div>
 
-            {/* EDITABLE CONTENT */}
             <div className="flex-1 overflow-y-auto space-y-4 pr-1">
-              {/* TITLE AND DATE */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold mb-1">
@@ -1209,11 +1190,14 @@ export const CalendarPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* EXERCISES */}
               {editingWorkout.exercises.map((ex) => {
+                const exObj = exerciseMap.get(ex.exerciseId);
                 const displayName =
-                  exerciseNameMap.get(ex.exerciseId) ||
+                  exObj?.name ||
                   ex.exerciseNameSnapshot;
+                const targetMuscle =
+                  exObj?.targetMuscle ||
+                  ex.targetMuscleSnapshot;
                 const isCardio = isCardioExercise(
                   displayName,
                   ex.muscleGroup
@@ -1230,8 +1214,13 @@ export const CalendarPage: React.FC = () => {
                       }`}
                     >
                       <div>
-                        <h4 className="font-bold text-sm flex items-center gap-1.5">
+                        <h4 className="font-bold text-sm flex items-center gap-2">
                           <span>{displayName}</span>
+                          {targetMuscle && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
+                              🎯 {targetMuscle}
+                            </span>
+                          )}
                         </h4>
                         <span className="text-[11px] text-gray-400">
                           {translateMuscleGroup(ex.muscleGroup, lang)}
@@ -1260,8 +1249,13 @@ export const CalendarPage: React.FC = () => {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
-                        <h4 className="font-bold text-sm flex items-center gap-1.5">
+                        <h4 className="font-bold text-sm flex items-center gap-2">
                           <span>{displayName}</span>
+                          {targetMuscle && (
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
+                              🎯 {targetMuscle}
+                            </span>
+                          )}
                           {isCardio && <span className="text-xs">🏃‍♂️</span>}
                         </h4>
                         <span className="text-[11px] text-gray-400">
@@ -1474,7 +1468,6 @@ export const CalendarPage: React.FC = () => {
                 );
               })}
 
-              {/* ADD EXERCISE SECTION */}
               <div className="p-4 rounded-xl border border-indigo-500/30 space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold">
@@ -1520,9 +1513,16 @@ export const CalendarPage: React.FC = () => {
                               : 'bg-white border-slate-200'
                           }`}
                         >
-                          <span className="text-xs font-semibold">
-                            {exercise.name}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold">
+                              {exercise.name}
+                            </span>
+                            {exercise.targetMuscle && (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
+                                🎯 {exercise.targetMuscle}
+                              </span>
+                            )}
+                          </div>
                           <button
                             type="button"
                             onClick={() => handleAddForgottenExercise(exercise.id)}
@@ -1543,7 +1543,6 @@ export const CalendarPage: React.FC = () => {
               </div>
             </div>
 
-            {/* MODAL FOOTER */}
             <div className="pt-3 border-t border-inherit flex justify-end gap-2 shrink-0">
               <button
                 type="button"
@@ -1569,7 +1568,6 @@ export const CalendarPage: React.FC = () => {
         </div>
       )}
 
-      {/* DELETE CONFIRMATION */}
       {deleteConfirmId && (
         <div className="fixed inset-0 z-[60] bg-black/75 flex items-center justify-center p-4">
           <div className={`w-full max-w-md p-5 rounded-2xl border space-y-4 ${panelClass}`}>
