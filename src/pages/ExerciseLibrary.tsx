@@ -1,3 +1,4 @@
+
 import React, { useMemo, useState } from 'react';
 import {
   Calendar,
@@ -64,6 +65,7 @@ export const ExerciseLibrary: React.FC = () => {
       if (selectedCategory !== 'ALL' && ex.muscleGroup !== selectedCategory) {
         return false;
       }
+
       if (
         searchQuery.trim() &&
         !ex.name.toLowerCase().includes(searchQuery.trim().toLowerCase()) &&
@@ -72,33 +74,49 @@ export const ExerciseLibrary: React.FC = () => {
       ) {
         return false;
       }
+
       return true;
     });
   }, [exercises, selectedCategory, searchQuery]);
 
   const exerciseSessionCounts = useMemo(() => {
     const counts = new Map<string, number>();
+
     for (const w of completedWorkouts) {
       for (const entry of w.exercises || []) {
         counts.set(entry.exerciseId, (counts.get(entry.exerciseId) || 0) + 1);
       }
     }
+
     return counts;
   }, [completedWorkouts]);
 
-  const handleCopyExerciseNames = () => {
-    const namesText = filteredExercises.map((ex) => ex.name).join('\n');
-    navigator.clipboard.writeText(namesText).then(() => {
+  // Copy exercise names together with their specific target muscles
+  const handleCopyExerciseNames = async () => {
+    const exercisesText = filteredExercises
+      .map((ex) =>
+        ex.targetMuscle?.trim()
+          ? `${ex.name} — ${ex.targetMuscle.trim()}`
+          : ex.name
+      )
+      .join('\n');
+
+    if (!exercisesText) return;
+
+    try {
+      await navigator.clipboard.writeText(exercisesText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    } catch (error) {
+      console.error('Failed to copy exercises:', error);
+    }
   };
 
   const openAddModal = () => {
     setEditingExercise(null);
     setFormName('');
     setFormMuscleGroup(selectedCategory === 'ALL' ? 'Back' : selectedCategory);
-    setFormTargetMuscle(''); // ضمان تفريغ حقل العضلة المستهدفة بدقة عند الإضافة
+    setFormTargetMuscle('');
     setIsFormOpen(true);
   };
 
@@ -112,6 +130,7 @@ export const ExerciseLibrary: React.FC = () => {
 
   const handleSaveExercise = async (e: React.FormEvent) => {
     e.preventDefault();
+
     const trimmedName = formName.trim();
     if (!trimmedName) return;
 
@@ -123,7 +142,10 @@ export const ExerciseLibrary: React.FC = () => {
         targetMuscle: formTargetMuscle.trim(),
       });
 
-      if (editingExercise.name !== trimmedName || editingExercise.targetMuscle !== formTargetMuscle.trim()) {
+      if (
+        editingExercise.name !== trimmedName ||
+        editingExercise.targetMuscle !== formTargetMuscle.trim()
+      ) {
         const workoutsToUpdate = completedWorkouts.filter((workout) =>
           workout.exercises.some((ex) => ex.exerciseId === editingExercise.id)
         );
@@ -133,10 +155,15 @@ export const ExerciseLibrary: React.FC = () => {
             ...workout,
             exercises: workout.exercises.map((ex) =>
               ex.exerciseId === editingExercise.id
-                ? { ...ex, exerciseNameSnapshot: trimmedName, targetMuscleSnapshot: formTargetMuscle.trim() }
+                ? {
+                    ...ex,
+                    exerciseNameSnapshot: trimmedName,
+                    targetMuscleSnapshot: formTargetMuscle.trim(),
+                  }
                 : ex
             ),
           };
+
           await saveHistoricalWorkout(updatedWorkout);
         }
       }
@@ -147,11 +174,13 @@ export const ExerciseLibrary: React.FC = () => {
         targetMuscle: formTargetMuscle.trim(),
       });
     }
+
     setIsFormOpen(false);
   };
 
   const selectedExerciseHistory = useMemo(() => {
     if (!historyModalExercise) return [];
+
     const logs: {
       workoutId: string;
       actualDate: string;
@@ -175,6 +204,7 @@ export const ExerciseLibrary: React.FC = () => {
         }
       }
     }
+
     return logs;
   }, [historyModalExercise, completedWorkouts]);
 
@@ -185,30 +215,18 @@ export const ExerciseLibrary: React.FC = () => {
           <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">
             {lang === 'ar' ? 'مكتبة التمارين الشاملة' : 'Exercise Library'}
           </h1>
+
           <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-slate-600'}`}>
             {lang === 'ar'
               ? 'إدارة تمارينك حسب الفئات العضلية وتحديد العضلات المستهدفة.'
               : 'Organize and manage exercises by muscle group and specific target muscle.'}
           </p>
         </div>
-        
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <button
-            onClick={handleCopyExerciseNames}
-            className={`px-4 py-2.5 rounded-xl font-display font-bold text-sm flex items-center gap-2 border transition-all cursor-pointer ${
-              isDark
-                ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200 hover:bg-[hsl(240,5%,15%)]'
-                : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-gray-50'
-            }`}
-          >
-            {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-            <span>
-              {copied
-                ? lang === 'ar' ? 'تم النسخ!' : 'Copied!'
-                : lang === 'ar' ? 'نسخ الأسماء' : 'Copy Names'}
-            </span>
-          </button>
 
+        {/* Action Buttons: Add on the left, Copy on the right */}
+        <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+
+          {/* Add Exercise - Left */}
           <button
             onClick={openAddModal}
             className={`px-4 py-2.5 rounded-xl font-display font-bold text-sm flex items-center gap-2 shadow-lg transition-all cursor-pointer ${
@@ -218,7 +236,36 @@ export const ExerciseLibrary: React.FC = () => {
             }`}
           >
             <Plus className="w-4 h-4" />
-            <span>{lang === 'ar' ? 'إضافة تمرين جديد' : 'Add New Exercise'}</span>
+            <span>
+              {lang === 'ar' ? 'إضافة تمرين جديد' : 'Add New Exercise'}
+            </span>
+          </button>
+
+          {/* Copy Exercises & Target Muscles - Right */}
+          <button
+            onClick={handleCopyExerciseNames}
+            disabled={filteredExercises.length === 0}
+            className={`px-4 py-2.5 rounded-xl font-display font-bold text-sm flex items-center gap-2 border transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+              isDark
+                ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-200 hover:bg-[hsl(240,5%,15%)]'
+                : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-gray-50'
+            }`}
+          >
+            {copied ? (
+              <Check className="w-4 h-4 text-green-500" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+
+            <span>
+              {copied
+                ? lang === 'ar'
+                  ? 'تم النسخ!'
+                  : 'Copied!'
+                : lang === 'ar'
+                  ? 'نسخ التمارين والعضلات المستهدفة'
+                  : 'Copy Exercises & Target Muscles'}
+            </span>
           </button>
         </div>
       </div>
@@ -236,6 +283,7 @@ export const ExerciseLibrary: React.FC = () => {
               isDark ? 'text-gray-500' : 'text-slate-400'
             }`}
           />
+
           <input
             type="text"
             value={searchQuery}
@@ -262,15 +310,17 @@ export const ExerciseLibrary: React.FC = () => {
                   ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)] shadow-xs'
                   : 'bg-[hsl(76,78%,42%)] text-white shadow-xs'
                 : isDark
-                ? 'bg-[hsl(240,5%,11%)] text-gray-300 hover:bg-[hsl(240,5%,14%)]'
-                : 'bg-[hsl(40,15%,94%)] text-slate-700 hover:bg-[hsl(40,15%,91%)]'
+                  ? 'bg-[hsl(240,5%,11%)] text-gray-300 hover:bg-[hsl(240,5%,14%)]'
+                  : 'bg-[hsl(40,15%,94%)] text-slate-700 hover:bg-[hsl(40,15%,91%)]'
             }`}
           >
             {lang === 'ar' ? `الكل (${exercises.length})` : `All (${exercises.length})`}
           </button>
+
           {MUSCLE_GROUPS.map((mg) => {
             const count = exercises.filter((e) => e.muscleGroup === mg).length;
             const active = selectedCategory === mg;
+
             return (
               <button
                 key={mg}
@@ -281,8 +331,8 @@ export const ExerciseLibrary: React.FC = () => {
                       ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)] shadow-xs'
                       : 'bg-[hsl(76,78%,42%)] text-white shadow-xs'
                     : isDark
-                    ? 'bg-[hsl(240,5%,11%)] text-gray-300 hover:bg-[hsl(240,5%,14%)]'
-                    : 'bg-[hsl(40,15%,94%)] text-slate-700 hover:bg-[hsl(40,15%,91%)]'
+                      ? 'bg-[hsl(240,5%,11%)] text-gray-300 hover:bg-[hsl(240,5%,14%)]'
+                      : 'bg-[hsl(40,15%,94%)] text-slate-700 hover:bg-[hsl(40,15%,91%)]'
                 }`}
               >
                 {translateMuscleGroup(mg, lang)} ({count})
@@ -301,15 +351,17 @@ export const ExerciseLibrary: React.FC = () => {
           }`}
         >
           <Dumbbell className="w-8 h-8 mx-auto opacity-40" />
+
           <p className="text-sm font-medium">
             {exercises.length === 0
               ? lang === 'ar'
                 ? 'مكتبة التمارين فارغة. أضف تمارينك المخصصة للبدء.'
                 : 'Your exercise library is empty. Add your exercises to get started.'
               : lang === 'ar'
-              ? 'لا توجد تمارين مطابقة للبحث الحالي.'
-              : 'No exercises match your current filter.'}
+                ? 'لا توجد تمارين مطابقة للبحث الحالي.'
+                : 'No exercises match your current filter.'}
           </p>
+
           <button
             onClick={openAddModal}
             className={`px-4 py-2 rounded-xl font-semibold text-xs cursor-pointer ${
@@ -325,6 +377,7 @@ export const ExerciseLibrary: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredExercises.map((ex) => {
             const sessionsCount = exerciseSessionCounts.get(ex.id) || 0;
+
             const assignedDays = weeklySchedule
               .filter((d) => d.assignedExerciseIds.includes(ex.id))
               .map((d) => d.day);
@@ -351,6 +404,7 @@ export const ExerciseLibrary: React.FC = () => {
                         >
                           {translateMuscleGroup(ex.muscleGroup, lang)}
                         </span>
+
                         {ex.targetMuscle && (
                           <span
                             className={`inline-block text-[10px] font-medium px-2 py-0.5 rounded-md border ${
@@ -363,6 +417,7 @@ export const ExerciseLibrary: React.FC = () => {
                           </span>
                         )}
                       </div>
+
                       <h3 className="font-display font-bold text-base mt-1.5">
                         {ex.name}
                       </h3>
@@ -372,6 +427,7 @@ export const ExerciseLibrary: React.FC = () => {
                   {assignedDays.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1 pt-1">
                       <Calendar className="w-3 h-3 text-gray-400 me-0.5" />
+
                       {assignedDays.map((d) => (
                         <span
                           key={d}
@@ -406,6 +462,7 @@ export const ExerciseLibrary: React.FC = () => {
                             : 'text-[hsl(76,78%,42%)]'
                         }`}
                       />
+
                       <span>
                         {lang === 'ar'
                           ? `السجل (${sessionsCount})`
@@ -440,6 +497,7 @@ export const ExerciseLibrary: React.FC = () => {
                     >
                       <Edit3 className="w-4 h-4" />
                     </button>
+
                     <button
                       onClick={() => setDeleteConfirmId(ex.id)}
                       className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
@@ -476,9 +534,10 @@ export const ExerciseLibrary: React.FC = () => {
                     ? 'تعديل بيانات التمرين'
                     : 'Edit Exercise'
                   : lang === 'ar'
-                  ? 'إضافة تمرين جديد للمكتبة'
-                  : 'Add New Exercise'}
+                    ? 'إضافة تمرين جديد للمكتبة'
+                    : 'Add New Exercise'}
               </h3>
+
               <button
                 type="button"
                 onClick={() => setIsFormOpen(false)}
@@ -494,6 +553,7 @@ export const ExerciseLibrary: React.FC = () => {
                   ? 'اسم التمرين (يدعم الإنجليزية والعربية)'
                   : 'Exercise Name *'}
               </label>
+
               <input
                 type="text"
                 required
@@ -512,6 +572,7 @@ export const ExerciseLibrary: React.FC = () => {
               <label className="block text-xs font-semibold mb-1.5">
                 {lang === 'ar' ? 'الفئة العضلية *' : 'Muscle Group *'}
               </label>
+
               <select
                 value={formMuscleGroup}
                 onChange={(e) => setFormMuscleGroup(e.target.value as MuscleGroup)}
@@ -531,13 +592,20 @@ export const ExerciseLibrary: React.FC = () => {
 
             <div>
               <label className="block text-xs font-semibold mb-1.5">
-                {lang === 'ar' ? 'العضلة المستهدفة بدقة (Target Muscle)' : 'Specific Target Muscle'}
+                {lang === 'ar'
+                  ? 'العضلة المستهدفة بدقة (Target Muscle)'
+                  : 'Specific Target Muscle'}
               </label>
+
               <input
                 type="text"
                 value={formTargetMuscle}
                 onChange={(e) => setFormTargetMuscle(e.target.value)}
-                placeholder={lang === 'ar' ? 'مثال: Upper Chest, Lateral Delts...' : 'e.g., Upper Chest, Lats...'}
+                placeholder={
+                  lang === 'ar'
+                    ? 'مثال: Upper Chest, Lateral Delts...'
+                    : 'e.g., Upper Chest, Lats...'
+                }
                 className={`w-full px-3.5 py-2.5 rounded-xl text-sm border focus:outline-none ${
                   isDark
                     ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-100 focus:border-[hsl(75,92%,56%)]'
@@ -558,6 +626,7 @@ export const ExerciseLibrary: React.FC = () => {
               >
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </button>
+
               <button
                 type="submit"
                 className={`px-5 py-2 rounded-xl font-display font-bold text-xs cursor-pointer ${
@@ -571,8 +640,8 @@ export const ExerciseLibrary: React.FC = () => {
                     ? 'حفظ التغييرات'
                     : 'Save Changes'
                   : lang === 'ar'
-                  ? 'إضافة التمرين'
-                  : 'Create Exercise'}
+                    ? 'إضافة التمرين'
+                    : 'Create Exercise'}
               </button>
             </div>
           </form>
@@ -596,13 +665,17 @@ export const ExerciseLibrary: React.FC = () => {
                   }`}
                 >
                   {translateMuscleGroup(historyModalExercise.muscleGroup, lang)}
-                  {historyModalExercise.targetMuscle ? ` • ${historyModalExercise.targetMuscle}` : ''}
+                  {historyModalExercise.targetMuscle
+                    ? ` • ${historyModalExercise.targetMuscle}`
+                    : ''}
                 </span>
+
                 <h3 className="font-display font-bold text-lg">
                   {historyModalExercise.name} —{' '}
                   {lang === 'ar' ? 'سجل الأداء' : 'Workout History'}
                 </h3>
               </div>
+
               <button
                 onClick={() => setHistoryModalExercise(null)}
                 className="p-1.5 rounded-lg hover:bg-white/10"
@@ -638,10 +711,12 @@ export const ExerciseLibrary: React.FC = () => {
                       >
                         {formatFullDate(log.actualDate, lang)}
                       </span>
+
                       <span className="font-mono-num uppercase text-gray-400">
                         {log.weightType === 'none' ? 'Bodyweight' : log.weightType}
                       </span>
                     </div>
+
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {log.sets.map((s) => (
                         <div
@@ -653,6 +728,7 @@ export const ExerciseLibrary: React.FC = () => {
                           }`}
                         >
                           <span className="text-gray-400 me-1.5">#{s.setNumber}:</span>
+
                           <span className="font-semibold">
                             {formatSetPerformance(
                               s.weight,
@@ -684,11 +760,15 @@ export const ExerciseLibrary: React.FC = () => {
                   }`}
                 >
                   <TrendingUp className="w-3.5 h-3.5" />
-                  <span>{lang === 'ar' ? 'فتح مخطط التطور' : 'View Progress Chart'}</span>
+
+                  <span>
+                    {lang === 'ar' ? 'فتح مخطط التطور' : 'View Progress Chart'}
+                  </span>
                 </button>
               ) : (
                 <div />
               )}
+
               <button
                 onClick={() => setHistoryModalExercise(null)}
                 className={`px-4 py-2 rounded-xl font-semibold text-xs cursor-pointer ${
@@ -716,11 +796,13 @@ export const ExerciseLibrary: React.FC = () => {
             <h3 className="font-display font-bold text-base text-red-400">
               {lang === 'ar' ? 'تأكيد حذف التمرين' : 'Delete Exercise from Library?'}
             </h3>
+
             <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
               {lang === 'ar'
                 ? 'سيتم إزالة هذا التمرين من المكتبة، ولكن جميع السجلات التاريخية السابقة لهذا التمرين ستبقى محفوظة بالكامل.'
                 : 'This exercise will be removed from your active library. Any historical workouts where you performed this exercise will remain safely preserved.'}
             </p>
+
             <div className="flex items-center justify-end gap-2.5 pt-2">
               <button
                 onClick={() => setDeleteConfirmId(null)}
@@ -732,6 +814,7 @@ export const ExerciseLibrary: React.FC = () => {
               >
                 {lang === 'ar' ? 'إلغاء' : 'Cancel'}
               </button>
+
               <button
                 onClick={async () => {
                   await deleteExercise(deleteConfirmId);
