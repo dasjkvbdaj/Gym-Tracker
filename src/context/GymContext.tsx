@@ -236,6 +236,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             exerciseId: libEx.id,
             exerciseNameSnapshot: libEx.name,
             muscleGroup: libEx.muscleGroup,
+targetMuscle: libEx.targetMuscle || '',
             weightType: unit,
             sets: [1, 2, 3].map((setNum) => ({
               id: generateId('set'),
