@@ -9,6 +9,8 @@ export const MUSCLE_GROUPS: MuscleGroup[] = [
   'Traps',
   'Forearms',
   'Abs',
+  'Obliques',
+  'Neck',
   'Legs',
   'Cardio',
 ];
@@ -22,6 +24,14 @@ export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, { en: string; ar: string }
   Traps: { en: 'Traps', ar: 'الترابيس (Traps)' },
   Forearms: { en: 'Forearms', ar: 'السواعد (Forearms)' },
   Abs: { en: 'Abs', ar: 'البطن (Abs)' },
+Obliques: {
+  en: 'Obliques',
+  ar: 'الخواصر',
+},
+Neck: {
+  en: 'Neck',
+  ar: 'الرقبة',
+},
   Legs: { en: 'Legs', ar: 'الأرجل (Legs)' },
   Cardio: { en: 'Cardio', ar: 'كارديو (Cardio)' },
 };
