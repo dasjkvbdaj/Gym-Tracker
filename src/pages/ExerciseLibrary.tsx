@@ -53,7 +53,7 @@ export const ExerciseLibrary: React.FC = () => {
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
   const [formName, setFormName] = useState('');
   const [formMuscleGroup, setFormMuscleGroup] = useState<MuscleGroup>('Back');
-  const [formTargetMuscle, setFormTargetMuscle] = useState(''); // <-- الحقل الثالث الجديد (العضلة المستهدفة بدقة)
+  const [formTargetMuscle, setFormTargetMuscle] = useState('');
 
   // Exercise History & Day Assignment Modal
   const [historyModalExercise, setHistoryModalExercise] = useState<Exercise | null>(null);
@@ -98,7 +98,7 @@ export const ExerciseLibrary: React.FC = () => {
     setEditingExercise(null);
     setFormName('');
     setFormMuscleGroup(selectedCategory === 'ALL' ? 'Back' : selectedCategory);
-    setFormTargetMuscle('');
+    setFormTargetMuscle(''); // ضمان تفريغ حقل العضلة المستهدفة بدقة عند الإضافة
     setIsFormOpen(true);
   };
 
@@ -529,7 +529,6 @@ export const ExerciseLibrary: React.FC = () => {
               </select>
             </div>
 
-            {/* الحقل الثالث الجديد: العضلة أو الجزء المستهدف بدقة */}
             <div>
               <label className="block text-xs font-semibold mb-1.5">
                 {lang === 'ar' ? 'العضلة المستهدفة بدقة (Target Muscle)' : 'Specific Target Muscle'}
