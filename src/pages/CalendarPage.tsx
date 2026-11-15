@@ -12,6 +12,8 @@ import {
   Trash2,
   X,
   ClipboardList,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 import { useGym } from '../context/GymContext';
@@ -158,6 +160,7 @@ export const CalendarPage: React.FC = () => {
     setSelectedCalendarDate,
     saveHistoricalWorkout,
     deleteWorkout,
+    showToast,
   } = useGym();
 
   const lang = settings.language;
@@ -175,6 +178,8 @@ export const CalendarPage: React.FC = () => {
 
   const [deleteConfirmId, setDeleteConfirmId] =
     useState<string | null>(null);
+
+  const [copiedWorkoutId, setCopiedWorkoutId] = useState<string | null>(null);
 
   const selectedDateMetaForFilter = getDateMetadata(selectedCalendarDate);
   const currentDayScheduleForFilter = weeklySchedule.find(
@@ -254,6 +259,73 @@ export const CalendarPage: React.FC = () => {
   const hasWorkoutsOrPlansOnSelectedDate = useMemo(() => {
     return selectedDateWorkouts.length > 0;
   }, [selectedDateWorkouts]);
+
+  // Helper function to format and copy workout details to clipboard
+  const handleCopyWorkoutDetails = (workout: WorkoutSession, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    
+    const isPlan = (workout.status as string) === 'planned';
+    let text = `🏋️‍♂️ ${workout.title}\n`;
+    text += `📅 Date: ${formatFullDate(workout.actualDate, lang)}\n`;
+    text += `📌 Status: ${isPlan ? (lang === 'ar' ? 'خطة (Planned)' : 'Planned') : (lang === 'ar' ? 'مكتمل (Completed)' : 'Completed')}\n`;
+    if (!isPlan && workout.startTimestamp) {
+      text += `⏰ Time: ${formatTimeFromTimestamp(workout.startTimestamp, lang)}`;
+      if (workout.finishTimestamp) {
+        text += ` – ${formatTimeFromTimestamp(workout.finishTimestamp, lang)}`;
+      }
+      text += '\n';
+    }
+    if (workout.muscleGroups && workout.muscleGroups.length > 0) {
+      text += `💪 Target Muscles: ${workout.muscleGroups.map(mg => translateMuscleGroup(mg, lang)).join(', ')}\n`;
+    }
+    text += `-----------------------------------\n`;
+
+    let currentGroup = '';
+    workout.exercises.forEach((ex) => {
+      const exObj = exerciseMap.get(ex.exerciseId);
+      const displayName = exObj?.name || ex.exerciseNameSnapshot;
+      const targetMuscle = exObj?.targetMuscle || ex.targetMuscleSnapshot;
+      const isCardio = isCardioExercise(displayName, ex.muscleGroup);
+
+      if (currentGroup !== ex.muscleGroup) {
+        currentGroup = ex.muscleGroup;
+        text += `\n🔹 [ ${translateMuscleGroup(currentGroup, lang).toUpperCase()} ]\n`;
+      }
+
+      text += `• ${displayName}`;
+      if (targetMuscle) {
+        text += ` (🎯 ${targetMuscle})`;
+      }
+      text += '\n';
+
+      if (isCardio) {
+        const mins = ex.sets[0]?.reps || 30;
+        text += `   ⏳ Duration: ${mins} ${lang === 'ar' ? 'دقائق' : 'minutes'}`;
+        if (ex.caloriesBurned) {
+          text += ` | 🔥 ${ex.caloriesBurned} kcal`;
+        }
+        text += '\n';
+      } else if (!isPlan && ex.sets && ex.sets.length > 0) {
+        ex.sets.forEach((s) => {
+          text += `   - Set #${s.setNumber}: ${formatSetPerformance(s.weight, ex.weightType, s.reps, lang)}\n`;
+        });
+      }
+      if (ex.notes) {
+        text += `   📝 Notes: ${ex.notes}\n`;
+      }
+    });
+
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedWorkoutId(workout.id);
+      showToast(
+        lang === 'ar' ? 'تم نسخ تفاصيل التمرين بنجاح!' : 'Workout details copied to clipboard!',
+        'success'
+      );
+      setTimeout(() => {
+        setCopiedWorkoutId(null);
+      }, 2500);
+    });
+  };
 
   const handleOpenPlanDay = () => {
     if (!selectedDaySchedule || selectedDaySchedule.workoutType === 'rest') {
@@ -872,6 +944,7 @@ export const CalendarPage: React.FC = () => {
                 {selectedDateWorkouts.map((workout) => {
                   const expanded = expandedWorkoutId === workout.id;
                   const isPlan = (workout.status as string) === 'planned';
+                  const isCopied = copiedWorkoutId === workout.id;
 
                   return (
                     <div
@@ -918,12 +991,28 @@ export const CalendarPage: React.FC = () => {
                             {workout.title}
                           </h3>
                         </div>
-                        <button
-                          onClick={() => setExpandedWorkoutId(expanded ? null : workout.id)}
-                          className="text-xs text-[hsl(75,92%,56%)] font-semibold cursor-pointer"
-                        >
-                          {expanded ? lang === 'ar' ? 'إخفاء' : 'Hide' : lang === 'ar' ? 'التفاصيل' : 'Details'}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={(e) => handleCopyWorkoutDetails(workout, e)}
+                            className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                              isCopied
+                                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                                : isDark
+                                ? 'bg-[hsl(240,5%,14%)] border-gray-700 text-gray-300 hover:text-white'
+                                : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                            }`}
+                            title={lang === 'ar' ? 'نسخ تفاصيل التمرين' : 'Copy workout details'}
+                            aria-label="Copy workout details"
+                          >
+                            {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                          <button
+                            onClick={() => setExpandedWorkoutId(expanded ? null : workout.id)}
+                            className="text-xs text-[hsl(75,92%,56%)] font-semibold cursor-pointer"
+                          >
+                            {expanded ? lang === 'ar' ? 'إخفاء' : 'Hide' : lang === 'ar' ? 'التفاصيل' : 'Details'}
+                          </button>
+                        </div>
                       </div>
 
                       <div className="flex flex-wrap items-center justify-between text-[11px] text-gray-400 font-mono-num gap-2">
@@ -1105,13 +1194,30 @@ export const CalendarPage: React.FC = () => {
                   {formatFullDate(editingWorkout.actualDate, lang)}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleCloseEdit}
-                aria-label="Close edit modal"
-              >
-                <X className="w-5 h-5 cursor-pointer" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={(e) => handleCopyWorkoutDetails(editingWorkout, e)}
+                  className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                    copiedWorkoutId === editingWorkout.id
+                      ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                      : isDark
+                      ? 'bg-[hsl(240,5%,14%)] border-gray-700 text-gray-300 hover:text-white'
+                      : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                  }`}
+                  title={lang === 'ar' ? 'نسخ تفاصيل التمرين' : 'Copy workout details'}
+                  aria-label="Copy workout details"
+                >
+                  {copiedWorkoutId === editingWorkout.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCloseEdit}
+                  aria-label="Close edit modal"
+                >
+                  <X className="w-5 h-5 cursor-pointer" />
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 pr-1">
@@ -1317,7 +1423,7 @@ export const CalendarPage: React.FC = () => {
                                       className={`w-full sm:w-28 px-3 py-1.5 rounded-xl font-mono-num text-sm font-bold border focus:outline-none focus:border-orange-400 ${
                                         isDark
                                           ? 'bg-[hsl(240,5%,10%)] border-gray-700 text-orange-300'
-                                          : 'bg-white border-orange-200 text-orange-800'
+                                          : 'bg-white border-cyan-200 text-orange-800'
                                       }`}
                                     />
                                   </div>
