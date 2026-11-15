@@ -56,13 +56,11 @@ export const StartWorkout: React.FC = () => {
   const todayStr = toLocalDateString(new Date());
   const todayMeta = getDateMetadata(todayStr);
 
-  // الجلسات المكتملة فعلياً فقط (لاستخراج آخر أداء مسجل بدقة)
   const actualCompletedWorkouts = useMemo(
     () => completedWorkouts.filter((w) => (w.status as string) !== 'planned'),
     [completedWorkouts]
   );
 
-  // خطة اليوم المجدولة في التقويم إن وجدت
   const todayCalendarPlan = useMemo(
     () =>
       completedWorkouts.find(
@@ -79,6 +77,7 @@ export const StartWorkout: React.FC = () => {
   const [showQuickCreateEx, setShowQuickCreateEx] = useState(false);
   const [newExName, setNewExName] = useState('');
   const [newExMuscle, setNewExMuscle] = useState<MuscleGroup>('Cardio');
+  const [newExTarget, setNewExTarget] = useState(''); // الحقل الثالث عند الإنشاء السريع
 
   const isCardioExercise = (entry: ExerciseEntry) => {
     return (
@@ -130,9 +129,7 @@ export const StartWorkout: React.FC = () => {
     const lastPerf = getLastPerformanceForExercise(libEx.id, actualCompletedWorkouts);
     const isCardio = libEx.muscleGroup === 'Cardio' || libEx.name.toLowerCase().includes('treadmill') || libEx.name.toLowerCase().includes('elliptical') || libEx.name.toLowerCase().includes('bike') || libEx.name.toLowerCase().includes('running') || libEx.name.toLowerCase().includes('cardio');
     
-    // التعديل هنا: جعل وحدة الوزن الافتراضية هي وحدة الوزن المفضلة (kg أو lbs) وليست 'none' (وزن الجسم) حتى لو كان التمرين مصنفاً كوزن جسم في المكتبة، بناءً على طلبك أن يكون الكيلو/الباوند هو المحدد دائماً.
     const initialUnit: WeightUnit = isCardio ? 'none' : lastPerf ? lastPerf.weightType : (settings.preferredWeightUnit || 'kg');
-    
     const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? null : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 0;
     const defaultFirstReps = isCardio ? 30 : lastPerf && lastPerf.bestSet ? lastPerf.bestSet.reps : 10;
     
@@ -141,6 +138,7 @@ export const StartWorkout: React.FC = () => {
       exerciseId: libEx.id,
       exerciseNameSnapshot: libEx.name,
       muscleGroup: libEx.muscleGroup,
+      targetMuscleSnapshot: libEx.targetMuscle || '', // حفظ النسخة من العضلة المستهدفة
       weightType: isCardio ? 'none' : initialUnit,
       sets: [
         {
@@ -178,9 +176,11 @@ export const StartWorkout: React.FC = () => {
     const created = await addExercise({
       name: newExName.trim(),
       muscleGroup: newExMuscle,
+      targetMuscle: newExTarget.trim(),
     });
     await handleAddExerciseToSession(created.id);
     setNewExName('');
+    setNewExTarget('');
     setShowQuickCreateEx(false);
   };
 
@@ -302,7 +302,11 @@ export const StartWorkout: React.FC = () => {
       if (pickerMuscleFilter !== 'ALL' && ex.muscleGroup !== pickerMuscleFilter) {
         return false;
       }
-      if (pickerSearch.trim() && !ex.name.toLowerCase().includes(pickerSearch.trim().toLowerCase())) {
+      if (
+        pickerSearch.trim() &&
+        !ex.name.toLowerCase().includes(pickerSearch.trim().toLowerCase()) &&
+        !(ex.targetMuscle && ex.targetMuscle.toLowerCase().includes(pickerSearch.trim().toLowerCase()))
+      ) {
         return false;
       }
       return true;
@@ -660,10 +664,22 @@ export const StartWorkout: React.FC = () => {
                     >
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-inherit">
                         <div className="space-y-1">
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-display font-bold text-base sm:text-lg">
                               {entry.exerciseNameSnapshot}
                             </h3>
+                            {/* عرض العضلة المستهدفة بدقة بجانب اسم التمرين */}
+                            {entry.targetMuscleSnapshot && (
+                              <span
+                                className={`text-xs px-2 py-0.5 rounded border font-medium ${
+                                  isDark
+                                    ? 'bg-[hsl(240,5%,12%)] text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
+                                    : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/20'
+                                }`}
+                              >
+                                🎯 {entry.targetMuscleSnapshot}
+                              </span>
+                            )}
                           </div>
                           {lastPerf && lastPerf.bestSet && (
                             <div
@@ -1196,6 +1212,20 @@ export const StartWorkout: React.FC = () => {
                     ))}
                   </select>
                 </div>
+                {/* حقل العضلة المستهدفة بدقة عند الإنشاء السريع */}
+                <div>
+                  <input
+                    type="text"
+                    value={newExTarget}
+                    onChange={(e) => setNewExTarget(e.target.value)}
+                    placeholder={lang === 'ar' ? 'العضلة المستهدفة بدقة (مثال: Upper Chest)...' : 'Target muscle (e.g., Upper Chest)...'}
+                    className={`w-full px-3 py-2 rounded-lg text-xs border ${
+                      isDark
+                        ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)] text-white'
+                        : 'bg-[hsl(0,0%,100%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
+                    }`}
+                  />
+                </div>
                 <div className="flex items-center justify-end gap-2">
                   <button
                     type="submit"
@@ -1258,7 +1288,14 @@ export const StartWorkout: React.FC = () => {
                     }`}
                   >
                     <div>
-                      <div className="font-display font-semibold text-sm">{ex.name}</div>
+                      <div className="font-display font-semibold text-sm flex items-center gap-2">
+                        <span>{ex.name}</span>
+                        {ex.targetMuscle && (
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
+                            🎯 {ex.targetMuscle}
+                          </span>
+                        )}
+                      </div>
                       <div
                         className={`text-xs ${
                           isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
