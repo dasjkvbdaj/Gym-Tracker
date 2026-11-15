@@ -62,13 +62,14 @@ interface GymContextValue {
   deleteWorkout: (workoutId: string) => Promise<void>;
 
   addExercise: (data: {
-    name: string;
-    muscleGroup: MuscleGroup;
-    defaultWeightUnit?: WeightUnit;
-    isBodyweight?: boolean;
-    notes?: string;
-    assignToDays?: DayName[];
-  }) => Promise<Exercise>;
+  name: string;
+  muscleGroup: MuscleGroup;
+  targetMuscle?: string;
+  defaultWeightUnit?: WeightUnit;
+  isBodyweight?: boolean;
+  notes?: string;
+  assignToDays?: DayName[];
+}) => Promise<Exercise>;
   updateExercise: (exercise: Exercise) => Promise<void>;
   deleteExercise: (exerciseId: string) => Promise<void>;
 
@@ -421,62 +422,85 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const addExercise = async (data: {
-    name: string;
-    muscleGroup: MuscleGroup;
-    defaultWeightUnit?: WeightUnit;
-    isBodyweight?: boolean;
-    notes?: string;
-    assignToDays?: DayName[];
-  }): Promise<Exercise> => {
-    const unit: WeightUnit = data.defaultWeightUnit || 'none';
-    const newEx: Exercise = {
-      id: generateId('ex_custom'),
-      name: data.name.trim(),
-      muscleGroup: data.muscleGroup,
-      defaultWeightUnit: unit,
-      isBodyweight: false,
-      notes: '',
-      isCustom: true,
-      createdAt: Date.now(),
-    };
+  
+const addExercise = async (data: {
+  name: string;
+  muscleGroup: MuscleGroup;
+  targetMuscle?: string;
+  defaultWeightUnit?: WeightUnit;
+  isBodyweight?: boolean;
+  notes?: string;
+  assignToDays?: DayName[];
+}): Promise<Exercise> => {
+  const unit: WeightUnit = data.defaultWeightUnit || 'none';
 
-    await db.exercises.put(newEx);
+  const newEx: Exercise = {
+    id: generateId('ex_custom'),
+    name: data.name.trim(),
+    muscleGroup: data.muscleGroup,
+    targetMuscle: data.targetMuscle?.trim() || '',
+    defaultWeightUnit: unit,
+    isBodyweight: data.isBodyweight ?? false,
+    notes: data.notes?.trim() || '',
+    isCustom: true,
+    createdAt: Date.now(),
+  };
 
-    if (data.assignToDays && data.assignToDays.length > 0) {
-      for (const day of data.assignToDays) {
-        const daySchedule = weeklySchedule.find((d) => d.day === day);
-        if (daySchedule && !daySchedule.assignedExerciseIds.includes(newEx.id)) {
-          await db.weeklySchedule.put({
-            ...daySchedule,
-            assignedExerciseIds: [...daySchedule.assignedExerciseIds, newEx.id],
-          });
-        }
+  await db.exercises.put(newEx);
+
+  if (data.assignToDays && data.assignToDays.length > 0) {
+    for (const day of data.assignToDays) {
+      const daySchedule = weeklySchedule.find((d) => d.day === day);
+
+      if (
+        daySchedule &&
+        !daySchedule.assignedExerciseIds.includes(newEx.id)
+      ) {
+        await db.weeklySchedule.put({
+          ...daySchedule,
+          assignedExerciseIds: [
+            ...daySchedule.assignedExerciseIds,
+            newEx.id,
+          ],
+        });
       }
     }
+  }
 
-    showToast(
-      settings.language === 'ar'
-        ? `تمت إضافة التمرين "${newEx.name}"`
-        : `Added "${newEx.name}" to Exercise Library`,
-      'success'
-    );
-    return newEx;
+  showToast(
+    settings.language === 'ar'
+      ? `تمت إضافة التمرين "${newEx.name}"`
+      : `Added "${newEx.name}" to Exercise Library`,
+    'success'
+  );
+
+  return newEx;
+};
+
+
+  
+const updateExercise = async (exercise: Exercise): Promise<void> => {
+  const updated: Exercise = {
+    ...exercise,
+    name: exercise.name.trim(),
+    targetMuscle: exercise.targetMuscle?.trim() || '',
+    isBodyweight:
+      exercise.defaultWeightUnit === 'none' || exercise.isBodyweight,
+    defaultWeightUnit: exercise.isBodyweight
+      ? 'none'
+      : exercise.defaultWeightUnit,
   };
 
-  const updateExercise = async (exercise: Exercise): Promise<void> => {
-    const updated: Exercise = {
-      ...exercise,
-      name: exercise.name.trim(),
-      isBodyweight: exercise.defaultWeightUnit === 'none' || exercise.isBodyweight,
-      defaultWeightUnit: exercise.isBodyweight ? 'none' : exercise.defaultWeightUnit,
-    };
-    await db.exercises.put(updated);
-    showToast(
-      settings.language === 'ar' ? 'تم تحديث بيانات التمرين' : 'Exercise updated',
-      'success'
-    );
-  };
+  await db.exercises.put(updated);
+
+  showToast(
+    settings.language === 'ar'
+      ? 'تم تحديث بيانات التمرين'
+      : 'Exercise updated',
+    'success'
+  );
+};
+
 
   const deleteExercise = async (exerciseId: string): Promise<void> => {
     await db.exercises.delete(exerciseId);
