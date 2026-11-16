@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import {
   CalendarDays,
@@ -9,6 +8,8 @@ import {
   Save,
   X,
   Copy,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 
 import { useGym } from '../context/GymContext';
@@ -24,6 +25,85 @@ import {
   translateMuscleGroup,
 } from '../utils/i18n';
 
+// تعريف قوالب الجداول التدريبية (Workout Splits)
+type SplitPresetKey = 'custom' | 'ppl_cardio' | 'ppl_classic' | 'upper_lower' | 'bro_split';
+
+interface SplitPreset {
+  id: SplitPresetKey;
+  labelEn: string;
+  labelAr: string;
+  descriptionEn: string;
+  descriptionAr: string;
+  schedule: Partial<Record<DayName, MuscleGroup[]>>;
+}
+
+const SPLIT_PRESETS: SplitPreset[] = [
+  {
+    id: 'ppl_cardio',
+    labelEn: 'Pull / Push / Cardio / Legs (Your Split)',
+    labelAr: 'سحب / دفع / كارديو / أرجل (جدولك الحالي)',
+    descriptionEn: 'Mon: Pull • Tue: Push • Wed: Cardio • Thu: Legs • Fri: Pull • Sat: Push • Sun: Rest',
+    descriptionAr: 'الاثنين: سحب • الثلاثاء: دفع • الأربعاء: كارديو • الخميس: أرجل • الجمعة: سحب • السبت: دفع',
+    schedule: {
+      Monday: ['Back', 'Shoulders', 'Traps', 'Biceps'],
+      Tuesday: ['Chest', 'Shoulders', 'Triceps', 'Forearms'],
+      Wednesday: ['Cardio'],
+      Thursday: ['Legs'],
+      Friday: ['Back', 'Shoulders', 'Traps', 'Biceps'],
+      Saturday: ['Chest', 'Shoulders', 'Triceps', 'Forearms'],
+      Sunday: [],
+    },
+  },
+  {
+    id: 'ppl_classic',
+    labelEn: 'Push / Pull / Legs (6 Days PPL)',
+    labelAr: 'بوش بول ليجز كلاسيك (6 أيام)',
+    descriptionEn: 'High frequency PPL twice a week with Sunday rest',
+    descriptionAr: 'تمرين كل عضلة مرتين بالأسبوع مع راحة يوم الأحد',
+    schedule: {
+      Monday: ['Chest', 'Shoulders', 'Triceps', 'Forearms'],
+      Tuesday: ['Back', 'Shoulders', 'Traps', 'Biceps'],
+      Wednesday: ['Legs'],
+      Thursday: ['Chest', 'Shoulders', 'Triceps', 'Forearms'],
+      Friday: ['Back', 'Shoulders', 'Traps', 'Biceps'],
+      Saturday: ['Legs'],
+      Sunday: [],
+    },
+  },
+  {
+    id: 'upper_lower',
+    labelEn: 'Upper / Lower Split (4 Days)',
+    labelAr: 'علوي / سفلي (Upper / Lower)',
+    descriptionEn: 'Mon/Thu: Upper Body • Tue/Fri: Lower Body • Wed/Weekend: Rest/Cardio',
+    descriptionAr: 'الاثنين والخميس: علوي • الثلاثاء والجمعة: سفلي',
+    schedule: {
+      Monday: ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps'],
+      Tuesday: ['Legs'],
+      Wednesday: ['Cardio'],
+      Thursday: ['Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps'],
+      Friday: ['Legs'],
+      Saturday: [],
+      Sunday: [],
+    },
+  },
+  {
+    id: 'bro_split',
+    labelEn: 'Bro Split (5 Days Body Part)',
+    labelAr: 'برو سبليت (Bro Split - عضلة كل يوم)',
+    descriptionEn: 'Dedicated day for each major muscle group',
+    descriptionAr: 'تخصيص يوم كامل لكل عضلة رئيسية في الأسبوع',
+    schedule: {
+      Monday: ['Chest'],
+      Tuesday: ['Back', 'Traps'],
+      Wednesday: ['Shoulders'],
+      Thursday: ['Legs'],
+      Friday: ['Biceps', 'Triceps', 'Forearms'],
+      Saturday: ['Cardio'],
+      Sunday: [],
+    },
+  },
+];
+
 export const MyWorkout: React.FC = () => {
   const {
     weeklySchedule,
@@ -37,6 +117,7 @@ export const MyWorkout: React.FC = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [draftSchedule, setDraftSchedule] = useState<WeeklyScheduleDay[]>([]);
+  const [selectedPreset, setSelectedPreset] = useState<SplitPresetKey>('custom');
   const [isSaving, setIsSaving] = useState(false);
   const [scheduleCopied, setScheduleCopied] = useState(false);
 
@@ -48,6 +129,21 @@ export const MyWorkout: React.FC = () => {
     );
   }, [weeklySchedule]);
 
+  // تحديد اسم الـ Split الحالي تلقائياً للعرض في الواجهة
+  const detectedSplitName = useMemo(() => {
+    for (const preset of SPLIT_PRESETS) {
+      const isMatch = weeklySchedule.every((dayItem) => {
+        const presetGroups = preset.schedule[dayItem.day] || [];
+        if (presetGroups.length !== dayItem.muscleGroups.length) return false;
+        return presetGroups.every((mg) => dayItem.muscleGroups.includes(mg));
+      });
+      if (isMatch) {
+        return isArabic ? preset.labelAr : preset.labelEn;
+      }
+    }
+    return isArabic ? 'جدول مخصص (Custom Split)' : 'Custom Split';
+  }, [weeklySchedule, isArabic]);
+
   const generateDayTitle = (groups: MuscleGroup[]) => {
     if (groups.length === 0) {
       return isArabic ? 'يوم راحة' : 'Rest Day';
@@ -56,6 +152,28 @@ export const MyWorkout: React.FC = () => {
     return groups
       .map((group) => translateMuscleGroup(group, lang))
       .join(' + ');
+  };
+
+  // تطبيق القالب المختار على الجدول المؤقت (Draft)
+  const handleApplyPreset = (presetKey: SplitPresetKey) => {
+    setSelectedPreset(presetKey);
+    if (presetKey === 'custom') return;
+
+    const preset = SPLIT_PRESETS.find((p) => p.id === presetKey);
+    if (!preset) return;
+
+    setDraftSchedule((previous) =>
+      previous.map((dayItem) => {
+        const groups = preset.schedule[dayItem.day] ?? [];
+        const validGroups = groups.filter((mg) => MUSCLE_GROUPS.includes(mg));
+        return {
+          ...dayItem,
+          muscleGroups: validGroups,
+          workoutType: validGroups.length === 0 ? 'rest' : 'strength',
+          title: generateDayTitle(validGroups),
+        };
+      })
+    );
   };
 
   // Copy weekly schedule
@@ -86,6 +204,7 @@ export const MyWorkout: React.FC = () => {
         assignedExerciseIds: [...day.assignedExerciseIds],
       }))
     );
+    setSelectedPreset('custom');
     setIsEditModalOpen(true);
   };
 
@@ -93,6 +212,7 @@ export const MyWorkout: React.FC = () => {
     day: DayName,
     muscleGroup: MuscleGroup
   ) => {
+    setSelectedPreset('custom');
     setDraftSchedule((previous) =>
       previous.map((item) => {
         if (item.day !== day) return item;
@@ -113,6 +233,7 @@ export const MyWorkout: React.FC = () => {
   };
 
   const toggleRestDay = (day: DayName) => {
+    setSelectedPreset('custom');
     setDraftSchedule((previous) =>
       previous.map((item) => {
         if (item.day !== day) return item;
@@ -196,9 +317,8 @@ export const MyWorkout: React.FC = () => {
           </p>
         </div>
 
-        {/* HEADER ACTIONS - SPACE BETWEEN */}
+        {/* HEADER ACTIONS */}
         <div className="flex items-center justify-between w-full sm:w-auto sm:min-w-[320px] gap-2">
-          {/* EDIT SCHEDULE - LEFT */}
           <button
             onClick={openEditSchedule}
             className={`px-5 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
@@ -211,7 +331,6 @@ export const MyWorkout: React.FC = () => {
             {isArabic ? 'تعديل الجدول' : 'Edit Schedule'}
           </button>
 
-          {/* COPY SCHEDULE - RIGHT */}
           <button
             onClick={handleCopySchedule}
             className={`px-4 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 border transition-all cursor-pointer ${
@@ -234,7 +353,7 @@ export const MyWorkout: React.FC = () => {
         </div>
       </div>
 
-      {/* WEEKLY SCHEDULE SUMMARY */}
+      {/* WEEKLY SCHEDULE SUMMARY + ACTIVE SPLIT BADGE */}
       <div
         className={`rounded-2xl border p-4 sm:p-5 ${
           isDark
@@ -242,42 +361,71 @@ export const MyWorkout: React.FC = () => {
             : 'bg-[hsl(76,78%,42%)]/5 border-[hsl(76,78%,42%)]/20'
         }`}
       >
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <p
-              className={`text-xs font-medium ${
-                isDark ? 'text-gray-400' : 'text-slate-500'
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div
+              className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 ${
+                isDark ? 'bg-[hsl(75,92%,56%)]/15' : 'bg-[hsl(76,78%,42%)]/10'
               }`}
             >
-              {isArabic ? 'أيام التمرين' : 'Training Days'}
-            </p>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <span
-                className={`text-3xl font-display font-bold ${
+              <Dumbbell
+                className={`w-6 h-6 ${
                   isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
                 }`}
-              >
-                {trainingDays.length}
-              </span>
-              <span
-                className={`text-sm ${
+              />
+            </div>
+            <div>
+              <p
+                className={`text-xs font-medium ${
                   isDark ? 'text-gray-400' : 'text-slate-500'
                 }`}
               >
-                / 7 {isArabic ? 'أيام' : 'Days'}
-              </span>
+                {isArabic ? 'أيام التمرين' : 'Training Days'}
+              </p>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span
+                  className={`text-3xl font-display font-bold ${
+                    isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                  }`}
+                >
+                  {trainingDays.length}
+                </span>
+                <span
+                  className={`text-sm ${
+                    isDark ? 'text-gray-400' : 'text-slate-500'
+                  }`}
+                >
+                  / 7 {isArabic ? 'أيام' : 'Days'}
+                </span>
+              </div>
             </div>
           </div>
+
+          {/* ACTIVE SPLIT INDICATOR */}
           <div
-            className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-              isDark ? 'bg-[hsl(75,92%,56%)]/15' : 'bg-[hsl(76,78%,42%)]/10'
+            className={`px-3.5 py-2.5 rounded-xl border flex items-center gap-2.5 ${
+              isDark
+                ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,4%,19%)]'
+                : 'bg-white border-[hsl(40,10%,88%)]'
             }`}
           >
-            <Dumbbell
-              className={`w-6 h-6 ${
+            <Layers
+              className={`w-4 h-4 shrink-0 ${
                 isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
               }`}
             />
+            <div>
+              <span
+                className={`block text-[10px] uppercase tracking-wider font-semibold ${
+                  isDark ? 'text-gray-500' : 'text-slate-400'
+                }`}
+              >
+                {isArabic ? 'النظام النشط' : 'Active Split'}
+              </span>
+              <span className="text-xs font-bold">
+                {detectedSplitName}
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -412,6 +560,7 @@ export const MyWorkout: React.FC = () => {
                 : 'bg-white border-[hsl(40,10%,88%)]'
             }`}
           >
+            {/* MODAL HEADER */}
             <div
               className={`p-5 border-b flex items-center justify-between ${
                 isDark ? 'border-[hsl(240,4%,19%)]' : 'border-[hsl(40,10%,90%)]'
@@ -426,7 +575,9 @@ export const MyWorkout: React.FC = () => {
                     isDark ? 'text-gray-400' : 'text-slate-500'
                   }`}
                 >
-                  {isArabic ? 'اختر العضلات التي تريد تمرينها في كل يوم.' : 'Choose the muscle groups you want to train each day.'}
+                  {isArabic
+                    ? 'اختر نظام تمرين جاهز من القائمة أو خصّص كل يوم يدوياً.'
+                    : 'Select a workout split preset or customize each day manually.'}
                 </p>
               </div>
               <button
@@ -440,6 +591,62 @@ export const MyWorkout: React.FC = () => {
               </button>
             </div>
 
+            {/* SPLIT PRESET DROPDOWN SELECTOR */}
+            <div
+              className={`px-5 py-4 border-b ${
+                isDark
+                  ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,4%,19%)]'
+                  : 'bg-[hsl(40,20%,97%)] border-[hsl(40,10%,90%)]'
+              }`}
+            >
+              <label
+                htmlFor="split-preset-select"
+                className="flex items-center gap-1.5 text-xs font-bold mb-2"
+              >
+                <Sparkles
+                  className={`w-3.5 h-3.5 ${
+                    isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                  }`}
+                />
+                {isArabic
+                  ? 'اختر نظام التمرين (Workout Split Preset):'
+                  : 'Quick-Fill Workout Split Preset:'}
+              </label>
+
+              <select
+                id="split-preset-select"
+                value={selectedPreset}
+                onChange={(e) => handleApplyPreset(e.target.value as SplitPresetKey)}
+                className={`w-full px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold border outline-none transition-all cursor-pointer ${
+                  isDark
+                    ? 'bg-[hsl(240,6%,5%)] border-[hsl(240,4%,22%)] text-white focus:border-[hsl(75,92%,56%)]'
+                    : 'bg-white border-[hsl(40,10%,84%)] text-slate-800 focus:border-[hsl(76,78%,42%)]'
+                }`}
+              >
+                <option value="custom">
+                  {isArabic ? '— مخصص (تعديل يدوي للأيام) —' : '— Custom (Manual Selection) —'}
+                </option>
+                {SPLIT_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>
+                    {isArabic ? preset.labelAr : preset.labelEn}
+                  </option>
+                ))}
+              </select>
+
+              {selectedPreset !== 'custom' && (
+                <p
+                  className={`text-[11px] mt-2 ${
+                    isDark ? 'text-[hsl(75,92%,56%)]/90' : 'text-[hsl(76,78%,38%)]'
+                  }`}
+                >
+                  {isArabic
+                    ? SPLIT_PRESETS.find((p) => p.id === selectedPreset)?.descriptionAr
+                    : SPLIT_PRESETS.find((p) => p.id === selectedPreset)?.descriptionEn}
+                </p>
+              )}
+            </div>
+
+            {/* DAYS LIST */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
               {draftSchedule.map((dayItem) => {
                 const isRest = dayItem.workoutType === 'rest';
@@ -527,6 +734,7 @@ export const MyWorkout: React.FC = () => {
               })}
             </div>
 
+            {/* MODAL FOOTER */}
             <div
               className={`p-4 sm:p-5 border-t flex items-center justify-end gap-2 ${
                 isDark ? 'border-[hsl(240,4%,19%)] bg-[hsl(240,5%,9%)]' : 'border-[hsl(40,10%,90%)] bg-white'
