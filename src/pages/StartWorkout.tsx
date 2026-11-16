@@ -129,11 +129,11 @@ export const StartWorkout: React.FC = () => {
     const lastPerf = getLastPerformanceForExercise(libEx.id, actualCompletedWorkouts);
     const isCardio = libEx.muscleGroup === 'Cardio' || libEx.name.toLowerCase().includes('treadmill') || libEx.name.toLowerCase().includes('elliptical') || libEx.name.toLowerCase().includes('bike') || libEx.name.toLowerCase().includes('running') || libEx.name.toLowerCase().includes('cardio');
     
+    // ضبط الوزن الافتراضي ليكون بالكيلو (kg) كخيار أول بدلاً من bodyweight إن لم يكن كارديو
     const initialUnit: WeightUnit = isCardio ? 'none' : lastPerf ? lastPerf.weightType : (settings.preferredWeightUnit || 'kg');
-    const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? null : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 0;
+    const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? 0 : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 20;
     const defaultFirstReps = isCardio ? 30 : lastPerf && lastPerf.bestSet ? lastPerf.bestSet.reps : 10;
     
-    // التعديل هنا: إضافة مجموعة واحدة فقط (1 set) افتراضياً عند الإضافة أو البدء
     const newEntry: ExerciseEntry = {
       id: generateId('ex_entry'),
       exerciseId: libEx.id,
@@ -178,6 +178,7 @@ export const StartWorkout: React.FC = () => {
       name: newExName.trim(),
       muscleGroup: newExMuscle,
       targetMuscle: newExTarget.trim(),
+      defaultWeightUnit: 'kg', // تعيين الكيلو افتراضياً
     });
     await handleAddExerciseToSession(created.id);
     setNewExName('');
@@ -669,7 +670,7 @@ export const StartWorkout: React.FC = () => {
                             <h3 className="font-display font-bold text-base sm:text-lg">
                               {entry.exerciseNameSnapshot}
                             </h3>
-                            {/* عرض العضلة المستهدفة بدقة تحت اسم التمرين أو بجانبه */}
+                            {/* عرض العضلة المستهدفة بدقة بجانب اسم التمرين */}
                             {entry.targetMuscleSnapshot && (
                               <span
                                 className={`text-xs px-2 py-0.5 rounded border font-medium ${
