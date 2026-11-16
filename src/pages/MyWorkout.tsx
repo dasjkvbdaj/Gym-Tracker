@@ -47,6 +47,7 @@ export const MyWorkout: React.FC = () => {
     );
   }, [weeklySchedule]);
 
+  // دالة لتوليد عنوان اليوم تلقائياً من العضلات المختارة
   const generateDayTitle = (groups: MuscleGroup[]) => {
     if (groups.length === 0) {
       return isArabic ? 'يوم راحة' : 'Rest Day';
@@ -195,9 +196,8 @@ export const MyWorkout: React.FC = () => {
           </p>
         </div>
 
-        {/* HEADER ACTIONS - SPACE BETWEEN */}
+        {/* HEADER ACTIONS */}
         <div className="flex items-center justify-between w-full sm:w-auto sm:min-w-[320px] gap-2">
-          {/* EDIT SCHEDULE - LEFT */}
           <button
             onClick={openEditSchedule}
             className={`px-5 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
@@ -210,7 +210,6 @@ export const MyWorkout: React.FC = () => {
             {isArabic ? 'تعديل الجدول' : 'Edit Schedule'}
           </button>
 
-          {/* COPY SCHEDULE - RIGHT */}
           <button
             onClick={handleCopySchedule}
             className={`px-4 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 border transition-all cursor-pointer ${
