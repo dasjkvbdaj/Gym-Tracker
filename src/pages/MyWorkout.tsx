@@ -8,6 +8,8 @@ import {
   Save,
   X,
   Copy,
+  Layers,
+  Sparkles,
 } from 'lucide-react';
 
 import { useGym } from '../context/GymContext';
@@ -23,6 +25,9 @@ import {
   translateMuscleGroup,
 } from '../utils/i18n';
 
+// إضافة خيارات نظام الجدول: ثابت (Day by Day) أو دوري (Rotating)
+type ScheduleMode = 'day_by_day' | 'rotating';
+
 export const MyWorkout: React.FC = () => {
   const {
     weeklySchedule,
@@ -36,6 +41,8 @@ export const MyWorkout: React.FC = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [draftSchedule, setDraftSchedule] = useState<WeeklyScheduleDay[]>([]);
+  const [scheduleMode, setScheduleMode] = useState<ScheduleMode>('day_by_day');
+  const [customScheduleName, setCustomScheduleName] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [scheduleCopied, setScheduleCopied] = useState(false);
 
@@ -424,7 +431,7 @@ export const MyWorkout: React.FC = () => {
                     isDark ? 'text-gray-400' : 'text-slate-500'
                   }`}
                 >
-                  {isArabic ? 'اختر العضلات التي تريد تمرينها في كل يوم.' : 'Choose the muscle groups you want to train each day.'}
+                  {isArabic ? 'اختر العضلات التي تريد تمرينها في كل يوم أو النظام.' : 'Choose muscle groups or schedule mode.'}
                 </p>
               </div>
               <button
@@ -436,6 +443,76 @@ export const MyWorkout: React.FC = () => {
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* الخياران المطلبان في أعلى النافذة: Day by Day مقابل Rotating */}
+            <div
+              className={`px-5 py-4 border-b space-y-3 ${
+                isDark
+                  ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,4%,19%)]'
+                  : 'bg-[hsl(40,20%,97%)] border-[hsl(40,10%,90%)]'
+              }`}
+            >
+              <div>
+                <label className="block text-xs font-bold mb-1.5 flex items-center gap-1.5">
+                  <Sparkles
+                    className={`w-3.5 h-3.5 ${
+                      isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                    }`}
+                  />
+                  {isArabic ? 'اسم الجدول أو النمط:' : 'Schedule Name / Title:'}
+                </label>
+                <input
+                  type="text"
+                  value={customScheduleName}
+                  onChange={(e) => setCustomScheduleName(e.target.value)}
+                  placeholder={isArabic ? 'أدخل اسم الجدول (مثال: My Custom Split)' : 'Enter schedule name...'}
+                  className={`w-full px-3.5 py-2 rounded-xl text-xs font-semibold border outline-none ${
+                    isDark
+                      ? 'bg-[hsl(240,6%,5%)] border-[hsl(240,4%,22%)] text-white focus:border-[hsl(75,92%,56%)]'
+                      : 'bg-white border-[hsl(40,10%,84%)] text-slate-800 focus:border-[hsl(76,78%,42%)]'
+                  }`}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold mb-1.5">
+                  {isArabic ? 'نوع نظام التمارين (Schedule Mode):' : 'Schedule Mode:'}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setScheduleMode('day_by_day')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                      scheduleMode === 'day_by_day'
+                        ? isDark
+                          ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)] text-[hsl(75,92%,56%)]'
+                          : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)] text-[hsl(76,78%,42%)]'
+                        : isDark
+                        ? 'bg-[hsl(240,6%,5%)] border-[hsl(240,4%,22%)] text-gray-400'
+                        : 'bg-white border-[hsl(40,10%,84%)] text-slate-600'
+                    }`}
+                  >
+                    <span>{isArabic ? '📅 يوم بيومه (Day by Day)' : '📅 Day by Day'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setScheduleMode('rotating')}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center justify-center gap-2 ${
+                      scheduleMode === 'rotating'
+                        ? isDark
+                          ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)] text-[hsl(75,92%,56%)]'
+                          : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)] text-[hsl(76,78%,42%)]'
+                        : isDark
+                        ? 'bg-[hsl(240,6%,5%)] border-[hsl(240,4%,22%)] text-gray-400'
+                        : 'bg-white border-[hsl(40,10%,84%)] text-slate-600'
+                    }`}
+                  >
+                    <span>{isArabic ? '🔄 دوري مستمر (Rotating)' : '🔄 Rotating Split'}</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
