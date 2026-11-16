@@ -1052,7 +1052,6 @@ export const CalendarPage: React.FC = () => {
                       {expanded && (
                         <div className="space-y-3 pt-2 border-t border-inherit">
                           {(() => {
-                            // ترتيب التمارين تصاعدياً حسب الـ muscleGroup لمنع تشتت العضلات
                             const sortedExercises = [...workout.exercises].sort((a, b) =>
                               a.muscleGroup.localeCompare(b.muscleGroup)
                             );
@@ -1266,7 +1265,6 @@ export const CalendarPage: React.FC = () => {
               </div>
 
               {(() => {
-                // ترتيب التمارين تصاعدياً حسب الـ muscleGroup في نافذة التعديل لتجنب تفكك الأقسام
                 const sortedEditExercises = [...editingWorkout.exercises].sort((a, b) =>
                   a.muscleGroup.localeCompare(b.muscleGroup)
                 );
