@@ -44,40 +44,10 @@ import {
 
 import { formatSetPerformance } from '../utils/unitConversion';
 
-const MONTH_NAMES_EN = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-];
+const MONTH_NAMES_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const MONTH_NAMES_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 
-const MONTH_NAMES_AR = [
-  'يناير',
-  'فبراير',
-  'مارس',
-  'أبريل',
-  'مايو',
-  'يونيو',
-  'يوليو',
-  'أغسطس',
-  'سبتمبر',
-  'أكتوبر',
-  'نوفمبر',
-  'ديسمبر',
-];
-
-const getRelativeDateLabel = (
-  dateString: string,
-  lang: string
-): string => {
+const getRelativeDateLabel = (dateString: string, lang: string): string => {
   const [year, month, day] = dateString.split('-').map(Number);
   if (!year || !month || !day) return dateString;
 
@@ -86,31 +56,19 @@ const getRelativeDateLabel = (
   today.setHours(0, 0, 0, 0);
   selectedDate.setHours(0, 0, 0, 0);
 
-  const diffDays = Math.round(
-    (today.getTime() - selectedDate.getTime()) / (1000 * 60 * 60 * 24)
-  );
+  const diffDays = Math.round((today.getTime() - selectedDate.getTime()) / (1000 * 60 * 60 * 24));
   const isArabic = lang === 'ar';
 
   if (diffDays === 0) return isArabic ? 'اليوم' : 'Today';
   if (diffDays === 1) return isArabic ? 'أمس' : 'Yesterday';
   if (diffDays === -1) return isArabic ? 'غداً' : 'Tomorrow';
-  if (diffDays > 1) {
-    if (diffDays < 7) return isArabic ? `منذ ${diffDays} أيام` : `${diffDays} days ago`;
-    return isArabic ? `منذ أسابيع` : `${Math.floor(diffDays / 7)} weeks ago`;
-  }
+  if (diffDays > 1) return isArabic ? `منذ ${diffDays} أيام` : `${diffDays} days ago`;
   return isArabic ? `بعد ${Math.abs(diffDays)} أيام` : `In ${Math.abs(diffDays)} days`;
 };
 
 const isCardioExercise = (exerciseName: string, muscleGroup: string) => {
   const name = exerciseName.toLowerCase();
-  return (
-    muscleGroup === 'Cardio' ||
-    name.includes('cardio') ||
-    name.includes('treadmill') ||
-    name.includes('elliptical') ||
-    name.includes('bike') ||
-    name.includes('stair')
-  );
+  return muscleGroup === 'Cardio' || name.includes('cardio') || name.includes('treadmill');
 };
 
 export const CalendarPage: React.FC = () => {
@@ -138,7 +96,7 @@ export const CalendarPage: React.FC = () => {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [copiedWorkoutId, setCopiedWorkoutId] = useState<string | null>(null);
 
-  // دالة الحساب الذكي الآمنة (تمنع الشاشة البيضاء تماماً وتدعم الـ Rotating والـ Fixed)
+  // الخوارزمية الذكية لتحديد التمرين التالي بناءً على آخر تاريخ تم تسجيله للـ Rotating أو الـ Fixed
   const getSmartScheduleForDate = (dateStr: string) => {
     const existing = workoutsByDate.get(dateStr);
     if (existing && existing.length > 0) {
@@ -158,15 +116,13 @@ export const CalendarPage: React.FC = () => {
     ];
 
     if (mode === 'rotating' && rotatingDays.length > 0) {
-      // حساب موقع اليوم في الدورة بناءً على فرق الأيام عن أول تمرين أو الترتيب التسلسلي
       const sortedWorkouts = [...completedWorkouts]
         .filter((w) => w.actualDate < dateStr && (w.status as string) !== 'planned')
         .sort((a, b) => b.actualDate.localeCompare(a.actualDate));
 
       if (sortedWorkouts.length > 0) {
         const lastWorkout = sortedWorkouts[0];
-        // البحث عن مؤشر آخر تمرين في الـ rotatingDays وتحديد اليوم الذي يليه
-        const lastIdx = rotatingDays.findIndex((d) => d.title.toLowerCase().includes(lastWorkout.title.toLowerCase().split(' ')[0]));
+        const lastIdx = rotatingDays.findIndex((d) => d.title.toLowerCase() === lastWorkout.title.toLowerCase());
         const nextIdx = lastIdx >= 0 ? (lastIdx + 1) % rotatingDays.length : 0;
         const targetDay = rotatingDays[nextIdx];
 
@@ -176,7 +132,6 @@ export const CalendarPage: React.FC = () => {
           workoutType: targetDay.isRest ? 'rest' : 'strength',
         };
       } else {
-        // الافتراضي لو أول مرة
         return {
           title: rotatingDays[0].title,
           muscleGroups: rotatingDays[0].muscleGroups,
@@ -185,11 +140,11 @@ export const CalendarPage: React.FC = () => {
       }
     }
 
-    // الوضع الثابت (Fixed)
+    // Fixed Mode
     const meta = getDateMetadata(dateStr);
     const daySched = weeklySchedule.find((d) => d.day === meta.dayOfWeek);
     return {
-      title: daySched?.title || (lang === 'ar' ? 'تمرين' : 'Workout'),
+      title: daySched?.title || 'Workout',
       muscleGroups: daySched?.muscleGroups || ['Back' as MuscleGroup],
       workoutType: daySched?.workoutType || 'strength',
     };
@@ -229,16 +184,6 @@ export const CalendarPage: React.FC = () => {
     return selectedCalendarDate >= todayStr;
   }, [selectedCalendarDate]);
 
-  const handleCopyWorkoutDetails = (workout: WorkoutSession, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    let text = `🏋️‍♂️ ${workout.title}\n📅 Date: ${formatFullDate(workout.actualDate, lang)}\n`;
-    navigator.clipboard.writeText(text).then(() => {
-      setCopiedWorkoutId(workout.id);
-      showToast(lang === 'ar' ? 'تم نسخ التفاصيل!' : 'Copied!', 'success');
-      setTimeout(() => setCopiedWorkoutId(null), 2500);
-    });
-  };
-
   const handleOpenPlanDay = () => {
     if (!smartSchedule || smartSchedule.workoutType === 'rest') return;
     setIsPlanningMode(true);
@@ -262,17 +207,6 @@ export const CalendarPage: React.FC = () => {
     };
     setEditingWorkout(newSession);
   };
-
-  const monthStats = useMemo(() => {
-    let strengthCount = 0, cardioCount = 0;
-    for (const workout of completedWorkouts) {
-      if (workout.year === viewYear && workout.month === viewMonth && (workout.status as string) !== 'planned') {
-        if (workout.workoutType === 'cardio') cardioCount++;
-        else strengthCount++;
-      }
-    }
-    return { strengthCount, cardioCount };
-  }, [completedWorkouts, viewYear, viewMonth]);
 
   const handlePrevMonth = () => {
     if (viewMonth === 1) { setViewMonth(12); setViewYear((y) => y - 1); }
@@ -314,12 +248,8 @@ export const CalendarPage: React.FC = () => {
     setDeleteConfirmId(null);
   };
 
-  const panelClass = isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)] shadow-xs';
+  const panelClass = isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]' : 'bg-white border-[hsl(40,10%,88%)]';
   const fieldClass = `w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${isDark ? 'bg-[hsl(240,5%,11%)] border-gray-700 text-white' : 'bg-gray-50 border-gray-300 text-black'}`;
-
-  const availableForgottenExercises = editingWorkout
-    ? exercises.filter((ex) => !editingWorkout.exercises.some((e) => e.exerciseId === ex.id) && ex.muscleGroup === forgottenMuscleFilter)
-    : [];
 
   return (
     <div className="space-y-6">
@@ -329,12 +259,8 @@ export const CalendarPage: React.FC = () => {
             {lang === 'ar' ? 'تقويم التمارين الشهري' : 'Workout Activity Calendar'}
           </h1>
         </div>
-        <button
-          onClick={handleJumpToToday}
-          className="px-4 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 cursor-pointer bg-indigo-700 text-white"
-        >
-          <CalendarIcon className="w-4 h-4" />
-          <span>{lang === 'ar' ? 'الانتقال إلى اليوم' : 'Jump to Today'}</span>
+        <button onClick={handleJumpToToday} className="px-4 py-2 rounded-xl border text-xs font-semibold bg-indigo-700 text-white cursor-pointer">
+          {lang === 'ar' ? 'الانتقال إلى اليوم' : 'Jump to Today'}
         </button>
       </div>
 
@@ -398,8 +324,8 @@ export const CalendarPage: React.FC = () => {
               <div key={workout.id} className="p-3 rounded-xl border border-gray-700 space-y-2">
                 <h3 className="font-bold text-sm">{workout.title}</h3>
                 <div className="flex gap-2">
-                  <button onClick={() => handleOpenEdit(workout)} className="px-3 py-1 bg-indigo-700 text-white text-xs rounded">Edit</button>
-                  <button onClick={() => setDeleteConfirmId(workout.id)} className="px-3 py-1 bg-red-600 text-white text-xs rounded">Delete</button>
+                  <button onClick={() => handleOpenEdit(workout)} className="px-3 py-1 bg-indigo-700 text-white text-xs rounded cursor-pointer">Edit</button>
+                  <button onClick={() => setDeleteConfirmId(workout.id)} className="px-3 py-1 bg-red-600 text-white text-xs rounded cursor-pointer">Delete</button>
                 </div>
               </div>
             ))}
@@ -417,8 +343,8 @@ export const CalendarPage: React.FC = () => {
               className={fieldClass}
             />
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={handleCloseEdit} className="px-4 py-2 border rounded text-xs">Cancel</button>
-              <button type="submit" className="px-4 py-2 bg-indigo-700 text-white text-xs rounded">Save</button>
+              <button type="button" onClick={handleCloseEdit} className="px-4 py-2 border rounded text-xs cursor-pointer">Cancel</button>
+              <button type="submit" className="px-4 py-2 bg-indigo-700 text-white text-xs rounded cursor-pointer">Save</button>
             </div>
           </form>
         </div>
