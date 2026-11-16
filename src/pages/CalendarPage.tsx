@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+Import React, { useMemo, useState } from 'react';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -40,7 +40,6 @@ import {
 import {
   translateDayName,
   translateMuscleGroup,
-  MUSCLE_GROUPS,
 } from '../utils/i18n';
 
 import { formatSetPerformance } from '../utils/unitConversion';
@@ -182,8 +181,15 @@ export const CalendarPage: React.FC = () => {
 
   const [copiedWorkoutId, setCopiedWorkoutId] = useState<string | null>(null);
 
+  const selectedDateMetaForFilter = getDateMetadata(selectedCalendarDate);
+  const currentDayScheduleForFilter = weeklySchedule.find(
+    (d) => d.day === selectedDateMetaForFilter.dayOfWeek
+  );
+  const allowedMuscles = currentDayScheduleForFilter?.muscleGroups || [];
+  const defaultMuscle = allowedMuscles.length > 0 ? allowedMuscles[0] : ('Back' as MuscleGroup);
+
   const [forgottenMuscleFilter, setForgottenMuscleFilter] =
-    useState<MuscleGroup>('Back');
+    useState(defaultMuscle);
 
   const [expandedWorkoutId, setExpandedWorkoutId] =
     useState<string | null>(null);
@@ -324,15 +330,20 @@ export const CalendarPage: React.FC = () => {
     });
   };
 
-  // تعديل ميزة التخطيط لتسمح باختيار أي عضلات بحرية دون التقيد بجدول الأسبوع الثابت
   const handleOpenPlanDay = () => {
-    setForgottenMuscleFilter('Back');
+    if (!selectedDaySchedule || selectedDaySchedule.workoutType === 'rest') {
+      return;
+    }
+
+    const targetMuscles = selectedDaySchedule.muscleGroups || [];
+    const defaultMuscleGroups = targetMuscles.length > 0 ? targetMuscles : ['Back' as MuscleGroup];
+    setForgottenMuscleFilter(defaultMuscleGroups[0]);
     setIsPlanningMode(true);
     const newSession: WorkoutSession = {
       id: generateId('workout'),
-      title: lang === 'ar' ? 'تمرين مخطط' : 'Scheduled Workout',
-      workoutType: 'strength',
-      muscleGroups: ['Back'],
+      title: selectedDaySchedule.title || (lang === 'ar' ? 'تمرين مخطط' : 'Scheduled Workout'),
+      workoutType: selectedDaySchedule.workoutType || 'strength',
+      muscleGroups: defaultMuscleGroups,
       startTimestamp: Date.now(),
       finishTimestamp: null,
       status: 'planned' as WorkoutSession['status'],
@@ -403,8 +414,9 @@ export const CalendarPage: React.FC = () => {
   };
 
   const handleOpenEdit = (session: WorkoutSession) => {
-    if (session.muscleGroups.length > 0) {
-      setForgottenMuscleFilter(session.muscleGroups[0]);
+    const targetMuscles = selectedDaySchedule?.muscleGroups || [];
+    if (targetMuscles.length > 0) {
+      setForgottenMuscleFilter(targetMuscles[0]);
     }
     const todayStr = toLocalDateString(new Date());
     const isPlan = (session.status as string) === 'planned' || session.actualDate > todayStr;
@@ -543,13 +555,8 @@ export const CalendarPage: React.FC = () => {
       notes: '',
     };
     const groups = editingWorkout.muscleGroups.includes(exercise.muscleGroup) ? editingWorkout.muscleGroups : [...editingWorkout.muscleGroups, exercise.muscleGroup];
-    
-    // توليد العنوان تلقائياً بناءً على العضلات المختارة
-    const generatedTitle = groups.map(mg => translateMuscleGroup(mg, lang)).join(' + ');
-
     setEditingWorkout({
       ...editingWorkout,
-      title: generatedTitle,
       muscleGroups: groups,
       exercises: [...editingWorkout.exercises, newEntry],
     });
@@ -562,11 +569,8 @@ export const CalendarPage: React.FC = () => {
       (ex) => ex.id !== entryId
     );
     const groups = Array.from(new Set(remaining.map((ex) => ex.muscleGroup)));
-    const generatedTitle = groups.length > 0 ? groups.map(mg => translateMuscleGroup(mg, lang)).join(' + ') : (lang === 'ar' ? 'تمرين مخطط' : 'Scheduled Workout');
-    
     setEditingWorkout({
       ...editingWorkout,
-      title: generatedTitle,
       exercises: remaining,
       muscleGroups: groups,
     });
@@ -599,6 +603,13 @@ export const CalendarPage: React.FC = () => {
       ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-white'
       : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
   }`;
+
+  const allowedMuscleGroupsForDay = useMemo(() => {
+    if (selectedDaySchedule) {
+      return selectedDaySchedule.muscleGroups || [];
+    }
+    return [];
+  }, [selectedDaySchedule]);
 
   const availableForgottenExercises = editingWorkout
     ? exercises.filter((exercise) => {
@@ -888,24 +899,33 @@ export const CalendarPage: React.FC = () => {
               >
                 {selectedDateRelativeLabel}
               </span>
-              
-              <div className="mt-3 space-y-2">
-                {isTodayOrFutureDate && !hasWorkoutsOrPlansOnSelectedDate && (
-                  <button
-                    onClick={handleOpenPlanDay}
-                    className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
-                      isDark
-                        ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
-                        : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+              {selectedDaySchedule && (
+                <div className="mt-3 space-y-2">
+                  <p
+                    className={`text-xs ${
+                      isDark ? 'text-gray-400' : 'text-slate-500'
                     }`}
                   >
-                    <ClipboardList className="w-4 h-4" />
-                    <span>
-                      {lang === 'ar' ? 'ضع خطة لهذا اليوم (Put a Plan)' : 'Put a Plan'}
-                    </span>
-                  </button>
-                )}
-              </div>
+                    {lang === 'ar' ? 'الخطة المرجعية لهذا اليوم:' : 'Reference plan:'}{' '}
+                    <strong>{selectedDaySchedule.title}</strong>
+                  </p>
+                  {isTodayOrFutureDate && !hasWorkoutsOrPlansOnSelectedDate && selectedDaySchedule.workoutType !== 'rest' && (
+                    <button
+                      onClick={handleOpenPlanDay}
+                      className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+                        isDark
+                          ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
+                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+                      }`}
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                      <span>
+                        {lang === 'ar' ? 'ضع خطة لهذا اليوم (Put a Plan)' : 'Put a Plan'}
+                      </span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
             {selectedDateWorkouts.length === 0 ? (
@@ -1523,11 +1543,10 @@ export const CalendarPage: React.FC = () => {
                 });
               })()}
 
-              {/* قائمة مرنة لاختيار أي عضلة وإضافتها للخطة بغض النظر عن اسم اليوم بالأسسبوع */}
               <div className="p-4 rounded-xl border border-indigo-500/30 space-y-4">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold">
-                    {lang === 'ar' ? 'اختر مجموعة العضلات:' : 'Select Muscle Group:'}
+                    {lang === 'ar' ? 'تصفية حسب عضلة اليوم' : 'Filter by Day Muscle Group'}
                   </label>
                   <select
                     value={forgottenMuscleFilter}
@@ -1538,7 +1557,7 @@ export const CalendarPage: React.FC = () => {
                     }
                     className={fieldClass}
                   >
-                    {MUSCLE_GROUPS.map((muscle: MuscleGroup) => (
+                    {allowedMuscleGroupsForDay.map((muscle: MuscleGroup) => (
                       <option key={muscle} value={muscle}>
                         {translateMuscleGroup(muscle, lang)}
                       </option>
