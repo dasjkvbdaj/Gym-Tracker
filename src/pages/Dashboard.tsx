@@ -310,7 +310,7 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 3 KPI SUMMARY CARDS (UPDATED TO 3 COLUMNS) */}
+      {/* 3 KPI SUMMARY CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
         {/* TOTAL SESSIONS */}
         <div
