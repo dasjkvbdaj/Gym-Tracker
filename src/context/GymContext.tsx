@@ -191,7 +191,6 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const dateStr = options?.actualDate || toLocalDateString(new Date(now));
     const meta = getDateMetadata(dateStr);
 
-    // التحقق من وجود خطة مخصصة محفوظة في التقويم لهذا التاريخ
     const existingPlan = workouts.find(
       (w) =>
         (options?.plannedWorkoutId && w.id === options.plannedWorkoutId) ||
@@ -229,22 +228,25 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         if (libEx) {
           const unit: WeightUnit = libEx.isBodyweight
             ? 'none'
-            : libEx.defaultWeightUnit || settings.preferredWeightUnit;
+            : libEx.defaultWeightUnit || settings.preferredWeightUnit || 'kg';
 
+          // التعديل هنا: توليد مجموعة واحدة (1 Set) فقط افتراضياً بدلاً من 3 مجموعات وتخزين الـ targetMuscleSnapshot
           exerciseEntries.push({
             id: generateId('ex_entry'),
             exerciseId: libEx.id,
             exerciseNameSnapshot: libEx.name,
             muscleGroup: libEx.muscleGroup,
-targetMuscle: libEx.targetMuscle || '',
+            targetMuscleSnapshot: libEx.targetMuscle || '',
             weightType: unit,
-            sets: [1, 2, 3].map((setNum) => ({
-              id: generateId('set'),
-              setNumber: setNum,
-              weight: unit === 'none' ? null : 0,
-              reps: 10,
-              completed: false,
-            })),
+            sets: [
+              {
+                id: generateId('set'),
+                setNumber: 1,
+                weight: unit === 'none' ? null : 20,
+                reps: 10,
+                completed: false,
+              },
+            ],
             notes: '',
           });
         }
@@ -305,7 +307,6 @@ targetMuscle: libEx.targetMuscle || '',
     const cleanedExercises: ExerciseEntry[] = (activeWorkout.exercises || []).map(
       (ex) => {
         const completedSetsCount = (ex.sets || []).filter((s) => s.completed).length;
-        // حساب سعرات حرارية تقريبية لكل تمرين حديد بناءً على المجموعات والعدات وأوقات الراحة
         const calculatedKcal = ex.caloriesBurned !== undefined && ex.caloriesBurned > 0
           ? ex.caloriesBurned
           : Math.round(completedSetsCount * 12 + durationMins * 4);
@@ -327,7 +328,6 @@ targetMuscle: libEx.targetMuscle || '',
 
     const meta = getDateMetadata(activeWorkout.actualDate);
 
-    // إزالة الخطة المجدولة (النقطة الصفراء) لهذا اليوم عند إنهاء التمرين بنجاح
     const linkedPlanId = (activeWorkout as WorkoutSession & { plannedWorkoutId?: string }).plannedWorkoutId;
     const plansToRemove = workouts.filter(
       (w) =>
@@ -365,7 +365,6 @@ targetMuscle: libEx.targetMuscle || '',
 
   const cancelActiveWorkout = async (): Promise<void> => {
     if (!activeWorkout) return;
-    // حذف الجلسة النشطة فقط مع الإبقاء على أي خطة محفوظة (planned) في التقويم كما هي
     await db.workouts.delete(activeWorkout.id);
     showToast(
       settings.language === 'ar' ? 'تم إلغاء التمرين الحالي.' : 'Active workout cancelled.',
@@ -423,85 +422,81 @@ targetMuscle: libEx.targetMuscle || '',
     );
   };
 
-  
-const addExercise = async (data: {
-  name: string;
-  muscleGroup: MuscleGroup;
-  targetMuscle?: string;
-  defaultWeightUnit?: WeightUnit;
-  isBodyweight?: boolean;
-  notes?: string;
-  assignToDays?: DayName[];
-}): Promise<Exercise> => {
-  const unit: WeightUnit = data.defaultWeightUnit || 'none';
+  const addExercise = async (data: {
+    name: string;
+    muscleGroup: MuscleGroup;
+    targetMuscle?: string;
+    defaultWeightUnit?: WeightUnit;
+    isBodyweight?: boolean;
+    notes?: string;
+    assignToDays?: DayName[];
+  }): Promise<Exercise> => {
+    const unit: WeightUnit = data.defaultWeightUnit || 'kg';
 
-  const newEx: Exercise = {
-    id: generateId('ex_custom'),
-    name: data.name.trim(),
-    muscleGroup: data.muscleGroup,
-    targetMuscle: data.targetMuscle?.trim() || '',
-    defaultWeightUnit: unit,
-    isBodyweight: data.isBodyweight ?? false,
-    notes: data.notes?.trim() || '',
-    isCustom: true,
-    createdAt: Date.now(),
-  };
+    const newEx: Exercise = {
+      id: generateId('ex_custom'),
+      name: data.name.trim(),
+      muscleGroup: data.muscleGroup,
+      targetMuscle: data.targetMuscle?.trim() || '',
+      defaultWeightUnit: unit,
+      isBodyweight: data.isBodyweight ?? false,
+      notes: data.notes?.trim() || '',
+      isCustom: true,
+      createdAt: Date.now(),
+    };
 
-  await db.exercises.put(newEx);
+    await db.exercises.put(newEx);
 
-  if (data.assignToDays && data.assignToDays.length > 0) {
-    for (const day of data.assignToDays) {
-      const daySchedule = weeklySchedule.find((d) => d.day === day);
+    if (data.assignToDays && data.assignToDays.length > 0) {
+      for (const day of data.assignToDays) {
+        const daySchedule = weeklySchedule.find((d) => d.day === day);
 
-      if (
-        daySchedule &&
-        !daySchedule.assignedExerciseIds.includes(newEx.id)
-      ) {
-        await db.weeklySchedule.put({
-          ...daySchedule,
-          assignedExerciseIds: [
-            ...daySchedule.assignedExerciseIds,
-            newEx.id,
-          ],
-        });
+        if (
+          daySchedule &&
+          !daySchedule.assignedExerciseIds.includes(newEx.id)
+        ) {
+          await db.weeklySchedule.put({
+            ...daySchedule,
+            assignedExerciseIds: [
+              ...daySchedule.assignedExerciseIds,
+              newEx.id,
+            ],
+          });
+        }
       }
     }
-  }
 
-  showToast(
-    settings.language === 'ar'
-      ? `تمت إضافة التمرين "${newEx.name}"`
-      : `Added "${newEx.name}" to Exercise Library`,
-    'success'
-  );
+    showToast(
+      settings.language === 'ar'
+        ? `تمت إضافة التمرين "${newEx.name}"`
+        : `Added "${newEx.name}" to Exercise Library`,
+      'success'
+    );
 
-  return newEx;
-};
-
-
-  
-const updateExercise = async (exercise: Exercise): Promise<void> => {
-  const updated: Exercise = {
-    ...exercise,
-    name: exercise.name.trim(),
-    targetMuscle: exercise.targetMuscle?.trim() || '',
-    isBodyweight:
-      exercise.defaultWeightUnit === 'none' || exercise.isBodyweight,
-    defaultWeightUnit: exercise.isBodyweight
-      ? 'none'
-      : exercise.defaultWeightUnit,
+    return newEx;
   };
 
-  await db.exercises.put(updated);
+  const updateExercise = async (exercise: Exercise): Promise<void> => {
+    const updated: Exercise = {
+      ...exercise,
+      name: exercise.name.trim(),
+      targetMuscle: exercise.targetMuscle?.trim() || '',
+      isBodyweight:
+        exercise.defaultWeightUnit === 'none' || exercise.isBodyweight,
+      defaultWeightUnit: exercise.isBodyweight
+        ? 'none'
+        : exercise.defaultWeightUnit,
+    };
 
-  showToast(
-    settings.language === 'ar'
-      ? 'تم تحديث بيانات التمرين'
-      : 'Exercise updated',
-    'success'
-  );
-};
+    await db.exercises.put(updated);
 
+    showToast(
+      settings.language === 'ar'
+        ? 'تم تحديث بيانات التمرين'
+        : 'Exercise updated',
+      'success'
+    );
+  };
 
   const deleteExercise = async (exerciseId: string): Promise<void> => {
     await db.exercises.delete(exerciseId);
