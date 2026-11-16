@@ -62,14 +62,14 @@ interface GymContextValue {
   deleteWorkout: (workoutId: string) => Promise<void>;
 
   addExercise: (data: {
-  name: string;
-  muscleGroup: MuscleGroup;
-  targetMuscle?: string;
-  defaultWeightUnit?: WeightUnit;
-  isBodyweight?: boolean;
-  notes?: string;
-  assignToDays?: DayName[];
-}) => Promise<Exercise>;
+    name: string;
+    muscleGroup: MuscleGroup;
+    targetMuscle?: string;
+    defaultWeightUnit?: WeightUnit;
+    isBodyweight?: boolean;
+    notes?: string;
+    assignToDays?: DayName[];
+  }) => Promise<Exercise>;
   updateExercise: (exercise: Exercise) => Promise<void>;
   deleteExercise: (exerciseId: string) => Promise<void>;
 
@@ -226,11 +226,9 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       for (const exId of resolvedExerciseIds) {
         const libEx = exercises.find((e) => e.id === exId);
         if (libEx) {
-          const unit: WeightUnit = libEx.isBodyweight
-            ? 'none'
-            : libEx.defaultWeightUnit || settings.preferredWeightUnit || 'kg';
+          // تعيين الكيلو (kg) كافتراضي دائماً للتمارين (ما عدا الكارديو/الوزن الصرف إن رغبت، وهنا جعلناها 'kg' حصراً كما طلبتم)
+          const unit: WeightUnit = libEx.muscleGroup === 'Cardio' ? 'none' : 'kg';
 
-          // التعديل هنا: توليد مجموعة واحدة (1 Set) فقط افتراضياً بدلاً من 3 مجموعات وتخزين الـ targetMuscleSnapshot
           exerciseEntries.push({
             id: generateId('ex_entry'),
             exerciseId: libEx.id,
@@ -659,4 +657,4 @@ export function useGym(): GymContextValue {
     throw new Error('useGym must be used inside a GymProvider');
   }
   return ctx;
-};
+}
