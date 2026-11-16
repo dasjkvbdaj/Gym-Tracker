@@ -8,6 +8,8 @@ import {
   Save,
   X,
   Copy,
+  Plus,
+  BookmarkPlus,
 } from 'lucide-react';
 
 import { useGym } from '../context/GymContext';
@@ -22,6 +24,12 @@ import {
   translateDayName,
   translateMuscleGroup,
 } from '../utils/i18n';
+
+interface CustomPreset {
+  id: string;
+  name: string;
+  schedule: Record<DayName, { title: string; workoutType: 'strength' | 'rest'; muscleGroups: MuscleGroup[] }>;
+}
 
 export const MyWorkout: React.FC = () => {
   const {
@@ -38,6 +46,26 @@ export const MyWorkout: React.FC = () => {
   const [draftSchedule, setDraftSchedule] = useState<WeeklyScheduleDay[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [scheduleCopied, setScheduleCopied] = useState(false);
+
+  // حفظ القوالب المخصصة للمستخدم (تتخزن بالـ State أو تزيدها حسب الرغبة)
+  const [customPresets, setCustomPresets] = useState<CustomPreset[]>([
+    {
+      id: 'default_ppl_cardio',
+      name: 'Pull / Push / Cardio / Legs',
+      schedule: {
+        Monday: { title: 'Back + Shoulders + Traps + Biceps', workoutType: 'strength', muscleGroups: ['Back', 'Shoulders', 'Traps', 'Biceps'] },
+        Tuesday: { title: 'Chest + Shoulders + Triceps + Forearms', workoutType: 'strength', muscleGroups: ['Chest', 'Shoulders', 'Triceps', 'Forearms'] },
+        Wednesday: { title: 'Cardio', workoutType: 'strength', muscleGroups: ['Cardio'] },
+        Thursday: { title: 'Legs', workoutType: 'strength', muscleGroups: ['Legs'] },
+        Friday: { title: 'Back + Shoulders + Traps + Biceps', workoutType: 'strength', muscleGroups: ['Back', 'Shoulders', 'Traps', 'Biceps'] },
+        Saturday: { title: 'Chest + Shoulders + Triceps + Forearms', workoutType: 'strength', muscleGroups: ['Chest', 'Shoulders', 'Triceps', 'Forearms'] },
+        Sunday: { title: 'Rest Day', workoutType: 'rest', muscleGroups: [] },
+      },
+    },
+  ]);
+
+  const [newPresetName, setNewPresetName] = useState('');
+  const [selectedPresetId, setSelectedPresetId] = useState<string>('');
 
   const trainingDays = useMemo(() => {
     return weeklySchedule.filter(
@@ -76,10 +104,58 @@ export const MyWorkout: React.FC = () => {
         assignedExerciseIds: [...day.assignedExerciseIds],
       }))
     );
+    setSelectedPresetId('');
+    setNewPresetName('');
     setIsEditModalOpen(true);
   };
 
-  // تحديث عنوان اليوم (الاسم المخصص اللي بدك ياه)
+  // تطبيق قالب محفوظ مسبقاً
+  const handleSelectPreset = (presetId: string) => {
+    setSelectedPresetId(presetId);
+    if (!presetId) return;
+
+    const preset = customPresets.find((p) => p.id === presetId);
+    if (!preset) return;
+
+    setDraftSchedule((previous) =>
+      previous.map((item) => {
+        const dayData = preset.schedule[item.day];
+        if (!dayData) return item;
+        return {
+          ...item,
+          title: dayData.title,
+          workoutType: dayData.workoutType,
+          muscleGroups: [...dayData.muscleGroups],
+        };
+      })
+    );
+  };
+
+  // حفظ الجدول الحالي كقالب جديد بالـ Dropdown
+  const handleSaveAsNewPreset = () => {
+    if (!newPresetName.trim()) return;
+
+    const scheduleMap: Record<DayName, { title: string; workoutType: 'strength' | 'rest'; muscleGroups: MuscleGroup[] }> = {} as any;
+    
+    draftSchedule.forEach((d) => {
+      scheduleMap[d.day] = {
+        title: d.title || (d.workoutType === 'rest' ? 'Rest Day' : 'Workout'),
+        workoutType: d.workoutType,
+        muscleGroups: [...d.muscleGroups],
+      };
+    });
+
+    const newPreset: CustomPreset = {
+      id: `preset_${Date.now()}`,
+      name: newPresetName.trim(),
+      schedule: scheduleMap,
+    };
+
+    setCustomPresets((prev) => [...prev, newPreset]);
+    setSelectedPresetId(newPreset.id);
+    setNewPresetName('');
+  };
+
   const handleDayTitleChange = (dayName: DayName, newTitle: string) => {
     setDraftSchedule((previous) =>
       previous.map((item) => {
@@ -190,8 +266,8 @@ export const MyWorkout: React.FC = () => {
             }`}
           >
             {isArabic
-              ? 'نظّم أيام تمرينك واكتب أسماء تمريناتك المخصصة بكل حرية.'
-              : 'Organize your training days with custom titles.'}
+              ? 'نظّم أيام تمرينك واحفظ جداولك المخصصة بكل سهولة.'
+              : 'Organize and save your custom workout schedules.'}
           </p>
         </div>
 
@@ -433,8 +509,8 @@ export const MyWorkout: React.FC = () => {
                   }`}
                 >
                   {isArabic
-                    ? 'اكتب اسم التمرين الذي تريده لكل يوم بحرية تامة.'
-                    : 'Write custom titles for each training day.'}
+                    ? 'اختر جدولاً محفوظاً أو أنشئ جدولاً مخصصاً جديداً.'
+                    : 'Select a saved schedule preset or create a new custom one.'}
                 </p>
               </div>
               <button
@@ -446,6 +522,64 @@ export const MyWorkout: React.FC = () => {
               >
                 <X className="w-5 h-5" />
               </button>
+            </div>
+
+            {/* PRESET SELECTOR & SAVER BAR */}
+            <div
+              className={`p-4 border-b space-y-3 ${
+                isDark
+                  ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,4%,19%)]'
+                  : 'bg-[hsl(40,20%,97%)] border-[hsl(40,10%,90%)]'
+              }`}
+            >
+              <div className="flex flex-col sm:flex-row gap-2 items-center">
+                <select
+                  value={selectedPresetId}
+                  onChange={(e) => handleSelectPreset(e.target.value)}
+                  className={`w-full sm:flex-1 px-3 py-2 rounded-xl text-xs font-semibold border outline-none cursor-pointer ${
+                    isDark
+                      ? 'bg-[hsl(240,6%,5%)] border-[hsl(240,4%,22%)] text-white'
+                      : 'bg-white border-[hsl(40,10%,84%)] text-slate-800'
+                  }`}
+                >
+                  <option value="">
+                    {isArabic ? '— اختر قالباً محفوظاً (Presets) —' : '— Select a Saved Preset —'}
+                  </option>
+                  {customPresets.map((preset) => (
+                    <option key={preset.id} value={preset.id}>
+                      {preset.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* SAVE NEW PRESET INPUT */}
+              <div className="flex gap-2 items-center">
+                <input
+                  type="text"
+                  value={newPresetName}
+                  onChange={(e) => setNewPresetName(e.target.value)}
+                  placeholder={isArabic ? 'اسم الجدول الجديد (مثال: جدول الشتاء)...' : 'New schedule name (e.g., Winter Split)...'}
+                  className={`w-full sm:flex-1 px-3 py-2 rounded-xl text-xs font-semibold border outline-none ${
+                    isDark
+                      ? 'bg-[hsl(240,6%,5%)] border-[hsl(240,4%,22%)] text-white focus:border-[hsl(75,92%,56%)]'
+                      : 'bg-white border-[hsl(40,10%,84%)] text-slate-800 focus:border-[hsl(76,78%,42%)]'
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveAsNewPreset}
+                  disabled={!newPresetName.trim()}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 ${
+                    isDark
+                      ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] hover:bg-[hsl(75,92%,50%)]'
+                      : 'bg-[hsl(76,78%,42%)] text-white hover:bg-[hsl(76,78%,37%)]'
+                  }`}
+                >
+                  <BookmarkPlus className="w-4 h-4" />
+                  {isArabic ? 'حفظ كقالب' : 'Save Preset'}
+                </button>
+              </div>
             </div>
 
             {/* DAYS LIST */}
@@ -496,7 +630,6 @@ export const MyWorkout: React.FC = () => {
 
                     {!isRest && (
                       <div className="space-y-3">
-                        {/* حقل إدخال العنوان المخصص (اكتب اسم التمرين مثل ما بدك) */}
                         <div>
                           <label className="block text-[11px] font-semibold mb-1 opacity-75">
                             {isArabic ? 'اسم أو عنوان التمرين لهذا اليوم:' : 'Custom Workout Title:'}
@@ -505,7 +638,7 @@ export const MyWorkout: React.FC = () => {
                             type="text"
                             value={dayItem.title || ''}
                             onChange={(e) => handleDayTitleChange(dayItem.day, e.target.value)}
-                            placeholder={isArabic ? 'مثال: Pull Day + Forearms' : 'e.g., Pull Day + Forearms'}
+                            placeholder={isArabic ? 'مثال: Chest + Triceps' : 'e.g., Chest + Triceps'}
                             className={`w-full px-3 py-2 rounded-lg text-xs font-semibold border outline-none transition-all ${
                               isDark
                                 ? 'bg-[hsl(240,6%,5%)] border-[hsl(240,4%,22%)] text-white focus:border-[hsl(75,92%,56%)]'
@@ -514,7 +647,6 @@ export const MyWorkout: React.FC = () => {
                           />
                         </div>
 
-                        {/* اختيار العضلات المستهدفة (اختياري للفلترة) */}
                         <div>
                           <label className="block text-[11px] font-semibold mb-1 opacity-75">
                             {isArabic ? 'العضلات المستهدفة (اختياري):' : 'Targeted Muscle Groups:'}
