@@ -154,7 +154,6 @@ export const CalendarPage: React.FC = () => {
   const {
     completedWorkouts,
     weeklySchedule,
-    exercises,
     settings,
     selectedCalendarDate,
     setSelectedCalendarDate,
@@ -181,11 +180,61 @@ export const CalendarPage: React.FC = () => {
 
   const [copiedWorkoutId, setCopiedWorkoutId] = useState<string | null>(null);
 
+  // دالة ذكية لحساب العضلات بناءً على الجدول الثابت أو الدورة المتسلسلة (Pull ➔ Push ➔ Rest ➔ Legs)
+  const getSmartScheduleForDate = (dateStr: string) => {
+    // 1. فحص هل هناك تمرين مسجل أو مخطط مسبقاً بهذا التاريخ
+    const existing = workoutsByDate.get(dateStr);
+    if (existing && existing.length > 0) {
+      return {
+        title: existing[0].title,
+        muscleGroups: existing[0].muscleGroups,
+        workoutType: existing[0].workoutType,
+      };
+    }
+
+    // 2. إذا لم يكن هناك تمرين، فحص هل النظام الدوري (rotating) مفعل؟
+    const scheduleMode = settings.scheduleMode || 'fixed';
+    if (scheduleMode === 'rotating') {
+      // البحث عن آخر تمرين تم تسجيله قبل هذا التاريخ لترتيب التسلسل (Pull ➔ Push ➔ Rest ➔ Legs)
+      const sortedWorkouts = [...completedWorkouts]
+        .filter((w) => w.actualDate < dateStr && (w.status as string) !== 'planned')
+        .sort((a, b) => b.actualDate.localeCompare(a.actualDate));
+
+      const lastWorkout = sortedWorkouts[0];
+      if (lastWorkout) {
+        const title = lastWorkout.title.toLowerCase();
+        if (title.includes('pull') || lastWorkout.muscleGroups.includes('Back')) {
+          // بعد Pull ➔ يأتي Push
+          return { title: lang === 'ar' ? 'تمرين دفع (Push)' : 'Push Workout', muscleGroups: ['Chest', 'Shoulders', 'Triceps'] as MuscleGroup[], workoutType: 'strength' };
+        } else if (title.includes('push') || lastWorkout.muscleGroups.includes('Chest')) {
+          // بعد Push ➔ يأتي Rest
+          return { title: lang === 'ar' ? 'يوم راحة (Rest Day)' : 'Rest Day', muscleGroups: [] as MuscleGroup[], workoutType: 'rest' };
+        } else if (title.includes('rest') || lastWorkout.muscleGroups.length === 0) {
+          // بعد Rest ➔ يأتي Legs
+          return { title: lang === 'ar' ? 'أرجل ومعدة وسواعد (Legs)' : 'Legs & Abs', muscleGroups: ['Legs'] as MuscleGroup[], workoutType: 'strength' };
+        } else {
+          // بعد Legs ➔ يأتي Pull
+          return { title: lang === 'ar' ? 'تمرين سحب (Pull)' : 'Pull Workout', muscleGroups: ['Back', 'Shoulders', 'Biceps'] as MuscleGroup[], workoutType: 'strength' };
+        }
+      } else {
+        // الافتراضي للبداية
+        return { title: lang === 'ar' ? 'تمرين سحب (Pull)' : 'Pull Workout', muscleGroups: ['Back', 'Shoulders', 'Biceps'] as MuscleGroup[], workoutType: 'strength' };
+      }
+    }
+
+    // 3. الوضع الثابت (Fixed) العادي حسب أيام الأسبوع
+    const meta = getDateMetadata(dateStr);
+    const daySched = weeklySchedule.find((d) => d.day === meta.dayOfWeek);
+    return {
+      title: daySched?.title || (lang === 'ar' ? 'تمرين' : 'Workout'),
+      muscleGroups: daySched?.muscleGroups || ['Back' as MuscleGroup],
+      workoutType: daySched?.workoutType || 'strength',
+    };
+  };
+
   const selectedDateMetaForFilter = getDateMetadata(selectedCalendarDate);
-  const currentDayScheduleForFilter = weeklySchedule.find(
-    (d) => d.day === selectedDateMetaForFilter.dayOfWeek
-  );
-  const allowedMuscles = currentDayScheduleForFilter?.muscleGroups || [];
+  const smartSchedule = getSmartScheduleForDate(selectedCalendarDate);
+  const allowedMuscles = smartSchedule.muscleGroups;
   const defaultMuscle = allowedMuscles.length > 0 ? allowedMuscles[0] : ('Back' as MuscleGroup);
 
   const [forgottenMuscleFilter, setForgottenMuscleFilter] =
@@ -244,11 +293,8 @@ export const CalendarPage: React.FC = () => {
   );
 
   const selectedDaySchedule = useMemo(
-    () =>
-      weeklySchedule.find(
-        (d) => d.day === selectedDateMeta.dayOfWeek
-      ),
-    [weeklySchedule, selectedDateMeta]
+    () => smartSchedule,
+    [smartSchedule]
   );
 
   const isTodayOrFutureDate = useMemo(() => {
@@ -414,10 +460,9 @@ export const CalendarPage: React.FC = () => {
   };
 
   const handleOpenEdit = (session: WorkoutSession) => {
-    // جلب عضلات اليوم المحدد للتمرين المراد تعديله
     const sessionDateMeta = getDateMetadata(session.actualDate);
-    const daySched = weeklySchedule.find((d) => d.day === sessionDateMeta.dayOfWeek);
-    const targetMuscles = daySched?.muscleGroups || session.muscleGroups || [];
+    const daySched = getSmartScheduleForDate(session.actualDate);
+    const targetMuscles = daySched.muscleGroups || session.muscleGroups || [];
     if (targetMuscles.length > 0) {
       setForgottenMuscleFilter(targetMuscles[0]);
     }
@@ -607,11 +652,7 @@ export const CalendarPage: React.FC = () => {
       : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,85%)] text-[hsl(240,10%,9%)]'
   }`;
 
-  // تحديد جدول اليوم بناءً على تاريخ التمرين الحالي قيد التعديل (أو التاريخ المحدد)
-  const editingWorkoutDateMeta = editingWorkout ? getDateMetadata(editingWorkout.actualDate) : selectedDateMeta;
-  const currentEditingDaySchedule = weeklySchedule.find(
-    (d) => d.day === editingWorkoutDateMeta.dayOfWeek
-  );
+  const currentEditingDaySchedule = editingWorkout ? getSmartScheduleForDate(editingWorkout.actualDate) : selectedDaySchedule;
 
   const allowedMuscleGroupsForDay = useMemo(() => {
     if (currentEditingDaySchedule && currentEditingDaySchedule.muscleGroups && currentEditingDaySchedule.muscleGroups.length > 0) {
@@ -915,7 +956,7 @@ export const CalendarPage: React.FC = () => {
                       isDark ? 'text-gray-400' : 'text-slate-500'
                     }`}
                   >
-                    {lang === 'ar' ? 'الخطة المرجعية لهذا اليوم:' : 'Reference plan:'}{' '}
+                    {lang === 'ar' ? 'الخطة المقترحة لهذا اليوم:' : 'Suggested plan:'}{' '}
                     <strong>{selectedDaySchedule.title}</strong>
                   </p>
                   {isTodayOrFutureDate && !hasWorkoutsOrPlansOnSelectedDate && selectedDaySchedule.workoutType !== 'rest' && (
