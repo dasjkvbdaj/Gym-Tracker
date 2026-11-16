@@ -129,9 +129,9 @@ export const StartWorkout: React.FC = () => {
     const lastPerf = getLastPerformanceForExercise(libEx.id, actualCompletedWorkouts);
     const isCardio = libEx.muscleGroup === 'Cardio' || libEx.name.toLowerCase().includes('treadmill') || libEx.name.toLowerCase().includes('elliptical') || libEx.name.toLowerCase().includes('bike') || libEx.name.toLowerCase().includes('running') || libEx.name.toLowerCase().includes('cardio');
     
-    // ضبط الوزن الافتراضي ليكون بالكيلو (kg) كخيار أول بدلاً من bodyweight إن لم يكن كارديو
-    const initialUnit: WeightUnit = isCardio ? 'none' : lastPerf ? lastPerf.weightType : (settings.preferredWeightUnit || 'kg');
-    const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? 0 : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 20;
+    // تثبيت الوحدة الافتراضية على 'kg' للتمارين بدلاً من وزن الجسم
+    const initialUnit: WeightUnit = isCardio ? 'none' : 'kg';
+    const defaultFirstWeight = isCardio ? null : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 20;
     const defaultFirstReps = isCardio ? 30 : lastPerf && lastPerf.bestSet ? lastPerf.bestSet.reps : 10;
     
     const newEntry: ExerciseEntry = {
@@ -140,7 +140,7 @@ export const StartWorkout: React.FC = () => {
       exerciseNameSnapshot: libEx.name,
       muscleGroup: libEx.muscleGroup,
       targetMuscleSnapshot: libEx.targetMuscle || '',
-      weightType: isCardio ? 'none' : initialUnit,
+      weightType: initialUnit,
       sets: [
         {
           id: generateId('set'),
@@ -178,7 +178,7 @@ export const StartWorkout: React.FC = () => {
       name: newExName.trim(),
       muscleGroup: newExMuscle,
       targetMuscle: newExTarget.trim(),
-      defaultWeightUnit: 'kg', // تعيين الكيلو افتراضياً
+      defaultWeightUnit: 'kg',
     });
     await handleAddExerciseToSession(created.id);
     setNewExName('');
@@ -234,7 +234,7 @@ export const StartWorkout: React.FC = () => {
       const newSet: SetEntry = {
         id: generateId('set'),
         setNumber: nextSetNumber,
-        weight: entry.weightType === 'none' ? null : prevSet && prevSet.weight !== null ? prevSet.weight : 0,
+        weight: entry.weightType === 'none' ? null : prevSet && prevSet.weight !== null ? prevSet.weight : 20,
         reps: prevSet ? prevSet.reps : 10,
         completed: false,
       };
@@ -670,7 +670,6 @@ export const StartWorkout: React.FC = () => {
                             <h3 className="font-display font-bold text-base sm:text-lg">
                               {entry.exerciseNameSnapshot}
                             </h3>
-                            {/* عرض العضلة المستهدفة بدقة بجانب اسم التمرين */}
                             {entry.targetMuscleSnapshot && (
                               <span
                                 className={`text-xs px-2 py-0.5 rounded border font-medium ${
@@ -1355,7 +1354,7 @@ export const StartWorkout: React.FC = () => {
             }`}
           >
             <h3 className="font-display font-bold text-base text-red-400">
-              {lang === 'ar' ? 'هل أنت متأكد من إلغاء التمرين الحالي؟ ؟' : 'Cancel Active Workout? ?'}
+              {lang === 'ar' ? 'هل أنت متأكد من إلغاء التمرين الحالي؟' : 'Cancel ActiveWorkout?'}
             </h3>
             <p className={`text-xs sm:text-sm ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
               {lang === 'ar'
