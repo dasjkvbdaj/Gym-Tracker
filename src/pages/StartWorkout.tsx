@@ -77,7 +77,7 @@ export const StartWorkout: React.FC = () => {
   const [showQuickCreateEx, setShowQuickCreateEx] = useState(false);
   const [newExName, setNewExName] = useState('');
   const [newExMuscle, setNewExMuscle] = useState<MuscleGroup>('Cardio');
-  const [newExTarget, setNewExTarget] = useState(''); // الحقل الثالث عند الإنشاء السريع
+  const [newExTarget, setNewExTarget] = useState('');
 
   const isCardioExercise = (entry: ExerciseEntry) => {
     return (
@@ -133,12 +133,13 @@ export const StartWorkout: React.FC = () => {
     const defaultFirstWeight = isCardio ? null : initialUnit === 'none' ? null : lastPerf && lastPerf.bestSet && lastPerf.bestSet.weight !== null ? lastPerf.bestSet.weight : 0;
     const defaultFirstReps = isCardio ? 30 : lastPerf && lastPerf.bestSet ? lastPerf.bestSet.reps : 10;
     
+    // التعديل هنا: إضافة مجموعة واحدة فقط (1 set) افتراضياً عند الإضافة أو البدء
     const newEntry: ExerciseEntry = {
       id: generateId('ex_entry'),
       exerciseId: libEx.id,
       exerciseNameSnapshot: libEx.name,
       muscleGroup: libEx.muscleGroup,
-      targetMuscleSnapshot: libEx.targetMuscle || '', // حفظ النسخة من العضلة المستهدفة
+      targetMuscleSnapshot: libEx.targetMuscle || '',
       weightType: isCardio ? 'none' : initialUnit,
       sets: [
         {
@@ -668,7 +669,7 @@ export const StartWorkout: React.FC = () => {
                             <h3 className="font-display font-bold text-base sm:text-lg">
                               {entry.exerciseNameSnapshot}
                             </h3>
-                            {/* عرض العضلة المستهدفة بدقة بجانب اسم التمرين */}
+                            {/* عرض العضلة المستهدفة بدقة تحت اسم التمرين أو بجانبه */}
                             {entry.targetMuscleSnapshot && (
                               <span
                                 className={`text-xs px-2 py-0.5 rounded border font-medium ${
@@ -1212,7 +1213,6 @@ export const StartWorkout: React.FC = () => {
                     ))}
                   </select>
                 </div>
-                {/* حقل العضلة المستهدفة بدقة عند الإنشاء السريع */}
                 <div>
                   <input
                     type="text"
