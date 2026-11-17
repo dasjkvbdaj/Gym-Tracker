@@ -125,20 +125,20 @@ export const CalendarPage: React.FC = () => {
   const savedSplits = useLiveQuery(() => db.workoutSplits.toArray(), [], []) || [];
   const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
 
-  // خوارزمية التتبع التسلسلي الدقيق (Sequential Rotation Logic)
+  // خوارزمية التتبع الدقيق المعتمدة حصراً على التمارين المكتملة الفعليّة من قاعدة البيانات (IndexedDB)
   const currentDayScheduleForFilter = useMemo(() => {
     if (currentSplitType === 'rotation' && activeSplitData?.daysData && Array.isArray(activeSplitData.daysData)) {
       const rotDays = activeSplitData.daysData.filter((d: any) => !d.isRest);
       if (rotDays.length === 0) return { muscleGroups: ['Chest' as MuscleGroup], title: 'Rest' };
 
-      // ترتيب كل التمارين المسجلة تصاعدياً حسب التاريخ
-      const sortedWorkouts = [...completedWorkouts]
+      // فلترة التمارين لتكون حصراً المكتملة (وليست الخطط Planned) وتصنيفها تصاعدياً حسب التاريخ
+      const realCompletedWorkouts = [...completedWorkouts]
         .filter(w => (w.status as string) !== 'planned')
         .sort((a, b) => a.actualDate.localeCompare(b.actualDate));
 
-      if (sortedWorkouts.length > 0) {
-        // نأخذ آخر تمرين تم تسجيله تاريخياً قبل التاريخ المحدد أو فيه
-        const pastOrCurrentWorkouts = sortedWorkouts.filter(w => w.actualDate <= selectedCalendarDate);
+      if (realCompletedWorkouts.length > 0) {
+        // البحث عن آخر تمرين حقيقي تم إنجازه قبل أو في التاريخ المحدد
+        const pastOrCurrentWorkouts = realCompletedWorkouts.filter(w => w.actualDate <= selectedCalendarDate);
         
         if (pastOrCurrentWorkouts.length > 0) {
           const lastRecorded = pastOrCurrentWorkouts[pastOrCurrentWorkouts.length - 1];
@@ -157,8 +157,8 @@ export const CalendarPage: React.FC = () => {
             };
           }
         } else {
-          // إذا كان التاريخ المحدد يسبق أول تمرين مسجل، نرجع بالتسلسل للخلف
-          const firstRecorded = sortedWorkouts[0];
+          // إذا كان التاريخ المحدد يسبق أول تمرين حقيقي مسجل
+          const firstRecorded = realCompletedWorkouts[0];
           const diffTime = new Date(firstRecorded.actualDate).getTime() - new Date(selectedCalendarDate).getTime();
           const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
@@ -176,7 +176,7 @@ export const CalendarPage: React.FC = () => {
         }
       }
 
-      // إذا لم يكن هناك أي تمرين مسجل نهائياً، نعتمد التسلسل العادي ابتداءً من اليوم
+      // Fallback إذا لم يتم العثور على تمارين مكتملة
       const dayOfYear = Math.floor((new Date(selectedCalendarDate).getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
       const fallbackIndex = Math.abs(dayOfYear) % rotDays.length;
       return {
