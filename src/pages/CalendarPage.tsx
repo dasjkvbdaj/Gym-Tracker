@@ -125,7 +125,7 @@ export const CalendarPage: React.FC = () => {
   const savedSplits = useLiveQuery(() => db.workoutSplits.toArray(), [], []) || [];
   const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
 
-  // حساب التسلسل الصحيح بناءً على آخر تمرين مسجل (Sequential Rotation Logic)
+  // خوارزمية التتبع التسلسلي الدقيق (Sequential Rotation Logic)
   const currentDayScheduleForFilter = useMemo(() => {
     if (currentSplitType === 'rotation' && activeSplitData?.daysData && Array.isArray(activeSplitData.daysData)) {
       const rotDays = activeSplitData.daysData.filter((d: any) => !d.isRest);
@@ -137,16 +137,14 @@ export const CalendarPage: React.FC = () => {
         .sort((a, b) => a.actualDate.localeCompare(b.actualDate));
 
       if (sortedWorkouts.length > 0) {
-        // نجد آخر تمرين تم تسجيله قبل التاريخ المحدد أو فيه
+        // نأخذ آخر تمرين تم تسجيله تاريخياً قبل التاريخ المحدد أو فيه
         const pastOrCurrentWorkouts = sortedWorkouts.filter(w => w.actualDate <= selectedCalendarDate);
         
         if (pastOrCurrentWorkouts.length > 0) {
-          // حساب الفارق بالأيام بين التاريخ المحدد وآخر تمرين تم إنجازه
           const lastRecorded = pastOrCurrentWorkouts[pastOrCurrentWorkouts.length - 1];
           const diffTime = new Date(selectedCalendarDate).getTime() - new Date(lastRecorded.actualDate).getTime();
           const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
-          // نحدد أي يوم في الـ Rotation كان آخر تمرين
           const lastGroupStr = JSON.stringify(lastRecorded.muscleGroups);
           const lastRotIndex = rotDays.findIndex((rd: any) => JSON.stringify(rd.muscleGroups) === lastGroupStr);
 
@@ -158,10 +156,27 @@ export const CalendarPage: React.FC = () => {
               title: rotDays[finalIndex].title || `Day ${finalIndex + 1}`
             };
           }
+        } else {
+          // إذا كان التاريخ المحدد يسبق أول تمرين مسجل، نرجع بالتسلسل للخلف
+          const firstRecorded = sortedWorkouts[0];
+          const diffTime = new Date(firstRecorded.actualDate).getTime() - new Date(selectedCalendarDate).getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+          const firstGroupStr = JSON.stringify(firstRecorded.muscleGroups);
+          const firstRotIndex = rotDays.findIndex((rd: any) => JSON.stringify(rd.muscleGroups) === firstGroupStr);
+
+          if (firstRotIndex !== -1) {
+            const targetRotIndex = (firstRotIndex - diffDays) % rotDays.length;
+            const finalIndex = targetRotIndex < 0 ? targetRotIndex + rotDays.length : targetRotIndex;
+            return {
+              muscleGroups: rotDays[finalIndex].muscleGroups || ['Chest'],
+              title: rotDays[finalIndex].title || `Day ${finalIndex + 1}`
+            };
+          }
         }
       }
 
-      // إذا لم يكن هناك أي تمرين مسجل بعد، نبدأ من اليوم الأول ونوزع حسب فارق الأيام عن اليوم
+      // إذا لم يكن هناك أي تمرين مسجل نهائياً، نعتمد التسلسل العادي ابتداءً من اليوم
       const dayOfYear = Math.floor((new Date(selectedCalendarDate).getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
       const fallbackIndex = Math.abs(dayOfYear) % rotDays.length;
       return {
