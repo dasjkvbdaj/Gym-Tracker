@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import {
   Calendar as CalendarIcon,
@@ -18,7 +17,8 @@ import {
 } from 'lucide-react';
 
 import { useGym } from '../context/GymContext';
-import { generateId } from '../database/db';
+import { generateId, db } from '../database/db';
+import { useLiveQuery } from 'dexie-react-hooks';
 
 import {
   Exercise,
@@ -167,6 +167,61 @@ export const CalendarPage: React.FC = () => {
   const lang = settings.language;
   const isDark = settings.theme === 'dark';
 
+  // جلب معلومات البرنامج النشط (هل هو Fixed أم Rotation؟)
+  // @ts-ignore
+  const activeSplitId = settings.activeSplitId || 'default';
+  // @ts-ignore
+  const currentSplitType = settings.activeSplitType || 'fixed';
+  const savedSplits = useLiveQuery(() => db.workoutSplits.toArray(), [], []) || [];
+  // @ts-ignore
+  const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
+  // @ts-ignore
+  const rotationDays = activeSplitData?.daysData || [];
+
+  // دالة مساعدة لحساب معلومات اليوم بناءً على نوع الجدول (Fixed أو Rotation)
+  const getDayScheduleInfoForDate = (dateStr: string) => {
+    const meta = getDateMetadata(dateStr);
+
+    if (currentSplitType === 'rotation' && Array.isArray(rotationDays) && rotationDays.length > 0) {
+      // حساب الفارق بالأيام بين التاريخ المحدد وتاريخ مرجعي ثابت (مثلاً 2025-01-01 أو اليوم الحالي) لضمان تسلسل دوري مستمر وثابت
+      const [y, m, d] = dateStr.split('-').map(Number);
+      const targetDateObj = new Date(y, m - 1, d);
+      targetDateObj.setHours(0, 0, 0, 0);
+
+      const refDateObj = new Date(2025, 0, 1); // تاريخ مرجعي ثابت
+      refDateObj.setHours(0, 0, 0, 0);
+
+      const diffTime = targetDateObj.getTime() - refDateObj.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      // حساب مؤشر اليوم في مصفوفة الـ rotation بشكل دوري (modulo)
+      const totalLen = rotationDays.length;
+      let rotIndex = diffDays % totalLen;
+      if (rotIndex < 0) rotIndex += totalLen;
+
+      const matchedRotDay = rotationDays[rotIndex];
+      if (matchedRotDay) {
+        return {
+          title: matchedRotDay.isRest ? (lang === 'ar' ? 'يوم راحة' : 'Rest Day') : matchedRotDay.title,
+          workoutType: matchedRotDay.isRest ? 'rest' : 'strength',
+          muscleGroups: matchedRotDay.muscleGroups || [],
+          isRotation: true,
+          rotationDayNumber: rotIndex + 1,
+        };
+      }
+    }
+
+    // الوضع الثابت (Fixed Split) الافتراضي حسب أيام الأسبوع
+    const standardDaySchedule = weeklySchedule.find((d) => d.day === meta.dayOfWeek);
+    return {
+      title: standardDaySchedule?.title || (lang === 'ar' ? 'تمرين' : 'Workout'),
+      workoutType: standardDaySchedule?.workoutType || 'strength',
+      muscleGroups: standardDaySchedule?.muscleGroups || [],
+      isRotation: false,
+      rotationDayNumber: null,
+    };
+  };
+
   const now = new Date();
 
   const [viewYear, setViewYear] = useState(now.getFullYear());
@@ -182,11 +237,8 @@ export const CalendarPage: React.FC = () => {
 
   const [copiedWorkoutId, setCopiedWorkoutId] = useState<string | null>(null);
 
-  const selectedDateMetaForFilter = getDateMetadata(selectedCalendarDate);
-  const currentDayScheduleForFilter = weeklySchedule.find(
-    (d) => d.day === selectedDateMetaForFilter.dayOfWeek
-  );
-  const allowedMuscles = currentDayScheduleForFilter?.muscleGroups || [];
+  const currentDayScheduleForFilter = getDayScheduleInfoForDate(selectedCalendarDate);
+  const allowedMuscles = currentDayScheduleForFilter.muscleGroups || [];
   const defaultMuscle = allowedMuscles.length > 0 ? allowedMuscles[0] : ('Back' as MuscleGroup);
 
   const [forgottenMuscleFilter, setForgottenMuscleFilter] =
@@ -219,15 +271,18 @@ export const CalendarPage: React.FC = () => {
     return map;
   }, [completedWorkouts]);
 
-  const scheduledRestDays = useMemo(
-    () =>
-      new Set(
-        weeklySchedule
-          .filter((d) => d.workoutType === 'rest')
-          .map((d) => d.day)
-      ),
-    [weeklySchedule]
-  );
+  const scheduledRestDays = useMemo(() => {
+    if (currentSplitType === 'rotation') {
+      const restSet = new Set<string>();
+      // في وضع الـ rotation يمكن تحديد أيام الراحة إن وجدت
+      return restSet;
+    }
+    return new Set(
+      weeklySchedule
+        .filter((d) => d.workoutType === 'rest')
+        .map((d) => d.day)
+    );
+  }, [weeklySchedule, currentSplitType]);
 
   const selectedDateWorkouts = useMemo(
     () => workoutsByDate.get(selectedCalendarDate) || [],
@@ -245,11 +300,8 @@ export const CalendarPage: React.FC = () => {
   );
 
   const selectedDaySchedule = useMemo(
-    () =>
-      weeklySchedule.find(
-        (d) => d.day === selectedDateMeta.dayOfWeek
-      ),
-    [weeklySchedule, selectedDateMeta]
+    () => getDayScheduleInfoForDate(selectedCalendarDate),
+    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays]
   );
 
   const isTodayOrFutureDate = useMemo(() => {
@@ -261,7 +313,6 @@ export const CalendarPage: React.FC = () => {
     return selectedDateWorkouts.length > 0;
   }, [selectedDateWorkouts]);
 
-  // Helper function to format and copy workout details to clipboard
   const handleCopyWorkoutDetails = (workout: WorkoutSession, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
    
@@ -759,6 +810,9 @@ export const CalendarPage: React.FC = () => {
               const isScheduledRest = scheduledRestDays.has(cell.dayOfWeek);
               const isSelected = cell.dateStr === selectedCalendarDate;
 
+              // جلب رقم الـ Rotation اليومي لعرضه في الخلايا إذا كان النظام Rotation
+              const cellDayInfo = getDayScheduleInfoForDate(cell.dateStr);
+
               return (
                 <button
                   key={cell.dateStr}
@@ -797,13 +851,21 @@ export const CalendarPage: React.FC = () => {
                     >
                       {cell.dayNumber}
                     </span>
-                    {isPlannedDay && (
+                    {/* إذا كان الـ Split نوعه rotation، نعرض رقم الـ Day (مثل Day 1, Day 2...) في الزاوية */}
+                    {cellDayInfo.isRotation && cellDayInfo.rotationDayNumber !== null && (
+                      <span className={`text-[9px] font-bold px-1 rounded ${
+                        isDark ? 'bg-[hsl(75,92%,56%)]/20 text-[hsl(75,92%,56%)]' : 'bg-indigo-100 text-indigo-700'
+                      }`}>
+                        D{cellDayInfo.rotationDayNumber}
+                      </span>
+                    )}
+                    {isPlannedDay && !cellDayInfo.isRotation && (
                       <span
                         title={lang === 'ar' ? 'يوم مخطط (Plan)' : 'Planned Day'}
                         className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm ring-1 ring-amber-500/50 shrink-0"
                       />
                     )}
-                    {isScheduledRest && dayWorkouts.length === 0 && (
+                    {isScheduledRest && dayWorkouts.length === 0 && !cellDayInfo.isRotation && (
                       <span title="Scheduled Rest Day">
                         <Moon className="w-3 h-3 text-gray-500 opacity-60" />
                       </span>
@@ -888,6 +950,12 @@ export const CalendarPage: React.FC = () => {
               <h2 className="text-lg font-display font-bold mt-0.5">
                 {formatFullDate(selectedCalendarDate, lang)}
               </h2>
+              {/* عرض معلومات الـ Rotation Day (مثل Day 2 - Push) بجانب التاريخ المحدد */}
+              {selectedDaySchedule.isRotation && selectedDaySchedule.rotationDayNumber !== null && (
+                <div className="mt-1 text-xs font-bold text-amber-400">
+                  {lang === 'ar' ? `اليوم الدوري: Day ${selectedDaySchedule.rotationDayNumber}` : `Rotation Day: Day ${selectedDaySchedule.rotationDayNumber}`}
+                </div>
+              )}
               <span
                 className={`inline-flex items-center mt-2 px-2.5 py-1 rounded-lg text-xs font-bold border ${
                   isDark
