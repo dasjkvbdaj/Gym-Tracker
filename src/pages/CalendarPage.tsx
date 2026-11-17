@@ -185,16 +185,16 @@ export const CalendarPage: React.FC = () => {
       const targetDateObj = new Date(y, m - 1, d);
       targetDateObj.setHours(0, 0, 0, 0);
       
-      // Reference date updated to Nov 16, 2026 (Monday = Day 1)
-      const refDateObj = new Date(2026, 10, 16);
+      // مرجعية التاريخ ليصبح Day 1 هو الإثنين 16 نوفمبر 2026
+      const refDateObj = new Date(2026, 10, 16); 
       refDateObj.setHours(0, 0, 0, 0);
-      
+
       const diffTime = targetDateObj.getTime() - refDateObj.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       const totalLen = rotationDays.length;
       let rotIndex = diffDays % totalLen;
       if (rotIndex < 0) rotIndex += totalLen;
-      
+
       const matchedRotDay = rotationDays[rotIndex];
       if (matchedRotDay) {
         return {
@@ -324,12 +324,14 @@ export const CalendarPage: React.FC = () => {
       text += `💪 Target Muscles: ${workout.muscleGroups.map(mg => translateMuscleGroup(mg, lang)).join(', ')}\n`;
     }
     text += `-----------------------------------\n`;
+
     let currentGroup = '';
     workout.exercises.forEach((ex) => {
       const exObj = exerciseMap.get(ex.exerciseId);
       const displayName = exObj?.name || ex.exerciseNameSnapshot;
       const targetMuscle = exObj?.targetMuscle || ex.targetMuscleSnapshot;
       const isCardio = isCardioExercise(displayName, ex.muscleGroup);
+
       if (currentGroup !== ex.muscleGroup) {
         currentGroup = ex.muscleGroup;
         text += `\n🔹 [ ${translateMuscleGroup(currentGroup, lang).toUpperCase()} ]\n`;
@@ -339,22 +341,24 @@ export const CalendarPage: React.FC = () => {
         text += ` (🎯 ${targetMuscle})`;
       }
       text += '\n';
+
       if (isCardio) {
         const mins = ex.sets[0]?.reps || 30;
-        text += ` ⏳ Duration: ${mins} ${lang === 'ar' ? 'دقائق' : 'minutes'}`;
+        text += `   ⏳ Duration: ${mins} ${lang === 'ar' ? 'دقائق' : 'minutes'}`;
         if (ex.caloriesBurned) {
           text += ` | 🔥 ${ex.caloriesBurned} kcal`;
         }
         text += '\n';
       } else if (!isPlan && ex.sets && ex.sets.length > 0) {
         ex.sets.forEach((s) => {
-          text += ` - Set #${s.setNumber}: ${formatSetPerformance(s.weight, ex.weightType, s.reps, lang)}\n`;
+          text += `   - Set #${s.setNumber}: ${formatSetPerformance(s.weight, ex.weightType, s.reps, lang)}\n`;
         });
       }
       if (ex.notes) {
-        text += ` 📝 Notes: ${ex.notes}\n`;
+        text += `   📝 Notes: ${ex.notes}\n`;
       }
     });
+
     navigator.clipboard.writeText(text).then(() => {
       setCopiedWorkoutId(workout.id);
       showToast(
@@ -567,6 +571,7 @@ export const CalendarPage: React.FC = () => {
 
     const exercise = exercises.find((item) => item.id === exerciseId);
     if (!exercise) return;
+
     const alreadyExists = editingWorkout.exercises.some(
       (ex) => ex.exerciseId === exerciseId
     );
@@ -668,10 +673,10 @@ export const CalendarPage: React.FC = () => {
     : [];
 
   return (
-    <div className="space-y-6 animate-fadeIn pb-12">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-display font-bold tracking-tight">
+          <h1 className="text-xl sm:text-2xl font-display font-bold">
             {lang === 'ar' ? 'تقويم التمارين الشهري' : 'Workout Activity Calendar'}
           </h1>
           <p
@@ -796,13 +801,21 @@ export const CalendarPage: React.FC = () => {
               const dayWorkouts = workoutsByDate.get(cell.dateStr) || [];
               const todayStr = toLocalDateString(new Date());
               const isPlannedDay = dayWorkouts.some(
-                (w) => (w.status as string) === 'planned' || (cell.dateStr > todayStr && w.status !== 'completed')
+                (w) =>
+                  (w.status as string) === 'planned' ||
+                  (cell.dateStr > todayStr && w.status !== 'completed')
               );
               const hasStrength = dayWorkouts.some(
-                (w) => w.workoutType === 'strength' && !w.muscleGroups.includes('Cardio') && (w.status as string) !== 'planned'
+                (w) =>
+                  w.workoutType === 'strength' &&
+                  !w.muscleGroups.includes('Cardio') &&
+                  (w.status as string) !== 'planned'
               );
               const hasCardio = dayWorkouts.some(
-                (w) => (w.workoutType === 'cardio' || w.muscleGroups.includes('Cardio')) && (w.status as string) !== 'planned'
+                (w) =>
+                  (w.workoutType === 'cardio' ||
+                    w.muscleGroups.includes('Cardio')) &&
+                  (w.status as string) !== 'planned'
               );
               const isScheduledRest = scheduledRestDays.has(cell.dayOfWeek);
               const isSelected = cell.dateStr === selectedCalendarDate;
@@ -846,26 +859,34 @@ export const CalendarPage: React.FC = () => {
                     >
                       {cell.dayNumber}
                     </span>
-                    {cellDayInfo.isRotation && cellDayInfo.rotationDayNumber !== null && (
-                      <span className={`text-[9px] font-bold px-1 rounded ${
-                        isDark ? 'bg-[hsl(75,92%,56%)]/20 text-[hsl(75,92%,56%)]' : 'bg-indigo-100 text-indigo-700'
-                      }`}>
-                        D{cellDayInfo.rotationDayNumber}
-                      </span>
-                    )}
+                    {cellDayInfo.isRotation &&
+                      cellDayInfo.rotationDayNumber !== null && (
+                        <span
+                          className={`text-[9px] font-bold px-1 rounded ${
+                            isDark
+                              ? 'bg-[hsl(75,92%,56%)]/20 text-[hsl(75,92%,56%)]'
+                              : 'bg-indigo-100 text-indigo-700'
+                          }`}
+                        >
+                          D{cellDayInfo.rotationDayNumber}
+                        </span>
+                      )}
                     {isPlannedDay && !cellDayInfo.isRotation && (
                       <span
-                        title={lang === 'ar' ? 'يوم مخطط (Plan)' : 'Planned Day'}
+                        title={
+                          lang === 'ar' ? 'يوم مخطط (Plan)' : 'Planned Day'
+                        }
                         className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm ring-1 ring-amber-500/50 shrink-0"
                       />
                     )}
-                    {isScheduledRest && dayWorkouts.length === 0 && !cellDayInfo.isRotation && (
-                      <span title="Scheduled Rest Day">
-                        <Moon className="w-3 h-3 text-gray-500 opacity-60" />
-                      </span>
-                    )}
+                    {isScheduledRest &&
+                      dayWorkouts.length === 0 &&
+                      !cellDayInfo.isRotation && (
+                        <span title="Scheduled Rest Day">
+                          <Moon className="w-3 h-3 text-gray-500 opacity-60" />
+                        </span>
+                      )}
                   </div>
-
                   <div className="space-y-1 mt-1 w-full">
                     {hasStrength && (
                       <div
@@ -877,7 +898,9 @@ export const CalendarPage: React.FC = () => {
                       >
                         <span
                           className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                            isDark ? 'bg-[hsl(75,92%,56%)]' : 'bg-indigo-600'
+                            isDark
+                              ? 'bg-[hsl(75,92%,56%)]'
+                              : 'bg-indigo-600'
                           }`}
                         />
                         <span className="hidden sm:inline truncate">
@@ -913,19 +936,25 @@ export const CalendarPage: React.FC = () => {
                 }`}
               />
               <span>
-                {lang === 'ar' ? 'تمرين حديد مسجل' : 'Strength Training Recorded'}
+                {lang === 'ar'
+                  ? 'تمرين حديد مسجل'
+                  : 'Strength Training Recorded'}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded-full bg-cyan-400" />
               <span>
-                {lang === 'ar' ? 'جلسة كارديو مسجلة' : 'Cardio Session Recorded'}
+                {lang === 'ar'
+                  ? 'جلسة كارديو مسجلة'
+                  : 'Cardio Session Recorded'}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
               <span>
-                {lang === 'ar' ? 'خطة مستقبلية (Future Plan)' : 'Future Plan'}
+                {lang === 'ar'
+                  ? 'خطة مستقبلية (Future Plan)'
+                  : 'Future Plan'}
               </span>
             </div>
             <div className="flex items-center gap-1.5">
@@ -937,7 +966,9 @@ export const CalendarPage: React.FC = () => {
           </div>
         </div>
 
-        <div className={`lg:col-span-4 rounded-2xl border p-5 flex flex-col justify-between gap-5 ${panelClass}`}>
+        <div
+          className={`lg:col-span-4 rounded-2xl border p-5 flex flex-col justify-between gap-5 ${panelClass}`}
+        >
           <div className="space-y-4">
             <div className="pb-4 border-b border-inherit">
               <span className="text-xs font-semibold uppercase tracking-wider text-[hsl(75,92%,56%)]">
@@ -946,11 +977,14 @@ export const CalendarPage: React.FC = () => {
               <h2 className="text-lg font-display font-bold mt-0.5">
                 {formatFullDate(selectedCalendarDate, lang)}
               </h2>
-              {selectedDaySchedule.isRotation && selectedDaySchedule.rotationDayNumber !== null && (
-                <div className="mt-1 text-xs font-bold text-amber-400">
-                  {lang === 'ar' ? `اليوم الدوري: Day ${selectedDaySchedule.rotationDayNumber}` : `Rotation Day: Day ${selectedDaySchedule.rotationDayNumber}`}
-                </div>
-              )}
+              {selectedDaySchedule.isRotation &&
+                selectedDaySchedule.rotationDayNumber !== null && (
+                  <div className="mt-1 text-xs font-bold text-amber-400">
+                    {lang === 'ar'
+                      ? `اليوم الدوري: Day ${selectedDaySchedule.rotationDayNumber}`
+                      : `Rotation Day: Day ${selectedDaySchedule.rotationDayNumber}`}
+                  </div>
+                )}
               <span
                 className={`inline-flex items-center mt-2 px-2.5 py-1 rounded-lg text-xs font-bold border ${
                   isDark
@@ -960,7 +994,6 @@ export const CalendarPage: React.FC = () => {
               >
                 {selectedDateRelativeLabel}
               </span>
-
               {selectedDaySchedule && (
                 <div className="mt-3 space-y-2">
                   <p
@@ -971,21 +1004,25 @@ export const CalendarPage: React.FC = () => {
                     {lang === 'ar' ? 'الخطة المرجعية لهذا اليوم:' : 'Reference plan:'}{' '}
                     <strong>{selectedDaySchedule.title}</strong>
                   </p>
-                  {isTodayOrFutureDate && !hasWorkoutsOrPlansOnSelectedDate && selectedDaySchedule.workoutType !== 'rest' && (
-                    <button
-                      onClick={handleOpenPlanDay}
-                      className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
-                        isDark
-                          ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
-                      }`}
-                    >
-                      <ClipboardList className="w-4 h-4" />
-                      <span>
-                        {lang === 'ar' ? 'ضع خطة لهذا اليوم (Put a Plan)' : 'Put a Plan'}
-                      </span>
-                    </button>
-                  )}
+                  {isTodayOrFutureDate &&
+                    !hasWorkoutsOrPlansOnSelectedDate &&
+                    selectedDaySchedule.workoutType !== 'rest' && (
+                      <button
+                        onClick={handleOpenPlanDay}
+                        className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
+                          isDark
+                            ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+                        }`}
+                      >
+                        <ClipboardList className="w-4 h-4" />
+                        <span>
+                          {lang === 'ar'
+                            ? 'ضع خطة لهذا اليوم (Put a Plan)'
+                            : 'Put a Plan'}
+                        </span>
+                      </button>
+                    )}
                 </div>
               )}
             </div>
@@ -1000,10 +1037,14 @@ export const CalendarPage: React.FC = () => {
               >
                 <CalendarIcon className="w-6 h-6 mx-auto opacity-40" />
                 <p className="text-xs font-medium">
-                  {lang === 'ar' ? 'لا توجد تمارين مسجلة في هذا التاريخ.' : 'No workouts recorded on this date.'}
+                  {lang === 'ar'
+                    ? 'لا توجد تمارين مسجلة في هذا التاريخ.'
+                    : 'No workouts recorded on this date.'}
                 </p>
                 <p className="text-[11px] opacity-75">
-                  {lang === 'ar' ? 'يمكنك إضافة تمرين أو وضع خطة لهذا التاريخ.' : 'You can record or plan a session on this date.'}
+                  {lang === 'ar'
+                    ? 'يمكنك إضافة تمرين أو وضع خطة لهذا التاريخ.'
+                    : 'You can record or plan a session on this date.'}
                 </p>
               </div>
             ) : (
@@ -1030,7 +1071,8 @@ export const CalendarPage: React.FC = () => {
                                 ? isDark
                                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
                                   : 'bg-amber-50 text-amber-700 border border-amber-200'
-                                : workout.workoutType === 'cardio' || workout.muscleGroups.includes('Cardio')
+                                : workout.workoutType === 'cardio' ||
+                                  workout.muscleGroups.includes('Cardio')
                                 ? isDark
                                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30'
                                   : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
@@ -1041,16 +1083,22 @@ export const CalendarPage: React.FC = () => {
                           >
                             {isPlan ? (
                               <ClipboardList className="w-3 h-3 text-amber-400" />
-                            ) : workout.workoutType === 'cardio' || workout.muscleGroups.includes('Cardio') ? (
+                            ) : workout.workoutType === 'cardio' ||
+                              workout.muscleGroups.includes('Cardio') ? (
                               <Flame className="w-3 h-3 text-cyan-400" />
                             ) : (
                               <Dumbbell className="w-3 h-3" />
                             )}
                             <span>
                               {isPlan
-                                ? lang === 'ar' ? 'خطة (Plan)' : 'Planned'
-                                : workout.workoutType === 'cardio' || workout.muscleGroups.includes('Cardio')
-                                ? lang === 'ar' ? 'كارديو' : 'Cardio'
+                                ? lang === 'ar'
+                                  ? 'خطة (Plan)'
+                                  : 'Planned'
+                                : workout.workoutType === 'cardio' ||
+                                  workout.muscleGroups.includes('Cardio')
+                                ? lang === 'ar'
+                                  ? 'كارديو'
+                                  : 'Cardio'
                                 : 'Strength'}
                             </span>
                           </span>
@@ -1060,7 +1108,9 @@ export const CalendarPage: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={(e) => handleCopyWorkoutDetails(workout, e)}
+                            onClick={(e) =>
+                              handleCopyWorkoutDetails(workout, e)
+                            }
                             className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
                               isCopied
                                 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
@@ -1068,16 +1118,34 @@ export const CalendarPage: React.FC = () => {
                                 ? 'bg-[hsl(240,5%,14%)] border-gray-700 text-gray-300 hover:text-white'
                                 : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
                             }`}
-                            title={lang === 'ar' ? 'نسخ تفاصيل التمرين' : 'Copy workout details'}
+                            title={
+                              lang === 'ar'
+                                ? 'نسخ تفاصيل التمرين'
+                                : 'Copy workout details'
+                            }
                             aria-label="Copy workout details"
                           >
-                            {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                            {isCopied ? (
+                              <Check className="w-3.5 h-3.5" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
                           </button>
                           <button
-                            onClick={() => setExpandedWorkoutId(expanded ? null : workout.id)}
+                            onClick={() =>
+                              setExpandedWorkoutId(
+                                expanded ? null : workout.id
+                              )
+                            }
                             className="text-xs text-[hsl(75,92%,56%)] font-semibold cursor-pointer"
                           >
-                            {expanded ? lang === 'ar' ? 'إخفاء' : 'Hide' : lang === 'ar' ? 'التفاصيل' : 'Details'}
+                            {expanded
+                              ? lang === 'ar'
+                                ? 'إخفاء'
+                                : 'Hide'
+                              : lang === 'ar'
+                              ? 'التفاصيل'
+                              : 'Details'}
                           </button>
                         </div>
                       </div>
@@ -1107,12 +1175,14 @@ export const CalendarPage: React.FC = () => {
                               const displayName =
                                 exObj?.name || ex.exerciseNameSnapshot;
                               const targetMuscle =
-                                exObj?.targetMuscle || ex.targetMuscleSnapshot;
+                                exObj?.targetMuscle ||
+                                ex.targetMuscleSnapshot;
                               const isCardio = isCardioExercise(
                                 displayName,
                                 ex.muscleGroup
                               );
-                              const showGroupDivider = lastGroup !== ex.muscleGroup;
+                              const showGroupDivider =
+                                lastGroup !== ex.muscleGroup;
                               lastGroup = ex.muscleGroup;
 
                               return (
@@ -1120,13 +1190,32 @@ export const CalendarPage: React.FC = () => {
                                   {showGroupDivider && (
                                     <div className="pt-2 pb-1 first:pt-0">
                                       <div className="flex items-center gap-2">
-                                        <div className={`h-[1px] flex-1 ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
-                                        <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                                          isDark ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]' : 'bg-indigo-50 text-indigo-700'
-                                        }`}>
-                                          {translateMuscleGroup(ex.muscleGroup, lang)}
+                                        <div
+                                          className={`h-[1px] flex-1 ${
+                                            isDark
+                                              ? 'bg-gray-800'
+                                              : 'bg-slate-200'
+                                          }`}
+                                        />
+                                        <span
+                                          className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                                            isDark
+                                              ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
+                                              : 'bg-indigo-50 text-indigo-700'
+                                          }`}
+                                        >
+                                          {translateMuscleGroup(
+                                            ex.muscleGroup,
+                                            lang
+                                          )}
                                         </span>
-                                        <div className={`h-[1px] flex-1 ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
+                                        <div
+                                          className={`h-[1px] flex-1 ${
+                                            isDark
+                                              ? 'bg-gray-800'
+                                              : 'bg-slate-200'
+                                          }`}
+                                        />
                                       </div>
                                     </div>
                                   )}
@@ -1145,7 +1234,13 @@ export const CalendarPage: React.FC = () => {
                                       <div className="flex items-center gap-1.5 flex-wrap">
                                         <span>{displayName}</span>
                                         {targetMuscle && (
-                                          <span className={`text-[10px] px-1.5 py-0.2 rounded border ${isDark ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                                          <span
+                                            className={`text-[10px] px-1.5 py-0.2 rounded border ${
+                                              isDark
+                                                ? 'bg-gray-800 text-gray-300 border-gray-700'
+                                                : 'bg-gray-100 text-gray-600 border-gray-200'
+                                            }`}
+                                          >
                                             🎯 {targetMuscle}
                                           </span>
                                         )}
@@ -1170,7 +1265,9 @@ export const CalendarPage: React.FC = () => {
                                           <Clock className="w-3.5 h-3.5 text-cyan-500" />
                                           <span>
                                             {ex.sets[0]?.reps || 30}{' '}
-                                            {lang === 'ar' ? 'دقائق' : 'minutes'}
+                                            {lang === 'ar'
+                                              ? 'دقائق'
+                                              : 'minutes'}
                                           </span>
                                         </span>
                                       ) : (
@@ -1261,12 +1358,24 @@ export const CalendarPage: React.FC = () => {
                       ? 'bg-[hsl(240,5%,14%)] border-gray-700 text-gray-300 hover:text-white'
                       : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
                   }`}
-                  title={lang === 'ar' ? 'نسخ تفاصيل التمرين' : 'Copy workout details'}
+                  title={
+                    lang === 'ar'
+                      ? 'نسخ تفاصيل التمرين'
+                      : 'Copy workout details'
+                  }
                   aria-label="Copy workout details"
                 >
-                  {copiedWorkoutId === editingWorkout.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copiedWorkoutId === editingWorkout.id ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Copy className="w-4 h-4" />
+                  )}
                 </button>
-                <button type="button" onClick={handleCloseEdit} aria-label="Close edit modal">
+                <button
+                  type="button"
+                  onClick={handleCloseEdit}
+                  aria-label="Close edit modal"
+                >
                   <X className="w-5 h-5 cursor-pointer" />
                 </button>
               </div>
@@ -1321,7 +1430,8 @@ export const CalendarPage: React.FC = () => {
                     displayName,
                     ex.muscleGroup
                   );
-                  const showGroupDividerEdit = lastGroupEdit !== ex.muscleGroup;
+                  const showGroupDividerEdit =
+                    lastGroupEdit !== ex.muscleGroup;
                   lastGroupEdit = ex.muscleGroup;
 
                   return (
@@ -1329,13 +1439,25 @@ export const CalendarPage: React.FC = () => {
                       {showGroupDividerEdit && (
                         <div className="pt-2 pb-1">
                           <div className="flex items-center gap-2">
-                            <div className={`h-[1px] flex-1 ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
-                            <span className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded ${
-                              isDark ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]' : 'bg-indigo-50 text-indigo-700'
-                            }`}>
+                            <div
+                              className={`h-[1px] flex-1 ${
+                                isDark ? 'bg-gray-800' : 'bg-slate-200'
+                              }`}
+                            />
+                            <span
+                              className={`text-[11px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded ${
+                                isDark
+                                  ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
+                                  : 'bg-indigo-50 text-indigo-700'
+                              }`}
+                            >
                               {translateMuscleGroup(ex.muscleGroup, lang)}
                             </span>
-                            <div className={`h-[1px] flex-1 ${isDark ? 'bg-gray-800' : 'bg-slate-200'}`} />
+                            <div
+                              className={`h-[1px] flex-1 ${
+                                isDark ? 'bg-gray-800' : 'bg-slate-200'
+                              }`}
+                            />
                           </div>
                         </div>
                       )}
@@ -1351,7 +1473,13 @@ export const CalendarPage: React.FC = () => {
                             <h4 className="font-bold text-sm flex items-center gap-2">
                               <span>{displayName}</span>
                               {targetMuscle && (
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${
+                                    isDark
+                                      ? 'bg-gray-800 text-[hsl(75,92%,56%)]'
+                                      : 'bg-slate-200 text-slate-800'
+                                  }`}
+                                >
                                   🎯 {targetMuscle}
                                 </span>
                               )}
@@ -1382,7 +1510,13 @@ export const CalendarPage: React.FC = () => {
                               <h4 className="font-bold text-sm flex items-center gap-2">
                                 <span>{displayName}</span>
                                 {targetMuscle && (
-                                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.5 rounded font-normal ${
+                                      isDark
+                                        ? 'bg-gray-800 text-[hsl(75,92%,56%)]'
+                                        : 'bg-slate-200 text-slate-800'
+                                    }`}
+                                  >
                                     🎯 {targetMuscle}
                                   </span>
                                 )}
@@ -1394,28 +1528,26 @@ export const CalendarPage: React.FC = () => {
                             </div>
                             <div className="flex items-center gap-1">
                               {!isCardio &&
-                                (['kg', 'lbs', 'none'] as const).map(
-                                  (unit) => (
-                                    <button
-                                      key={unit}
-                                      type="button"
-                                      onClick={() =>
-                                        handleEditExerciseUnit(ex.id, unit)
-                                      }
-                                      className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${
-                                        ex.weightType === unit
-                                          ? 'bg-indigo-700 text-white border-indigo-700'
-                                          : 'border-gray-500/30'
-                                      }`}
-                                    >
-                                      {unit === 'none'
-                                        ? lang === 'ar'
-                                          ? 'وزن الجسم'
-                                          : 'Bodyweight'
-                                        : unit.toUpperCase()}
-                                    </button>
-                                  )
-                                )}
+                                (['kg', 'lbs', 'none'] as const).map((unit) => (
+                                  <button
+                                    key={unit}
+                                    type="button"
+                                    onClick={() =>
+                                      handleEditExerciseUnit(ex.id, unit)
+                                    }
+                                    className={`px-2 py-1 rounded text-[10px] font-bold border cursor-pointer ${
+                                      ex.weightType === unit
+                                        ? 'bg-indigo-700 text-white border-indigo-700'
+                                        : 'border-gray-500/30'
+                                    }`}
+                                  >
+                                    {unit === 'none'
+                                      ? lang === 'ar'
+                                        ? 'وزن الجسم'
+                                        : 'Bodyweight'
+                                      : unit.toUpperCase()}
+                                  </button>
+                                ))}
                               <button
                                 type="button"
                                 onClick={() => handleRemoveExercise(ex.id)}
@@ -1505,8 +1637,12 @@ export const CalendarPage: React.FC = () => {
                                 </span>
                                 <span className="col-span-4">
                                   {ex.weightType === 'none'
-                                    ? lang === 'ar' ? 'النوع' : 'TYPE'
-                                    : lang === 'ar' ? 'الوزن' : 'WEIGHT'}
+                                    ? lang === 'ar'
+                                      ? 'النوع'
+                                      : 'TYPE'
+                                    : lang === 'ar'
+                                    ? 'الوزن'
+                                    : 'WEIGHT'}
                                 </span>
                                 <span className="col-span-4">
                                   {lang === 'ar' ? 'التكرارات' : 'REPS'}
@@ -1624,7 +1760,6 @@ export const CalendarPage: React.FC = () => {
                     ))}
                   </select>
                 </div>
-
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold">
                     {lang === 'ar'
@@ -1653,7 +1788,13 @@ export const CalendarPage: React.FC = () => {
                               {exercise.name}
                             </span>
                             {exercise.targetMuscle && (
-                              <span className={`text-[10px] px-1.5 py-0.5 rounded ${isDark ? 'bg-gray-800 text-[hsl(75,92%,56%)]' : 'bg-slate-200 text-slate-800'}`}>
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                  isDark
+                                    ? 'bg-gray-800 text-[hsl(75,92%,56%)]'
+                                    : 'bg-slate-200 text-slate-800'
+                                }`}
+                              >
                                 🎯 {exercise.targetMuscle}
                               </span>
                             )}
