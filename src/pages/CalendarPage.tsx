@@ -176,9 +176,8 @@ export const CalendarPage: React.FC = () => {
 
   const [isPlanningMode, setIsPlanningMode] = useState(false);
 
-  const [deleteConfirmId,
-    setDeleteConfirmId,
-  ] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] =
+    useState<string | null>(null);
 
   const [copiedWorkoutId, setCopiedWorkoutId] = useState<string | null>(null);
 
