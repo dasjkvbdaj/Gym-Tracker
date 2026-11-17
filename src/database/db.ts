@@ -11,20 +11,39 @@ import {
   DEFAULT_WEEKLY_SCHEDULE,
 } from './defaultData';
 
+// واجهة تعريف هيكل نظام التمرين المخزن
+export interface WorkoutSplitRecord {
+  id: string;
+  name: string;
+  type: 'fixed' | 'rotation';
+  daysData: any;
+  createdAt: number;
+}
+
 export class GymTrackerDatabase extends Dexie {
   workouts!: Table<WorkoutSession, string>;
   exercises!: Table<Exercise, string>;
   weeklySchedule!: Table<WeeklyScheduleDay, string>;
   settings!: Table<UserSettings, string>;
+  workoutSplits!: Table<WorkoutSplitRecord, string>; // جدول تخزين البرامج المتعددة
 
   constructor() {
     super('IronPulseGymTrackerDB');
 
+    // ترقية الإصدار إلى 2 لدعم جدول البرامج الجديدة
     this.version(1).stores({
       workouts: 'id, actualDate, status, workoutType, startTimestamp, year, month',
       exercises: 'id, name, muscleGroup, createdAt',
       weeklySchedule: 'day',
       settings: 'id',
+    });
+
+    this.version(2).stores({
+      workouts: 'id, actualDate, status, workoutType, startTimestamp, year, month',
+      exercises: 'id, name, muscleGroup, createdAt',
+      weeklySchedule: 'day',
+      settings: 'id',
+      workoutSplits: 'id, name, type, createdAt', // إضافة الجدول الجديد هنا
     });
   }
 }
@@ -44,7 +63,7 @@ export async function ensureDatabaseInitialized(): Promise<void> {
 
   seedPromise = (async () => {
     try {
-      await db.transaction('rw', db.exercises, db.weeklySchedule, db.settings, async () => {
+      await db.transaction('rw', db.exercises, db.weeklySchedule, db.settings, db.workoutSplits, async () => {
         // Purge preloaded dummy exercises to guarantee a clean, user-managed exercise library
         const DUMMY_PURGE_KEY = 'ironpulse_dummy_purged_v2';
         if (typeof window !== 'undefined' && localStorage.getItem(DUMMY_PURGE_KEY) !== 'true') {
