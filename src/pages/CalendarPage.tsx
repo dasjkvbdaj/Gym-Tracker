@@ -1114,9 +1114,6 @@ export const CalendarPage: React.FC = () => {
                                 : 'Strength'}
                             </span>
                           </span>
-                          <h3 className="font-display font-bold text-sm mt-1">
-                            {workout.title}
-                          </h3>
                         </div>
                         <div className="flex items-center gap-2">
                           <button
