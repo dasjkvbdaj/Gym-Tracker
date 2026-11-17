@@ -805,7 +805,7 @@ export const CalendarPage: React.FC = () => {
                 <button
                   key={cell.dateStr}
                   onClick={() => setSelectedCalendarDate(cell.dateStr)}
-                  className={`min-h-[64px] sm:min-h-[78px] p-1.5 sm:p-2 rounded-xl border flex flex-col justify-between text-start transition-all cursor-pointer relative ${
+                  className={`min-h-[72px] sm:min-h-[86px] p-1.5 sm:p-2 rounded-xl border flex flex-col justify-between text-start transition-all cursor-pointer relative ${
                     !cell.isCurrentMonth ? 'opacity-40' : ''
                   } ${
                     isSelected
@@ -840,20 +840,7 @@ export const CalendarPage: React.FC = () => {
                       {cell.dayNumber}
                     </span>
 
-                    {/* تحسين تصميم D1, D2 بحيث يكون احترافي ونظيف في الـ Light / Dark Mode */}
-                    {cellDayInfo.isRotation && cellDayInfo.rotationDayNumber !== null && (
-                      <span
-                        className={`text-[10px] font-mono-num font-bold px-1.5 py-0.5 rounded-md border ${
-                          isDark
-                            ? 'bg-[hsl(75,92%,56%)]/20 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
-                            : 'bg-indigo-100/80 text-indigo-800 border-indigo-200'
-                        }`}
-                      >
-                        D{cellDayInfo.rotationDayNumber}
-                      </span>
-                    )}
-
-                    {/* بديل اللون الأصفر للـ Planned Day إلى إنديجو أنيق في الـ Light Mode */}
+                    {/* Planned Day indicator (dot) */}
                     {isPlannedDay && !cellDayInfo.isRotation && (
                       <span
                         title={lang === 'ar' ? 'يوم مخطط (Plan)' : 'Planned Day'}
@@ -871,6 +858,21 @@ export const CalendarPage: React.FC = () => {
                       </span>
                     )}
                   </div>
+
+                  {/* Rotation Day Badge (D1, D2...) positioned underneath the date number */}
+                  {cellDayInfo.isRotation && cellDayInfo.rotationDayNumber !== null && (
+                    <div className="w-full flex justify-center mt-0.5">
+                      <span
+                        className={`text-[9px] sm:text-[10px] font-mono-num font-bold px-1.5 py-0.2 rounded-md border text-center ${
+                          isDark
+                            ? 'bg-[hsl(75,92%,56%)]/20 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
+                            : 'bg-indigo-100/90 text-indigo-800 border-indigo-200'
+                        }`}
+                      >
+                        D{cellDayInfo.rotationDayNumber}
+                      </span>
+                    </div>
+                  )}
 
                   <div className="space-y-1 mt-1 w-full">
                     {hasStrength && (
