@@ -185,9 +185,21 @@ export const CalendarPage: React.FC = () => {
       const targetDateObj = new Date(y, m - 1, d);
       targetDateObj.setHours(0, 0, 0, 0);
       
-      // مرجعية التاريخ ليصبح Day 1 هو الإثنين 16 نوفمبر 2026
+      // تاريخ البداية المرجعي: الإثنين 16 نوفمبر 2026
       const refDateObj = new Date(2026, 10, 16); 
       refDateObj.setHours(0, 0, 0, 0);
+
+      // إذا كان التاريخ قبل 16 نوفمبر 2026، فلا نعرض الـ rotation (أي لا ظهور لـ D1, D2...)
+      if (targetDateObj.getTime() < refDateObj.getTime()) {
+        const standardDaySchedule = weeklySchedule.find((ds) => ds.day === meta.dayOfWeek);
+        return {
+          title: standardDaySchedule?.title || (lang === 'ar' ? 'تمرين' : 'Workout'),
+          workoutType: standardDaySchedule?.workoutType || 'strength',
+          muscleGroups: standardDaySchedule?.muscleGroups || [],
+          isRotation: false,
+          rotationDayNumber: null,
+        };
+      }
 
       const diffTime = targetDateObj.getTime() - refDateObj.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
