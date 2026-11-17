@@ -46,15 +46,12 @@ export const MyWorkout: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [scheduleCopied, setScheduleCopied] = useState(false);
 
-  // جلب البرامج المخزنة في قاعدة البيانات لعرضها في الـ Dropdown
   const savedSplits = useLiveQuery(() => db.workoutSplits.toArray(), [], []) || [];
 
-  // States for "Create New Schedule" popup feature
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newScheduleName, setNewScheduleName] = useState('');
-  const [scheduleType, setScheduleType] = useState<'fixed' | 'rotation'>('fixed');
+  const [scheduleType, setScheduleType] = useState<'fixed' | 'rotation'>('rotation');
   
-  // Rotation days builder state inside the popup
   const [rotationDays, setRotationDays] = useState<Array<{
     id: string;
     title: string;
@@ -67,17 +64,24 @@ export const MyWorkout: React.FC = () => {
     { id: '4', title: 'Day 4 (Rest)', muscleGroups: [], isRest: true },
   ]);
 
-  // البرنامج النشط الحالي
   // @ts-ignore
   const activeSplitId = settings.activeSplitId || 'default';
+  // @ts-ignore
+  const currentSplitType = settings.activeSplitType || 'fixed';
+  // @ts-ignore
+  const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
+  const currentRotationList = activeSplitData?.daysData || rotationDays;
 
   const trainingDays = useMemo(() => {
+    if (currentSplitType === 'rotation' && Array.isArray(currentRotationList)) {
+      return currentRotationList.filter((d: any) => !d.isRest && d.muscleGroups?.length > 0);
+    }
     return weeklySchedule.filter(
       (day) =>
         day.workoutType !== 'rest' &&
         day.muscleGroups.length > 0
     );
-  }, [weeklySchedule]);
+  }, [weeklySchedule, currentSplitType, currentRotationList]);
 
   const generateDayTitle = (groups: MuscleGroup[]) => {
     if (groups.length === 0) {
@@ -87,17 +91,10 @@ export const MyWorkout: React.FC = () => {
   };
 
   const handleCopySchedule = () => {
-    const scheduleText = weeklySchedule
-      .map((day) => {
-        const dayName = translateDayName(day.day, lang);
-        const details =
-          day.workoutType === 'rest' || day.muscleGroups.length === 0
-            ? isArabic ? 'يوم راحة' : 'Rest Day'
-            : day.muscleGroups.map((mg) => translateMuscleGroup(mg, lang)).join(' + ');
+    const scheduleText = currentSplitType === 'rotation'
+      ? currentRotationList.map((d: any, idx: number) => `Day ${idx + 1} (${d.title}): ${d.isRest ? 'Rest' : d.muscleGroups.join(', ')}`).join('\n')
+      : weeklySchedule.map((day) => `${translateDayName(day.day, lang)}: ${day.muscleGroups.join(', ')}`).join('\n');
 
-        return `${dayName}: ${details}`;
-      })
-      .join('\n');
     navigator.clipboard.writeText(scheduleText).then(() => {
       setScheduleCopied(true);
       setTimeout(() => setScheduleCopied(false), 2000);
@@ -215,7 +212,6 @@ export const MyWorkout: React.FC = () => {
     }));
   };
 
-  // حفظ البرنامج الجديد وإضافته للقائمة المنسدلة (Dropdown)
   const handleSaveNewSplit = async () => {
     if (!newScheduleName.trim()) {
       showToast(isArabic ? 'يرجى إدخال اسم للبرنامج' : 'Please enter a schedule name', 'error');
@@ -232,10 +228,8 @@ export const MyWorkout: React.FC = () => {
         createdAt: Date.now(),
       };
 
-      // حفظ البرنامج في جدول الـ Splits
       await db.workoutSplits.put(splitData);
 
-      // جعله البرنامج النشط حالياً
       await updateSettings({
         // @ts-ignore
         activeSplitId: newSplitId,
@@ -258,11 +252,21 @@ export const MyWorkout: React.FC = () => {
     }
   };
 
-  // عند اختيار برنامج من الـ Dropdown المنسدلة
   const handleSelectSplit = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedId = e.target.value;
-    const foundSplit = savedSplits.find(s => s.id === selectedId);
+    if (selectedId === 'default') {
+      await updateSettings({
+        // @ts-ignore
+        activeSplitId: 'default',
+        // @ts-ignore
+        activeSplitName: 'Standard Split',
+        // @ts-ignore
+        activeSplitType: 'fixed',
+      });
+      return;
+    }
 
+    const foundSplit = savedSplits.find(s => s.id === selectedId);
     if (foundSplit) {
       await updateSettings({
         // @ts-ignore
@@ -280,12 +284,8 @@ export const MyWorkout: React.FC = () => {
     }
   };
 
-  // @ts-ignore
-  const currentSplitType = settings.activeSplitType || 'fixed';
-
   return (
     <div className="space-y-6">
-      {/* HEADER WITH DROPDOWN SELECT OPTION */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
@@ -307,7 +307,6 @@ export const MyWorkout: React.FC = () => {
           </h1>
         </div>
 
-        {/* DROPDOWN SELECT OPTION FOR WORKOUT SPLITS */}
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
           <div className="relative flex-1 sm:flex-initial min-w-[220px]">
             <select
@@ -335,7 +334,7 @@ export const MyWorkout: React.FC = () => {
           <button
             onClick={() => {
               setNewScheduleName('');
-              setScheduleType('fixed');
+              setScheduleType('rotation');
               setIsCreateModalOpen(true);
             }}
             className={`px-4 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 transition-all cursor-pointer border ${
@@ -348,17 +347,19 @@ export const MyWorkout: React.FC = () => {
             <span>{isArabic ? 'إنشاء برنامج جديد' : 'Create New'}</span>
           </button>
 
-          <button
-            onClick={openEditSchedule}
-            className={`px-4 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
-              isDark
-                ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)] shadow-[hsl(75,92%,56%)]/15'
-                : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white shadow-[hsl(76,78%,42%)]/15'
-            }`}
-          >
-            <Edit3 className="w-4 h-4" />
-            <span>{isArabic ? 'تعديل الجدول' : 'Edit'}</span>
-          </button>
+          {currentSplitType !== 'rotation' && (
+            <button
+              onClick={openEditSchedule}
+              className={`px-4 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
+                isDark
+                  ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
+                  : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white'
+              }`}
+            >
+              <Edit3 className="w-4 h-4" />
+              <span>{isArabic ? 'تعديل الجدول' : 'Edit'}</span>
+            </button>
+          )}
 
           <button
             onClick={handleCopySchedule}
@@ -374,7 +375,6 @@ export const MyWorkout: React.FC = () => {
         </div>
       </div>
 
-      {/* BANNER SHOWING ACTIVE SPLIT MODE */}
       <div
         className={`rounded-2xl border p-4 sm:p-5 flex items-center justify-between ${
           isDark
@@ -415,94 +415,118 @@ export const MyWorkout: React.FC = () => {
         </div>
       </div>
 
-      {/* TRAINING DAYS CARDS */}
+      {/* عرض الأيام: إذا كان Rotation يعرض Day 1, Day 2... بدلاً من أسماء الأسبوع */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-display font-bold text-base">
-            {isArabic ? 'توزيع أيام الأسبوع' : 'Weekly Training Split'}
+            {currentSplitType === 'rotation' ? (isArabic ? 'تسلسل أيام الـ Rotation' : 'Rotation Sequence') : (isArabic ? 'توزيع أيام الأسبوع' : 'Weekly Training Split')}
           </h2>
-          <span
-            className={`text-xs ${
-              isDark ? 'text-gray-500' : 'text-slate-400'
-            }`}
-          >
+          <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
             {trainingDays.length} {isArabic ? 'أيام تمرين' : 'Training Days'}
           </span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {weeklySchedule.map((dayItem, index) => {
-            const isRest = dayItem.workoutType === 'rest';
-            return (
+          {currentSplitType === 'rotation' && Array.isArray(currentRotationList) ? (
+            currentRotationList.map((rotDay: any, index: number) => (
               <div
-                key={dayItem.day}
+                key={rotDay.id || index}
                 className={`relative overflow-hidden rounded-2xl border p-4 transition-colors ${
                   isDark
-                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)] hover:border-[hsl(75,92%,56%)]/40'
-                    : 'bg-white border-[hsl(40,10%,88%)] hover:border-[hsl(76,78%,42%)]/40 shadow-xs'
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                    : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
                 }`}
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span
                       className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-                        isDark
-                          ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
-                          : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
+                        isDark ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
                       }`}
                     >
                       {String(index + 1).padStart(2, '0')}
                     </span>
-                    <span
-                      className={`text-sm font-bold uppercase tracking-wide ${
-                        isDark ? 'text-gray-300' : 'text-slate-600'
-                      }`}
-                    >
-                      {translateDayName(dayItem.day, lang)}
+                    <span className={`text-sm font-bold uppercase tracking-wide ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
+                      {isArabic ? `اليوم ${index + 1}` : `Day ${index + 1}`}
                     </span>
                   </div>
-                  <span
-                    className={`text-[10px] font-semibold px-2 py-1 rounded-md ${
-                      isRest
-                        ? 'bg-gray-500/10 text-gray-400'
-                        : isDark
-                        ? 'bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)]'
-                        : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
-                    }`}
-                  >
-                    {isRest ? (isArabic ? 'راحة' : 'REST') : (isArabic ? 'تمرين' : 'TRAINING')}
+                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-md ${
+                    rotDay.isRest ? 'bg-gray-500/10 text-gray-400' : isDark ? 'bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
+                  }`}>
+                    {rotDay.isRest ? (isArabic ? 'راحة' : 'REST') : (isArabic ? 'تمرين' : 'TRAINING')}
                   </span>
                 </div>
-                <div
-                  className={`mt-4 pt-3 border-t ${
-                    isDark ? 'border-[hsl(240,4%,16%)]' : 'border-[hsl(40,10%,92%)]'
-                  }`}
-                >
-                  <h3
-                    className={`text-base font-display font-bold leading-relaxed ${
-                      isDark ? 'text-white' : 'text-slate-900'
-                    }`}
-                  >
-                    {generateDayTitle(dayItem.muscleGroups)}
+                <div className={`mt-4 pt-3 border-t ${isDark ? 'border-[hsl(240,4%,16%)]' : 'border-[hsl(40,10%,92%)]'}`}>
+                  <h3 className={`text-base font-display font-bold leading-relaxed ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    {rotDay.isRest ? (isArabic ? 'يوم راحة' : 'Rest Day') : generateDayTitle(rotDay.muscleGroups)}
                   </h3>
-                  <div className="flex flex-wrap gap-1.5 mt-3">
-                    {dayItem.muscleGroups.map((mg) => (
-                      <span
-                        key={mg}
-                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
-                          isDark
-                            ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300'
-                            : 'bg-[hsl(40,15%,96%)] border-[hsl(40,10%,88%)] text-slate-700'
-                        }`}
-                      >
-                        {translateMuscleGroup(mg, lang)}
-                      </span>
-                    ))}
-                  </div>
+                  {!rotDay.isRest && rotDay.muscleGroups?.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {rotDay.muscleGroups.map((mg: string) => (
+                        <span
+                          key={mg}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
+                            isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300' : 'bg-[hsl(40,15%,96%)] border-[hsl(40,10%,88%)] text-slate-700'
+                          }`}
+                        >
+                          {translateMuscleGroup(mg as MuscleGroup, lang)}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            );
-          })}
+            ))
+          ) : (
+            weeklySchedule.map((dayItem, index) => {
+              const isRest = dayItem.workoutType === 'rest';
+              return (
+                <div
+                  key={dayItem.day}
+                  className={`relative overflow-hidden rounded-2xl border p-4 transition-colors ${
+                    isDark
+                      ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                      : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                        isDark ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
+                      }`}>
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <span className={`text-sm font-bold uppercase tracking-wide ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
+                        {translateDayName(dayItem.day, lang)}
+                      </span>
+                    </div>
+                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-md ${
+                      isRest ? 'bg-gray-500/10 text-gray-400' : isDark ? 'bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
+                    }`}>
+                      {isRest ? (isArabic ? 'راحة' : 'REST') : (isArabic ? 'تمرين' : 'TRAINING')}
+                    </span>
+                  </div>
+                  <div className={`mt-4 pt-3 border-t ${isDark ? 'border-[hsl(240,4%,16%)]' : 'border-[hsl(40,10%,92%)]'}`}>
+                    <h3 className={`text-base font-display font-bold leading-relaxed ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                      {generateDayTitle(dayItem.muscleGroups)}
+                    </h3>
+                    <div className="flex flex-wrap gap-1.5 mt-3">
+                      {dayItem.muscleGroups.map((mg) => (
+                        <span
+                          key={mg}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
+                            isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300' : 'bg-[hsl(40,15%,96%)] border-[hsl(40,10%,88%)] text-slate-700'
+                          }`}
+                        >
+                          {translateMuscleGroup(mg, lang)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -524,14 +548,8 @@ export const MyWorkout: React.FC = () => {
                 <h2 className="text-lg font-display font-bold">
                   {isArabic ? 'إنشاء نظام تمرين جديد' : 'Create New Workout Split'}
                 </h2>
-                <p className={`text-xs mt-1 ${isDark ? 'text-gray-400' : 'text-slate-500'}`}>
-                  {isArabic ? 'اختر اسم البرنامج ونمط التوزيع (ثابت أو دوري).' : 'Choose your schedule name and split type.'}
-                </p>
               </div>
-              <button
-                onClick={() => setIsCreateModalOpen(false)}
-                className={`p-2 rounded-lg transition-colors ${isDark ? 'hover:bg-white/10 text-gray-400' : 'hover:bg-gray-100 text-slate-500'}`}
-              >
+              <button onClick={() => setIsCreateModalOpen(false)}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -543,7 +561,7 @@ export const MyWorkout: React.FC = () => {
                 </label>
                 <input
                   type="text"
-                  placeholder={isArabic ? 'مثال: Push Pull Legs أو Bro Split' : 'e.g. Push Pull Legs or Bro Split'}
+                  placeholder={isArabic ? 'مثال: Push Pull Legs' : 'e.g. Push Pull Legs'}
                   value={newScheduleName}
                   onChange={(e) => setNewScheduleName(e.target.value)}
                   className={`w-full px-3 py-2 rounded-xl text-sm border focus:outline-none ${
@@ -561,32 +579,28 @@ export const MyWorkout: React.FC = () => {
                     type="button"
                     onClick={() => setScheduleType('fixed')}
                     className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      scheduleType === 'fixed'
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : isDark ? 'bg-[hsl(240,5%,11%)] border-gray-700 text-gray-400' : 'bg-white border-slate-300 text-slate-600'
+                      scheduleType === 'fixed' ? 'bg-indigo-600 text-white border-indigo-600' : isDark ? 'bg-[hsl(240,5%,11%)] border-gray-700 text-gray-400' : 'bg-white border-slate-300 text-slate-600'
                     }`}
                   >
-                    {isArabic ? 'يومي ثابت (Fixed Day-by-Day)' : 'Fixed Day-by-Day'}
+                    {isArabic ? 'يومي ثابت (Fixed)' : 'Fixed'}
                   </button>
                   <button
                     type="button"
                     onClick={() => setScheduleType('rotation')}
                     className={`py-2.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      scheduleType === 'rotation'
-                        ? 'bg-indigo-600 text-white border-indigo-600'
-                        : isDark ? 'bg-[hsl(240,5%,11%)] border-gray-700 text-gray-400' : 'bg-white border-slate-300 text-slate-600'
+                      scheduleType === 'rotation' ? 'bg-indigo-600 text-white border-indigo-600' : isDark ? 'bg-[hsl(240,5%,11%)] border-gray-700 text-gray-400' : 'bg-white border-slate-300 text-slate-600'
                     }`}
                   >
-                    {isArabic ? 'دوري متسلسل (Rotation Cycle)' : 'Rotation Cycle'}
+                    {isArabic ? 'دوري متسلسل (Rotation)' : 'Rotation'}
                   </button>
                 </div>
               </div>
 
-              {scheduleType === 'rotation' ? (
+              {scheduleType === 'rotation' && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-gray-400">
-                      {isArabic ? 'إدارة أيام الـ Rotation' : 'Rotation Days Sequence'}
+                      {isArabic ? 'أيام الـ Rotation المسلسلة (Day 1, Day 2...)' : 'Rotation Sequence'}
                     </span>
                     <button
                       type="button"
@@ -603,7 +617,7 @@ export const MyWorkout: React.FC = () => {
                       }}
                       className="text-xs text-indigo-400 font-bold hover:underline cursor-pointer"
                     >
-                      {isArabic ? '+ إضافة يوم للـ Rotation' : '+ Add Rotation Day'}
+                      {isArabic ? '+ إضافة يوم' : '+ Add Day'}
                     </button>
                   </div>
 
@@ -617,7 +631,7 @@ export const MyWorkout: React.FC = () => {
                       >
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold">
-                            {idx + 1}. {d.title}
+                            {isArabic ? `اليوم ${idx + 1}` : `Day ${idx + 1}`}
                           </span>
                           <div className="flex items-center gap-2">
                             <button
@@ -659,19 +673,13 @@ export const MyWorkout: React.FC = () => {
                           </div>
                         ) : (
                           <p className="text-[11px] text-gray-400 italic">
-                            {isArabic ? 'يوم راحة استشفائي (Rest Day)' : 'Rest & Recovery Day'}
+                            {isArabic ? 'يوم راحة (Rest Day)' : 'Rest Day'}
                           </p>
                         )}
                       </div>
                     ))}
                   </div>
                 </div>
-              ) : (
-                <p className={`text-xs p-3 rounded-xl border ${isDark ? 'bg-[hsl(240,5%,11%)] border-gray-800 text-gray-400' : 'bg-slate-50 border-slate-200 text-slate-600'}`}>
-                  {isArabic
-                    ? 'سيتم اعتماد نظام الأيام الثابتة (Fixed Day-by-Day). يمكنك تعديل تفاصيل الأيام بعد الحفظ بالضغط على زر "تعديل الجدول".'
-                    : 'Will use Fixed Day-by-Day split mode. You can fine-tune day details afterwards using the "Edit" button.'}
-                </p>
               )}
             </div>
 
@@ -712,39 +720,14 @@ export const MyWorkout: React.FC = () => {
         >
           <div
             className={`w-full max-w-2xl max-h-[90vh] rounded-2xl border flex flex-col overflow-hidden ${
-              isDark
-                ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]'
-                : 'bg-white border-[hsl(40,10%,88%)]'
+              isDark ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,19%)]' : 'bg-white border-[hsl(40,10%,88%)]'
             }`}
           >
-            <div
-              className={`p-5 border-b flex items-center justify-between ${
-                isDark ? 'border-[hsl(240,4%,19%)]' : 'border-[hsl(40,10%,90%)]'
-              }`}
-            >
-              <div>
-                <h2 className="text-lg font-display font-bold">
-                  {isArabic ? 'تعديل الجدول الأسبوعي' : 'Edit Weekly Schedule'}
-                </h2>
-                <p
-                  className={`text-xs mt-1 ${
-                    isDark ? 'text-gray-400' : 'text-slate-500'
-                  }`}
-                >
-                  {isArabic
-                    ? 'اختر العضلات التي تريد تمرينها في كل يوم.'
-                    : 'Choose the muscle groups you want to train each day.'}
-                </p>
-              </div>
-              <button
-                onClick={handleCancel}
-                disabled={isSaving}
-                className={`p-2 rounded-lg transition-colors ${
-                  isDark
-                    ? 'hover:bg-white/10 text-gray-400'
-                    : 'hover:bg-gray-100 text-slate-500'
-                }`}
-              >
+            <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-[hsl(240,4%,19%)]' : 'border-[hsl(40,10%,90%)]'}`}>
+              <h2 className="text-lg font-display font-bold">
+                {isArabic ? 'تعديل الجدول الثابت' : 'Edit Fixed Schedule'}
+              </h2>
+              <button onClick={handleCancel} disabled={isSaving}>
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -755,49 +738,19 @@ export const MyWorkout: React.FC = () => {
                   <div
                     key={dayItem.day}
                     className={`rounded-xl border p-4 space-y-3 ${
-                      isDark
-                        ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]'
-                        : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
+                      isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]' : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-2">
-                        <CalendarDays
-                          className={`w-4 h-4 ${
-                            isDark
-                              ? 'text-[hsl(75,92%,56%)]'
-                              : 'text-[hsl(76,78%,42%)]'
-                          }`}
-                        />
-                        <h3 className="text-sm font-bold">
-                          {translateDayName(dayItem.day, lang)}
-                        </h3>
-                      </div>
+                      <h3 className="text-sm font-bold">{translateDayName(dayItem.day, lang)}</h3>
                       <button
                         type="button"
                         onClick={() => toggleRestDay(dayItem.day)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 border transition-all ${
-                          isRest
-                            ? isDark
-                              ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)]/40 text-[hsl(75,92%,56%)]'
-                              : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30 text-[hsl(76,78%,42%)]'
-                            : isDark
-                            ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-400 hover:text-white'
-                            : 'bg-white border-[hsl(40,10%,88%)] text-slate-500 hover:text-slate-900'
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                          isRest ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-500/30'
                         }`}
                       >
-                        {isRest ? (
-                          <Dumbbell className="w-3.5 h-3.5" />
-                        ) : (
-                          <Moon className="w-3.5 h-3.5" />
-                        )}
-                        {isRest
-                          ? isArabic
-                            ? 'يوم تمرين'
-                            : 'Training Day'
-                          : isArabic
-                          ? 'يوم راحة'
-                          : 'Rest Day'}
+                        {isRest ? (isArabic ? 'يوم تمرين' : 'Make Training') : (isArabic ? 'يوم راحة' : 'Make Rest')}
                       </button>
                     </div>
 
@@ -810,77 +763,26 @@ export const MyWorkout: React.FC = () => {
                               key={mg}
                               type="button"
                               onClick={() => toggleMuscleGroup(dayItem.day, mg)}
-                              className={`px-3 py-2 rounded-lg text-xs font-medium border flex items-center gap-1.5 transition-all cursor-pointer ${
-                                active
-                                  ? isDark
-                                    ? 'bg-[hsl(75,92%,56%)]/15 border-[hsl(75,92%,56%)] text-[hsl(75,92%,56%)]'
-                                    : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)] text-[hsl(76,78%,42%)]'
-                                  : isDark
-                                  ? 'bg-[hsl(240,6%,4%)] border-[hsl(240,4%,19%)] text-gray-400 hover:border-gray-500'
-                                  : 'bg-white border-[hsl(40,10%,88%)] text-slate-600 hover:border-gray-400'
+                              className={`px-3 py-2 rounded-lg text-xs font-medium border cursor-pointer ${
+                                active ? 'bg-indigo-600 text-white border-indigo-600' : isDark ? 'bg-black/20 border-gray-800 text-gray-400' : 'bg-white border-slate-200 text-slate-600'
                               }`}
                             >
-                              {active && <Check className="w-3 h-3" />}
                               {translateMuscleGroup(mg, lang)}
                             </button>
                           );
                         })}
                       </div>
                     )}
-
-                    {isRest && (
-                      <div
-                        className={`flex items-center gap-2 py-2 text-xs ${
-                          isDark ? 'text-gray-500' : 'text-slate-400'
-                        }`}
-                      >
-                        <Moon className="w-4 h-4" />
-                        {isArabic
-                          ? 'يوم راحة واستشفاء'
-                          : 'Rest and recovery day'}
-                      </div>
-                    )}
                   </div>
                 );
               })}
             </div>
-            <div
-              className={`p-4 sm:p-5 border-t flex items-center justify-end gap-2 ${
-                isDark
-                  ? 'border-[hsl(240,4%,19%)] bg-[hsl(240,5%,9%)]'
-                  : 'border-[hsl(40,10%,90%)] bg-white'
-              }`}
-            >
-              <button
-                type="button"
-                onClick={handleCancel}
-                disabled={isSaving}
-                className={`px-4 py-2.5 rounded-xl text-xs font-semibold border transition-colors cursor-pointer ${
-                  isDark
-                    ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300 hover:bg-[hsl(240,5%,15%)]'
-                    : 'bg-white border-[hsl(40,10%,88%)] text-slate-700 hover:bg-gray-50'
-                }`}
-              >
+            <div className={`p-4 sm:p-5 border-t flex items-center justify-end gap-2 ${isDark ? 'border-[hsl(240,4%,19%)] bg-[hsl(240,5%,9%)]' : 'bg-white'}`}>
+              <button onClick={handleCancel} className="px-4 py-2.5 rounded-xl text-xs font-semibold border">
                 {isArabic ? 'إلغاء' : 'Cancel'}
               </button>
-              <button
-                type="button"
-                onClick={handleSaveSchedule}
-                disabled={isSaving}
-                className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 ${
-                  isDark
-                    ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
-                    : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white'
-                }`}
-              >
-                <Save className="w-4 h-4" />
-                {isSaving
-                  ? isArabic
-                    ? 'جاري الحفظ...'
-                    : 'Saving...'
-                  : isArabic
-                  ? 'حفظ التعديلات'
-                  : 'Save Updates'}
+              <button onClick={handleSaveSchedule} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold">
+                {isArabic ? 'حفظ التعديلات' : 'Save Updates'}
               </button>
             </div>
           </div>
