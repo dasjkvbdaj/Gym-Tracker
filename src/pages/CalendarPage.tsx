@@ -787,9 +787,8 @@ export const CalendarPage: React.FC = () => {
           <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
             {calendarCells.map((cell) => {
               const dayWorkouts = workoutsByDate.get(cell.dateStr) || [];
-              const todayStr = toLocalDateString(new Date());
               const isPlannedDay = dayWorkouts.some(
-                (w) => (w.status as string) === 'planned' || (cell.dateStr > todayStr && w.status !== 'completed')
+                (w) => (w.status as string) === 'planned'
               );
               const hasStrength = dayWorkouts.some(
                 (w) => w.workoutType === 'strength' && !w.muscleGroups.includes('Cardio') && (w.status as string) !== 'planned'
@@ -840,18 +839,6 @@ export const CalendarPage: React.FC = () => {
                       {cell.dayNumber}
                     </span>
 
-                    {/* Planned Day indicator (dot) */}
-                    {isPlannedDay && !cellDayInfo.isRotation && (
-                      <span
-                        title={lang === 'ar' ? 'يوم مخطط (Plan)' : 'Planned Day'}
-                        className={`w-2.5 h-2.5 rounded-full shadow-sm ring-1 shrink-0 ${
-                          isDark 
-                            ? 'bg-amber-400 ring-amber-500/50' 
-                            : 'bg-indigo-500 ring-indigo-300'
-                        }`}
-                      />
-                    )}
-
                     {isScheduledRest && dayWorkouts.length === 0 && !cellDayInfo.isRotation && (
                       <span title="Scheduled Rest Day">
                         <Moon className="w-3 h-3 text-gray-500 opacity-60" />
@@ -859,9 +846,9 @@ export const CalendarPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Rotation Day Badge (D1, D2...) positioned underneath the date number */}
+                  {/* Rotation Day Badge (D1, D2...) with Planned yellow dot underneath */}
                   {cellDayInfo.isRotation && cellDayInfo.rotationDayNumber !== null && (
-                    <div className="w-full flex justify-center mt-0.5">
+                    <div className="w-full flex flex-col items-center mt-0.5">
                       <span
                         className={`text-[9px] sm:text-[10px] font-mono-num font-bold px-1.5 py-0.2 rounded-md border text-center ${
                           isDark
@@ -871,6 +858,21 @@ export const CalendarPage: React.FC = () => {
                       >
                         D{cellDayInfo.rotationDayNumber}
                       </span>
+                      {isPlannedDay && (
+                        <span
+                          title={lang === 'ar' ? 'خطة مستقبلية (Future Plan)' : 'Future Plan'}
+                          className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1 shadow-sm ring-1 ring-amber-500/50"
+                        />
+                      )}
+                    </div>
+                  )}
+
+                  {!cellDayInfo.isRotation && isPlannedDay && (
+                    <div className="w-full flex justify-center mt-0.5">
+                      <span
+                        title={lang === 'ar' ? 'خطة مستقبلية (Future Plan)' : 'Future Plan'}
+                        className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-sm ring-1 ring-amber-500/50"
+                      />
                     </div>
                   )}
 
@@ -929,7 +931,7 @@ export const CalendarPage: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className={`w-2.5 h-2.5 rounded-full ${isDark ? 'bg-amber-400' : 'bg-indigo-500'}`} />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
               <span>
                 {lang === 'ar' ? 'خطة مستقبلية (Future Plan)' : 'Future Plan'}
               </span>
