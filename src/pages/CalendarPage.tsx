@@ -167,7 +167,6 @@ export const CalendarPage: React.FC = () => {
   const lang = settings.language;
   const isDark = settings.theme === 'dark';
 
-  // جلب معلومات البرنامج النشط (هل هو Fixed أم Rotation؟)
   // @ts-ignore
   const activeSplitId = settings.activeSplitId || 'default';
   // @ts-ignore
@@ -178,23 +177,22 @@ export const CalendarPage: React.FC = () => {
   // @ts-ignore
   const rotationDays = activeSplitData?.daysData || [];
 
-  // دالة مساعدة لحساب معلومات اليوم بناءً على نوع الجدول (Fixed أو Rotation)
+  // دالة حساب معلومات اليوم وتثبيت بدايته (Day 1) لتكون في تاريخ 2026-11-16 (أمس الاثنين)
   const getDayScheduleInfoForDate = (dateStr: string) => {
     const meta = getDateMetadata(dateStr);
 
     if (currentSplitType === 'rotation' && Array.isArray(rotationDays) && rotationDays.length > 0) {
-      // حساب الفارق بالأيام بين التاريخ المحدد وتاريخ مرجعي ثابت (مثلاً 2025-01-01 أو اليوم الحالي) لضمان تسلسل دوري مستمر وثابت
       const [y, m, d] = dateStr.split('-').map(Number);
       const targetDateObj = new Date(y, m - 1, d);
       targetDateObj.setHours(0, 0, 0, 0);
 
-      const refDateObj = new Date(2025, 0, 1); // تاريخ مرجعي ثابت
+      // تعيين التاريخ المرجعي ليكون 16 نوفمبر 2026 كبداية لـ Day 1 تماماً كما طلبت
+      const refDateObj = new Date(2026, 10, 16); // الشهر 10 يمثل نوفمبر في جافاسكريبت (0-indexed)
       refDateObj.setHours(0, 0, 0, 0);
 
       const diffTime = targetDateObj.getTime() - refDateObj.getTime();
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       
-      // حساب مؤشر اليوم في مصفوفة الـ rotation بشكل دوري (modulo)
       const totalLen = rotationDays.length;
       let rotIndex = diffDays % totalLen;
       if (rotIndex < 0) rotIndex += totalLen;
@@ -211,7 +209,6 @@ export const CalendarPage: React.FC = () => {
       }
     }
 
-    // الوضع الثابت (Fixed Split) الافتراضي حسب أيام الأسبوع
     const standardDaySchedule = weeklySchedule.find((d) => d.day === meta.dayOfWeek);
     return {
       title: standardDaySchedule?.title || (lang === 'ar' ? 'تمرين' : 'Workout'),
@@ -273,9 +270,7 @@ export const CalendarPage: React.FC = () => {
 
   const scheduledRestDays = useMemo(() => {
     if (currentSplitType === 'rotation') {
-      const restSet = new Set<string>();
-      // في وضع الـ rotation يمكن تحديد أيام الراحة إن وجدت
-      return restSet;
+      return new Set<string>();
     }
     return new Set(
       weeklySchedule
@@ -810,7 +805,6 @@ export const CalendarPage: React.FC = () => {
               const isScheduledRest = scheduledRestDays.has(cell.dayOfWeek);
               const isSelected = cell.dateStr === selectedCalendarDate;
 
-              // جلب رقم الـ Rotation اليومي لعرضه في الخلايا إذا كان النظام Rotation
               const cellDayInfo = getDayScheduleInfoForDate(cell.dateStr);
 
               return (
@@ -851,7 +845,6 @@ export const CalendarPage: React.FC = () => {
                     >
                       {cell.dayNumber}
                     </span>
-                    {/* إذا كان الـ Split نوعه rotation، نعرض رقم الـ Day (مثل Day 1, Day 2...) في الزاوية */}
                     {cellDayInfo.isRotation && cellDayInfo.rotationDayNumber !== null && (
                       <span className={`text-[9px] font-bold px-1 rounded ${
                         isDark ? 'bg-[hsl(75,92%,56%)]/20 text-[hsl(75,92%,56%)]' : 'bg-indigo-100 text-indigo-700'
@@ -950,7 +943,6 @@ export const CalendarPage: React.FC = () => {
               <h2 className="text-lg font-display font-bold mt-0.5">
                 {formatFullDate(selectedCalendarDate, lang)}
               </h2>
-              {/* عرض معلومات الـ Rotation Day (مثل Day 2 - Push) بجانب التاريخ المحدد */}
               {selectedDaySchedule.isRotation && selectedDaySchedule.rotationDayNumber !== null && (
                 <div className="mt-1 text-xs font-bold text-amber-400">
                   {lang === 'ar' ? `اليوم الدوري: Day ${selectedDaySchedule.rotationDayNumber}` : `Rotation Day: Day ${selectedDaySchedule.rotationDayNumber}`}
