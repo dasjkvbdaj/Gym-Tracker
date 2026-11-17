@@ -185,11 +185,9 @@ export const CalendarPage: React.FC = () => {
       const targetDateObj = new Date(y, m - 1, d);
       targetDateObj.setHours(0, 0, 0, 0);
       
-      // تاريخ البداية المرجعي: الإثنين 16 نوفمبر 2026
       const refDateObj = new Date(2026, 10, 16); 
       refDateObj.setHours(0, 0, 0, 0);
 
-      // إذا كان التاريخ قبل 16 نوفمبر 2026، فلا نعرض الـ rotation (أي لا ظهور لـ D1, D2...)
       if (targetDateObj.getTime() < refDateObj.getTime()) {
         const standardDaySchedule = weeklySchedule.find((ds) => ds.day === meta.dayOfWeek);
         return {
@@ -243,6 +241,9 @@ export const CalendarPage: React.FC = () => {
     useState<string | null>(null);
 
   const [copiedWorkoutId, setCopiedWorkoutId] = useState<string | null>(null);
+
+  // حالة مؤقتة للتمارين المضافة حديثاً قبل الحفظ النهائي
+  const [tempAddedExerciseIds, setTempAddedExerciseIds] = useState<string[]>([]);
 
   const currentDayScheduleForFilter = getDayScheduleInfoForDate(selectedCalendarDate);
   const allowedMuscles = currentDayScheduleForFilter.muscleGroups || [];
@@ -392,6 +393,7 @@ export const CalendarPage: React.FC = () => {
     const defaultMuscleGroups = targetMuscles.length > 0 ? targetMuscles : ['Back' as MuscleGroup];
     setForgottenMuscleFilter(defaultMuscleGroups[0]);
     setIsPlanningMode(true);
+    setTempAddedExerciseIds([]);
 
     const newSession: WorkoutSession = {
       id: generateId('workout'),
@@ -476,6 +478,7 @@ export const CalendarPage: React.FC = () => {
     const isPlan = (session.status as string) === 'planned' || session.actualDate > todayStr;
 
     setIsPlanningMode(isPlan);
+    setTempAddedExerciseIds([]);
     setEditingWorkout(
       JSON.parse(JSON.stringify(session)) as WorkoutSession
     );
@@ -484,6 +487,7 @@ export const CalendarPage: React.FC = () => {
   const handleCloseEdit = () => {
     setEditingWorkout(null);
     setIsPlanningMode(false);
+    setTempAddedExerciseIds([]);
   };
 
   const handleEditSetChange = (
@@ -578,55 +582,70 @@ export const CalendarPage: React.FC = () => {
     setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
   };
 
-  const handleAddForgottenExercise = (exerciseId: string) => {
-    if (!editingWorkout || !exerciseId) return;
+  const handleToggleTempExercise = (exerciseId: string) => {
+    if (!editingWorkout) return;
 
     const exercise = exercises.find((item) => item.id === exerciseId);
     if (!exercise) return;
 
-    const alreadyExists = editingWorkout.exercises.some(
-      (ex) => ex.exerciseId === exerciseId
-    );
-    if (alreadyExists) return;
+    const isAlreadyAdded = tempAddedExerciseIds.includes(exerciseId) || 
+      editingWorkout.exercises.some(ex => ex.exerciseId === exerciseId);
 
-    const isCardio = isCardioExercise(exercise.name, exercise.muscleGroup);
-    const unit: WeightUnit = exercise.isBodyweight || isCardio ? 'none' : exercise.defaultWeightUnit || settings.preferredWeightUnit;
+    if (isAlreadyAdded) {
+      // إزالة التمرين إذا كان موجوداً مسبقاً مؤقتاً
+      setTempAddedExerciseIds(prev => prev.filter(id => id !== exerciseId));
+      setEditingWorkout({
+        ...editingWorkout,
+        exercises: editingWorkout.exercises.filter(ex => ex.exerciseId !== exerciseId)
+      });
+    } else {
+      // إضافته للقائمة المؤقتة فقط (وليس للعرض الفعلي حتى يتم الضغط على Save)
+      setTempAddedExerciseIds(prev => [...prev, exerciseId]);
+      
+      const isCardio = isCardioExercise(exercise.name, exercise.muscleGroup);
+      const unit: WeightUnit = exercise.isBodyweight || isCardio ? 'none' : exercise.defaultWeightUnit || settings.preferredWeightUnit;
 
-    const newEntry: ExerciseEntry = {
-      id: generateId('ex_entry'),
-      exerciseId: exercise.id,
-      exerciseNameSnapshot: exercise.name,
-      muscleGroup: exercise.muscleGroup,
-      targetMuscleSnapshot: exercise.targetMuscle || '',
-      weightType: unit,
-      sets: isPlanningMode
-        ? []
-        : [
-            {
-              id: generateId('set'),
-              setNumber: 1,
-              weight: null,
-              reps: isCardio ? 30 : 10,
-              completed: true,
-            },
-          ],
-      caloriesBurned: isCardio ? 0 : undefined,
-      notes: '',
-    };
+      const newEntry: ExerciseEntry = {
+        id: generateId('ex_entry'),
+        exerciseId: exercise.id,
+        exerciseNameSnapshot: exercise.name,
+        muscleGroup: exercise.muscleGroup,
+        targetMuscleSnapshot: exercise.targetMuscle || '',
+        weightType: unit,
+        sets: isPlanningMode
+          ? []
+          : [
+              {
+                id: generateId('set'),
+                setNumber: 1,
+                weight: null,
+                reps: isCardio ? 30 : 10,
+                completed: true,
+              },
+            ],
+        caloriesBurned: isCardio ? 0 : undefined,
+        notes: '',
+      };
 
-    const groups = editingWorkout.muscleGroups.includes(exercise.muscleGroup)
-      ? editingWorkout.muscleGroups
-      : [...editingWorkout.muscleGroups, exercise.muscleGroup];
+      const groups = editingWorkout.muscleGroups.includes(exercise.muscleGroup)
+        ? editingWorkout.muscleGroups
+        : [...editingWorkout.muscleGroups, exercise.muscleGroup];
 
-    setEditingWorkout({
-      ...editingWorkout,
-      muscleGroups: groups,
-      exercises: [...editingWorkout.exercises, newEntry],
-    });
+      setEditingWorkout({
+        ...editingWorkout,
+        muscleGroups: groups,
+        exercises: [...editingWorkout.exercises, newEntry],
+      });
+    }
   };
 
   const handleRemoveExercise = (entryId: string) => {
     if (!editingWorkout) return;
+
+    const targetEx = editingWorkout.exercises.find(ex => ex.id === entryId);
+    if (targetEx) {
+      setTempAddedExerciseIds(prev => prev.filter(id => id !== targetEx.exerciseId));
+    }
 
     const remaining = editingWorkout.exercises.filter(
       (ex) => ex.id !== entryId
@@ -649,6 +668,7 @@ export const CalendarPage: React.FC = () => {
     await saveHistoricalWorkout(sessionToSave);
     setEditingWorkout(null);
     setIsPlanningMode(false);
+    setTempAddedExerciseIds([]);
   };
 
   const handleDeleteWorkout = async () => {
@@ -874,7 +894,7 @@ export const CalendarPage: React.FC = () => {
                     {cellDayInfo.isRotation &&
                       cellDayInfo.rotationDayNumber !== null && (
                         <span
-                          className={`text-[9px] font-bold px-1 rounded ${
+                          className={`text-[9px] font-bold px-1 py-0.5 rounded ml-1 tracking-tight shrink-0 ${
                             isDark
                               ? 'bg-[hsl(75,92%,56%)]/20 text-[hsl(75,92%,56%)]'
                               : 'bg-indigo-100 text-indigo-700'
@@ -888,7 +908,7 @@ export const CalendarPage: React.FC = () => {
                         title={
                           lang === 'ar' ? 'يوم مخطط (Plan)' : 'Planned Day'
                         }
-                        className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm ring-1 ring-amber-500/50 shrink-0"
+                        className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm ring-1 ring-amber-500/50 shrink-0 mx-0.5"
                       />
                     )}
                     {isScheduledRest &&
@@ -1772,58 +1792,74 @@ export const CalendarPage: React.FC = () => {
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold">
                     {lang === 'ar'
-                      ? 'التمارين المتاحة (اضغط إضافة):'
+                      ? 'التمارين المتاحة:'
                       : 'Available Exercises:'}
                   </label>
                   <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                    {availableForgottenExercises.length === 0 ? (
+                    {exercises.filter(exercise => exercise.muscleGroup === forgottenMuscleFilter).length === 0 ? (
                       <p className="text-xs text-gray-400 py-2 text-center">
                         {lang === 'ar'
-                          ? 'تمت إضافة جميع تمارين هذه العضلة أو لا توجد تمارين متاحة.'
+                          ? 'لا توجد تمارين متاحة في هذه العضلة.'
                           : 'No available exercises in this muscle group.'}
                       </p>
                     ) : (
-                      availableForgottenExercises.map((exercise) => (
-                        <div
-                          key={exercise.id}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border ${
-                            isDark
-                              ? 'bg-[hsl(240,5%,10%)] border-gray-800'
-                              : 'bg-white border-slate-200'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold">
-                              {exercise.name}
-                            </span>
-                            {exercise.targetMuscle && (
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                  isDark
-                                    ? 'bg-gray-800 text-[hsl(75,92%,56%)]'
-                                    : 'bg-slate-200 text-slate-800'
+                      exercises
+                        .filter(exercise => exercise.muscleGroup === forgottenMuscleFilter)
+                        .map((exercise) => {
+                          const isAdded = tempAddedExerciseIds.includes(exercise.id) ||
+                            editingWorkout.exercises.some(ex => ex.exerciseId === exercise.id);
+
+                          return (
+                            <div
+                              key={exercise.id}
+                              className={`flex items-center justify-between p-2.5 rounded-xl border ${
+                                isDark
+                                  ? 'bg-[hsl(240,5%,10%)] border-gray-800'
+                                  : 'bg-white border-slate-200'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-semibold">
+                                  {exercise.name}
+                                </span>
+                                {exercise.targetMuscle && (
+                                  <span
+                                    className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                      isDark
+                                        ? 'bg-gray-800 text-[hsl(75,92%,56%)]'
+                                        : 'bg-slate-200 text-slate-800'
+                                    }`}
+                                  >
+                                    🎯 {exercise.targetMuscle}
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleTempExercise(exercise.id)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                                  isAdded
+                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                                    : isDark
+                                    ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
+                                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
                                 }`}
                               >
-                                🎯 {exercise.targetMuscle}
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleAddForgottenExercise(exercise.id)
-                            }
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                              isDark
-                                ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
-                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
-                            }`}
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
-                          </button>
-                        </div>
-                      ))
+                                {isAdded ? (
+                                  <>
+                                    <Check className="w-3.5 h-3.5" />
+                                    <span>{lang === 'ar' ? 'تمت الإضافة' : 'Added'}</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          );
+                        })
                     )}
                   </div>
                 </div>
