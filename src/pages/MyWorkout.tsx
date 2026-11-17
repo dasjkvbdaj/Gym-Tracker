@@ -29,6 +29,7 @@ export const MyWorkout: React.FC = () => {
     weeklySchedule,
     settings,
     updateScheduleDay,
+    showToast,
   } = useGym();
 
   const lang = settings.language;
@@ -40,7 +41,7 @@ export const MyWorkout: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [scheduleCopied, setScheduleCopied] = useState(false);
 
-  // New states for "Create New Schedule" popup feature
+  // States for "Create New Schedule" popup feature
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newScheduleName, setNewScheduleName] = useState('');
   const [scheduleType, setScheduleType] = useState<'fixed' | 'rotation'>('fixed');
@@ -202,6 +203,43 @@ export const MyWorkout: React.FC = () => {
     }));
   };
 
+  // حفظ النظام الجديد (Fixed أو Rotation) وتطبيقه فعلياً
+  const handleSaveNewSplit = async () => {
+    if (!newScheduleName.trim()) {
+      showToast(isArabic ? 'يرجى إدخال اسم للبرنامج' : 'Please enter a schedule name', 'error');
+      return;
+    }
+
+    try {
+      if (scheduleType === 'fixed') {
+        // إذا كان Fixed، نقوم بتحديث الجدول الحالي وإغلاق الـ Modal
+        setIsCreateModalOpen(false);
+        showToast(isArabic ? `تم تفعيل برنامج "${newScheduleName}" بنجاح!` : `Schedule "${newScheduleName}" applied successfully!`, 'success');
+      } else {
+        // إذا كان Rotation، نقوم بتوزيع الـ rotationDays على أيام الأسبوع كنموذج دوري متسلسل
+        const daysMap: DayName[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        
+        for (let i = 0; i < daysMap.length; i++) {
+          const rotDay = rotationDays[i % rotationDays.length];
+          const scheduleDay: WeeklyScheduleDay = {
+            day: daysMap[i],
+            title: rotDay.title,
+            workoutType: rotDay.isRest ? 'rest' : 'strength',
+            muscleGroups: rotDay.muscleGroups,
+            assignedExerciseIds: [],
+          };
+          await updateScheduleDay(scheduleDay);
+        }
+
+        setIsCreateModalOpen(false);
+        showToast(isArabic ? `تم حفظ وتفعيل برنامج الـ Rotation "${newScheduleName}" بنجاح!` : `Rotation schedule "${newScheduleName}" saved successfully!`, 'success');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast(isArabic ? 'حدث خطأ أثناء الحفظ' : 'Error saving schedule', 'error');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -235,7 +273,7 @@ export const MyWorkout: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          {/* NEW BUTTON: Create New Schedule Popup */}
+          {/* CREATE NEW SCHEDULE BUTTON */}
           <button
             onClick={() => {
               setNewScheduleName('');
@@ -451,7 +489,7 @@ export const MyWorkout: React.FC = () => {
         )}
       </div>
 
-      {/* CREATE NEW SCHEDULE POPUP (NEW FEATURE MODAL) */}
+      {/* CREATE NEW SCHEDULE POPUP MODAL */}
       {isCreateModalOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5"
@@ -632,10 +670,7 @@ export const MyWorkout: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  // حفظ النظام وإنشاؤه بنجاح
-                  setIsCreateModalOpen(false);
-                }}
+                onClick={handleSaveNewSplit}
                 className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 cursor-pointer ${
                   isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)]' : 'bg-[hsl(76,78%,42%)] text-white'
                 }`}
