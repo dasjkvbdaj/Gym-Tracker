@@ -182,7 +182,7 @@ export const CalendarPage: React.FC = () => {
 
   const [copiedWorkoutId, setCopiedWorkoutId] = useState<string | null>(null);
 
-  // جلب البرامج المخزنة وحساب عضلات الـ Rotation بحسب التسلسل الصحيح للـ Calendar
+  // جلب البرامج المخزنة وحساب عضلات الـ Rotation بحسب التسلسل الصحيح والمتصل للـ Calendar
   // @ts-ignore
   const activeSplitId = settings.activeSplitId || 'default';
   // @ts-ignore
@@ -195,17 +195,45 @@ export const CalendarPage: React.FC = () => {
       const rotDays = activeSplitData.daysData.filter((d: any) => !d.isRest);
       if (rotDays.length === 0) return { muscleGroups: ['Chest' as MuscleGroup] };
 
-      const sortedWorkouts = [...completedWorkouts].sort((a, b) => a.actualDate.localeCompare(b.actualDate));
-      const targetDateIndex = sortedWorkouts.findIndex(w => w.actualDate === selectedCalendarDate);
+      // ترتيب جميع التمارين المكتملة والمخططة تصاعدياً حسب التاريخ
+      const sortedWorkouts = [...completedWorkouts]
+        .sort((a, b) => a.actualDate.localeCompare(b.actualDate));
 
-      if (targetDateIndex !== -1) {
-        const rotIndex = targetDateIndex % rotDays.length;
-        return { muscleGroups: rotDays[rotIndex].muscleGroups || ['Chest'], title: rotDays[rotIndex].title };
+      // البحث عن آخر تمرين تم إنجازه أو جدولته في تاريخ يسبق أو يساوي التاريخ المحدد
+      let lastWorkout: any = null;
+      for (const w of sortedWorkouts) {
+        if (w.actualDate <= selectedCalendarDate) {
+          lastWorkout = w;
+        } else {
+          break;
+        }
       }
 
-      const dayOfYear = Math.floor((new Date(selectedCalendarDate).getTime() - new Date(new Date().getFullYear(), 0, 0).getTime()) / (1000 * 60 * 60 * 24));
-      const fallbackIndex = Math.abs(dayOfYear) % rotDays.length;
-      return { muscleGroups: rotDays[fallbackIndex].muscleGroups || ['Chest'], title: rotDays[fallbackIndex].title };
+      if (lastWorkout) {
+        // مطابقة عضلات آخر تمرين مع جدول الـ rotation لمعرفة رقمه التسلسلي
+        const matchedIndex = rotDays.findIndex((rd: any) =>
+          rd.muscleGroups.some((mg: string) => lastWorkout.muscleGroups.includes(mg as MuscleGroup))
+        );
+
+        if (matchedIndex !== -1) {
+          // حساب الفارق بالأيام بين تاريخ آخر تمرين مسجل وتاريخ اليوم المحدد في التقويم
+          const diffTime = new Date(selectedCalendarDate).getTime() - new Date(lastWorkout.actualDate).getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+          // اليوم التالي في التسلسل الدوري بناءً على الأيام المنقضية
+          const nextIndex = (matchedIndex + diffDays) % rotDays.length;
+          return {
+            muscleGroups: rotDays[nextIndex].muscleGroups || ['Chest'],
+            title: rotDays[nextIndex].title,
+          };
+        }
+      }
+
+      // إذا لم توجد تمارين سابقة، نأخذ أول يوم من الـ rotation
+      return {
+        muscleGroups: rotDays[0].muscleGroups || ['Chest'],
+        title: rotDays[0].title,
+      };
     }
 
     const selectedDateMetaForFilter = getDateMetadata(selectedCalendarDate);
