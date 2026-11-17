@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+Import React, { useMemo, useState } from 'react';
 import {
   Calendar as CalendarIcon,
   ChevronLeft,
@@ -237,8 +237,6 @@ export const CalendarPage: React.FC = () => {
   const [editingWorkout, setEditingWorkout] =
     useState<WorkoutSession | null>(null);
 
-  const [pendingExerciseIds, setPendingExerciseIds] = useState<string[]>([]);
-
   const [isPlanningMode, setIsPlanningMode] = useState(false);
 
   const [deleteConfirmId, setDeleteConfirmId] =
@@ -394,7 +392,6 @@ export const CalendarPage: React.FC = () => {
     const defaultMuscleGroups = targetMuscles.length > 0 ? targetMuscles : ['Back' as MuscleGroup];
     setForgottenMuscleFilter(defaultMuscleGroups[0]);
     setIsPlanningMode(true);
-    setPendingExerciseIds([]);
 
     const newSession: WorkoutSession = {
       id: generateId('workout'),
@@ -479,7 +476,6 @@ export const CalendarPage: React.FC = () => {
     const isPlan = (session.status as string) === 'planned' || session.actualDate > todayStr;
 
     setIsPlanningMode(isPlan);
-    setPendingExerciseIds([]);
     setEditingWorkout(
       JSON.parse(JSON.stringify(session)) as WorkoutSession
     );
@@ -488,7 +484,6 @@ export const CalendarPage: React.FC = () => {
   const handleCloseEdit = () => {
     setEditingWorkout(null);
     setIsPlanningMode(false);
-    setPendingExerciseIds([]);
   };
 
   const handleEditSetChange = (
@@ -583,19 +578,51 @@ export const CalendarPage: React.FC = () => {
     setEditingWorkout({ ...editingWorkout, exercises: updatedExercises });
   };
 
-  const handleTogglePendingExercise = (exerciseId: string) => {
+  const handleAddForgottenExercise = (exerciseId: string) => {
     if (!editingWorkout || !exerciseId) return;
+
+    const exercise = exercises.find((item) => item.id === exerciseId);
+    if (!exercise) return;
 
     const alreadyExists = editingWorkout.exercises.some(
       (ex) => ex.exerciseId === exerciseId
     );
     if (alreadyExists) return;
 
-    setPendingExerciseIds((prev) =>
-      prev.includes(exerciseId)
-        ? prev.filter((id) => id !== exerciseId)
-        : [...prev, exerciseId]
-    );
+    const isCardio = isCardioExercise(exercise.name, exercise.muscleGroup);
+    const unit: WeightUnit = exercise.isBodyweight || isCardio ? 'none' : exercise.defaultWeightUnit || settings.preferredWeightUnit;
+
+    const newEntry: ExerciseEntry = {
+      id: generateId('ex_entry'),
+      exerciseId: exercise.id,
+      exerciseNameSnapshot: exercise.name,
+      muscleGroup: exercise.muscleGroup,
+      targetMuscleSnapshot: exercise.targetMuscle || '',
+      weightType: unit,
+      sets: isPlanningMode
+        ? []
+        : [
+            {
+              id: generateId('set'),
+              setNumber: 1,
+              weight: null,
+              reps: isCardio ? 30 : 10,
+              completed: true,
+            },
+          ],
+      caloriesBurned: isCardio ? 0 : undefined,
+      notes: '',
+    };
+
+    const groups = editingWorkout.muscleGroups.includes(exercise.muscleGroup)
+      ? editingWorkout.muscleGroups
+      : [...editingWorkout.muscleGroups, exercise.muscleGroup];
+
+    setEditingWorkout({
+      ...editingWorkout,
+      muscleGroups: groups,
+      exercises: [...editingWorkout.exercises, newEntry],
+    });
   };
 
   const handleRemoveExercise = (entryId: string) => {
@@ -615,62 +642,13 @@ export const CalendarPage: React.FC = () => {
   const handleSaveWorkout = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!editingWorkout) return;
-
-    const addedEntries: ExerciseEntry[] = [];
-    const updatedGroups = [...editingWorkout.muscleGroups];
-
-    for (const exerciseId of pendingExerciseIds) {
-      const exercise = exercises.find((item) => item.id === exerciseId);
-      if (!exercise) continue;
-
-      const alreadyExists = editingWorkout.exercises.some(
-        (ex) => ex.exerciseId === exerciseId
-      );
-      if (alreadyExists) continue;
-
-      const isCardio = isCardioExercise(exercise.name, exercise.muscleGroup);
-      const unit: WeightUnit =
-        exercise.isBodyweight || isCardio
-          ? 'none'
-          : exercise.defaultWeightUnit || settings.preferredWeightUnit;
-
-      addedEntries.push({
-        id: generateId('ex_entry'),
-        exerciseId: exercise.id,
-        exerciseNameSnapshot: exercise.name,
-        muscleGroup: exercise.muscleGroup,
-        targetMuscleSnapshot: exercise.targetMuscle || '',
-        weightType: unit,
-        sets: isPlanningMode
-          ? []
-          : [
-              {
-                id: generateId('set'),
-                setNumber: 1,
-                weight: null,
-                reps: isCardio ? 30 : 10,
-                completed: true,
-              },
-            ],
-        caloriesBurned: isCardio ? 0 : undefined,
-        notes: '',
-      });
-
-      if (!updatedGroups.includes(exercise.muscleGroup)) {
-        updatedGroups.push(exercise.muscleGroup);
-      }
-    }
-
     const sessionToSave: WorkoutSession = {
       ...editingWorkout,
-      muscleGroups: updatedGroups,
-      exercises: [...editingWorkout.exercises, ...addedEntries],
       status: (isPlanningMode ? 'planned' : 'completed') as WorkoutSession['status'],
     };
     await saveHistoricalWorkout(sessionToSave);
     setEditingWorkout(null);
     setIsPlanningMode(false);
-    setPendingExerciseIds([]);
   };
 
   const handleDeleteWorkout = async () => {
@@ -859,7 +837,7 @@ export const CalendarPage: React.FC = () => {
                 <button
                   key={cell.dateStr}
                   onClick={() => setSelectedCalendarDate(cell.dateStr)}
-                  className={`min-h-[68px] sm:min-h-[82px] p-1.5 sm:p-2 rounded-xl border flex flex-col justify-between text-start transition-all cursor-pointer relative ${
+                  className={`min-h-[64px] sm:min-h-[78px] p-1.5 sm:p-2 rounded-xl border flex flex-col justify-between text-start transition-all cursor-pointer relative ${
                     !cell.isCurrentMonth ? 'opacity-40' : ''
                   } ${
                     isSelected
@@ -875,9 +853,9 @@ export const CalendarPage: React.FC = () => {
                       : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)] hover:border-[hsl(40,10%,78%)]'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-1 w-full">
+                  <div className="flex items-center justify-between w-full">
                     <span
-                      className={`font-mono-num text-xs sm:text-sm font-bold w-5 h-5 sm:w-6 sm:h-6 rounded-lg flex items-center justify-center shrink-0 ${
+                      className={`font-mono-num text-xs sm:text-sm font-bold w-6 h-6 rounded-lg flex items-center justify-center ${
                         cell.isToday
                           ? isDark
                             ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,6%,4%)]'
@@ -896,24 +874,32 @@ export const CalendarPage: React.FC = () => {
                     {cellDayInfo.isRotation &&
                       cellDayInfo.rotationDayNumber !== null && (
                         <span
-                          className={`text-[9px] sm:text-[10px] font-mono-num font-bold tracking-tight px-1.5 py-0.5 rounded-md border leading-none shrink-0 ${
+                          className={`text-[9px] font-bold px-1 rounded ${
                             isDark
-                              ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/30'
-                              : 'bg-indigo-100/80 text-indigo-700 border-indigo-200'
+                              ? 'bg-[hsl(75,92%,56%)]/20 text-[hsl(75,92%,56%)]'
+                              : 'bg-indigo-100 text-indigo-700'
                           }`}
                         >
                           D{cellDayInfo.rotationDayNumber}
                         </span>
                       )}
+                    {isPlannedDay && !cellDayInfo.isRotation && (
+                      <span
+                        title={
+                          lang === 'ar' ? 'يوم مخطط (Plan)' : 'Planned Day'
+                        }
+                        className="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-sm ring-1 ring-amber-500/50 shrink-0"
+                      />
+                    )}
                     {isScheduledRest &&
                       dayWorkouts.length === 0 &&
                       !cellDayInfo.isRotation && (
-                        <span title="Scheduled Rest Day" className="shrink-0">
+                        <span title="Scheduled Rest Day">
                           <Moon className="w-3 h-3 text-gray-500 opacity-60" />
                         </span>
                       )}
                   </div>
-                  <div className="space-y-1 mt-1.5 w-full">
+                  <div className="space-y-1 mt-1 w-full">
                     {hasStrength && (
                       <div
                         className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-semibold truncate ${
@@ -939,27 +925,6 @@ export const CalendarPage: React.FC = () => {
                         <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 shrink-0" />
                         <span className="hidden sm:inline truncate">
                           {lang === 'ar' ? 'كارديو' : 'Cardio'}
-                        </span>
-                      </div>
-                    )}
-                    {isPlannedDay && (
-                      <div
-                        title={
-                          lang === 'ar' ? 'خطة مستقبلية (Plan)' : 'Future Plan'
-                        }
-                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] font-semibold truncate ${
-                          isDark
-                            ? 'bg-violet-500/20 text-violet-300 border-violet-500/30'
-                            : 'bg-violet-100 text-violet-700 border-violet-200'
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                            isDark ? 'bg-violet-400' : 'bg-violet-600'
-                          }`}
-                        />
-                        <span className="hidden sm:inline truncate">
-                          {lang === 'ar' ? 'خطة' : 'Plan'}
                         </span>
                       </div>
                     )}
@@ -997,11 +962,7 @@ export const CalendarPage: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span
-                className={`w-3 h-3 rounded-full ${
-                  isDark ? 'bg-violet-400' : 'bg-violet-600'
-                }`}
-              />
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
               <span>
                 {lang === 'ar'
                   ? 'خطة مستقبلية (Future Plan)'
@@ -1120,8 +1081,8 @@ export const CalendarPage: React.FC = () => {
                             className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded ${
                               isPlan
                                 ? isDark
-                                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/30'
-                                  : 'bg-violet-50 text-violet-700 border border-violet-200'
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
                                 : workout.workoutType === 'cardio' ||
                                   workout.muscleGroups.includes('Cardio')
                                 ? isDark
@@ -1133,11 +1094,7 @@ export const CalendarPage: React.FC = () => {
                             }`}
                           >
                             {isPlan ? (
-                              <ClipboardList
-                                className={`w-3 h-3 ${
-                                  isDark ? 'text-violet-400' : 'text-violet-600'
-                                }`}
-                              />
+                              <ClipboardList className="w-3 h-3 text-amber-400" />
                             ) : workout.workoutType === 'cardio' ||
                               workout.muscleGroups.includes('Cardio') ? (
                               <Flame className="w-3 h-3 text-cyan-400" />
@@ -1826,62 +1783,47 @@ export const CalendarPage: React.FC = () => {
                           : 'No available exercises in this muscle group.'}
                       </p>
                     ) : (
-                      availableForgottenExercises.map((exercise) => {
-                        const isQueued = pendingExerciseIds.includes(exercise.id);
-
-                        return (
-                          <div
-                            key={exercise.id}
-                            className={`flex items-center justify-between p-2.5 rounded-xl border ${
+                      availableForgottenExercises.map((exercise) => (
+                        <div
+                          key={exercise.id}
+                          className={`flex items-center justify-between p-2.5 rounded-xl border ${
+                            isDark
+                              ? 'bg-[hsl(240,5%,10%)] border-gray-800'
+                              : 'bg-white border-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold">
+                              {exercise.name}
+                            </span>
+                            {exercise.targetMuscle && (
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                  isDark
+                                    ? 'bg-gray-800 text-[hsl(75,92%,56%)]'
+                                    : 'bg-slate-200 text-slate-800'
+                                }`}
+                              >
+                                🎯 {exercise.targetMuscle}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleAddForgottenExercise(exercise.id)
+                            }
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
                               isDark
-                                ? 'bg-[hsl(240,5%,10%)] border-gray-800'
-                                : 'bg-white border-slate-200'
+                                ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
+                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
                             }`}
                           >
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-semibold">
-                                {exercise.name}
-                              </span>
-                              {exercise.targetMuscle && (
-                                <span
-                                  className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                    isDark
-                                      ? 'bg-gray-800 text-[hsl(75,92%,56%)]'
-                                      : 'bg-slate-200 text-slate-800'
-                                  }`}
-                                >
-                                  🎯 {exercise.targetMuscle}
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                handleTogglePendingExercise(exercise.id)
-                              }
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                                isQueued
-                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-500/40'
-                                  : isDark
-                                  ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
-                                  : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
-                              }`}
-                            >
-                              {isQueued ? (
-                                <>
-                                  <Check className="w-3.5 h-3.5" />
-                                  <span>{lang === 'ar' ? 'تمت الإضافة' : 'Added'}</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Plus className="w-3.5 h-3.5" />
-                                  <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
+                          </button>
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>
