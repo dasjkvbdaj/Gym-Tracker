@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   CalendarDays,
   Check,
@@ -43,6 +43,15 @@ export const MyWorkout: React.FC = () => {
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [draftSchedule, setDraftSchedule] = useState<WeeklyScheduleDay[]>([]);
+  
+  // حالة خاصة لتعديل الـ Rotation Split النشط
+  const [draftRotationDays, setDraftRotationDays] = useState<Array<{
+    id: string;
+    title: string;
+    muscleGroups: MuscleGroup[];
+    isRest: boolean;
+  }>>([]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [scheduleCopied, setScheduleCopied] = useState(false);
 
@@ -102,13 +111,20 @@ export const MyWorkout: React.FC = () => {
   };
 
   const openEditSchedule = () => {
-    setDraftSchedule(
-      weeklySchedule.map((day) => ({
-        ...day,
-        muscleGroups: [...day.muscleGroups],
-        assignedExerciseIds: [...day.assignedExerciseIds],
-      }))
-    );
+    if (currentSplitType === 'rotation') {
+      // تجهيز نسخة معدلة لأيام الـ Rotation
+      setDraftRotationDays(
+        JSON.parse(JSON.stringify(currentRotationList))
+      );
+    } else {
+      setDraftSchedule(
+        weeklySchedule.map((day) => ({
+          ...day,
+          muscleGroups: [...day.muscleGroups],
+          assignedExerciseIds: [...day.assignedExerciseIds],
+        }))
+      );
+    }
     setIsEditModalOpen(true);
   };
 
@@ -159,22 +175,62 @@ export const MyWorkout: React.FC = () => {
     );
   };
 
+  // دوال تعديل الـ Rotation المؤقتة داخل الـ Modal
+  const handleToggleDraftRotationMuscle = (dayId: string, mg: MuscleGroup) => {
+    setDraftRotationDays(prev => prev.map(d => {
+      if (d.id !== dayId) return d;
+      const exists = d.muscleGroups.includes(mg);
+      const updatedGroups = exists ? d.muscleGroups.filter(item => item !== mg) : [...d.muscleGroups, mg];
+      return {
+        ...d,
+        muscleGroups: updatedGroups,
+        isRest: updatedGroups.length === 0,
+        title: `Day ${d.title.replace(/[^0-9]/g, '') || '1'} (${generateDayTitle(updatedGroups)})`
+      };
+    }));
+  };
+
+  const handleToggleDraftRotationRest = (dayId: string) => {
+    setDraftRotationDays(prev => prev.map(d => {
+      if (d.id !== dayId) return d;
+      const nextRest = !d.isRest;
+      return {
+        ...d,
+        isRest: nextRest,
+        muscleGroups: nextRest ? [] : ['Chest', 'Shoulders', 'Triceps'],
+        title: nextRest ? 'Rest Day' : 'Training Day'
+      };
+    }));
+  };
+
   const handleSaveSchedule = async () => {
     setIsSaving(true);
     try {
-      for (const day of draftSchedule) {
-        const updatedDay: WeeklyScheduleDay = {
-          ...day,
-          title: generateDayTitle(day.muscleGroups),
-          workoutType: day.muscleGroups.length === 0 ? 'rest' : 'strength',
-          muscleGroups: [...day.muscleGroups],
+      if (currentSplitType === 'rotation' && activeSplitData) {
+        // تحديث جدول الـ Rotation في قاعدة البيانات
+        const updatedSplitData = {
+          ...activeSplitData,
+          daysData: draftRotationDays,
         };
-        await updateScheduleDay(updatedDay);
+        await db.workoutSplits.put(updatedSplitData);
+        showToast(isArabic ? 'تم حفظ تعديلات الـ Rotation بنجاح' : 'Rotation schedule updated successfully', 'success');
+      } else {
+        // تحديث الجدول الثابت اليومي
+        for (const day of draftSchedule) {
+          const updatedDay: WeeklyScheduleDay = {
+            ...day,
+            title: generateDayTitle(day.muscleGroups),
+            workoutType: day.muscleGroups.length === 0 ? 'rest' : 'strength',
+            muscleGroups: [...day.muscleGroups],
+          };
+          await updateScheduleDay(updatedDay);
+        }
+        showToast(isArabic ? 'تم حفظ التعديلات بنجاح' : 'Schedule updated successfully', 'success');
       }
       setIsEditModalOpen(false);
-      showToast(isArabic ? 'تم حفظ التعديلات بنجاح' : 'Schedule updated successfully', 'success');
     } catch (error) {
       console.error('Failed to update weekly schedule:', error);
+      showToast(isArabic ? 'حدث خطأ أثناء الحفظ' : 'Error updating schedule', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -182,6 +238,7 @@ export const MyWorkout: React.FC = () => {
 
   const handleCancel = () => {
     setDraftSchedule([]);
+    setDraftRotationDays([]);
     setIsEditModalOpen(false);
   };
 
@@ -347,19 +404,18 @@ export const MyWorkout: React.FC = () => {
             <span>{isArabic ? 'إنشاء برنامج جديد' : 'Create New'}</span>
           </button>
 
-          {currentSplitType !== 'rotation' && (
-            <button
-              onClick={openEditSchedule}
-              className={`px-4 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
-                isDark
-                  ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
-                  : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white'
-              }`}
-            >
-              <Edit3 className="w-4 h-4" />
-              <span>{isArabic ? 'تعديل الجدول' : 'Edit'}</span>
-            </button>
-          )}
+          {/* زر التعديل أصبح يظهر دائماً سواء كان الجدول fixed أو rotation */}
+          <button
+            onClick={openEditSchedule}
+            className={`px-4 py-3 rounded-xl font-display font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg ${
+              isDark
+                ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
+                : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white'
+            }`}
+          >
+            <Edit3 className="w-4 h-4" />
+            <span>{isArabic ? 'تعديل الجدول' : 'Edit'}</span>
+          </button>
 
           <button
             onClick={handleCopySchedule}
@@ -415,7 +471,6 @@ export const MyWorkout: React.FC = () => {
         </div>
       </div>
 
-      {/* عرض الأيام: إذا كان Rotation يعرض Day 1, Day 2... بدلاً من أسماء الأسبوع */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-display font-bold text-base">
@@ -708,7 +763,7 @@ export const MyWorkout: React.FC = () => {
         </div>
       )}
 
-      {/* EDIT SCHEDULE MODAL */}
+      {/* EDIT SCHEDULE MODAL (يعمل الآن للـ Fixed وللـ Rotation معاً) */}
       {isEditModalOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5"
@@ -725,44 +780,48 @@ export const MyWorkout: React.FC = () => {
           >
             <div className={`p-5 border-b flex items-center justify-between ${isDark ? 'border-[hsl(240,4%,19%)]' : 'border-[hsl(40,10%,90%)]'}`}>
               <h2 className="text-lg font-display font-bold">
-                {isArabic ? 'تعديل الجدول الثابت' : 'Edit Fixed Schedule'}
+                {currentSplitType === 'rotation' 
+                  ? (isArabic ? 'تعديل جدول الـ Rotation' : 'Edit Rotation Schedule')
+                  : (isArabic ? 'تعديل الجدول الثابت' : 'Edit Fixed Schedule')}
               </h2>
               <button onClick={handleCancel} disabled={isSaving}>
                 <X className="w-5 h-5" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
-              {draftSchedule.map((dayItem) => {
-                const isRest = dayItem.workoutType === 'rest';
-                return (
+              {currentSplitType === 'rotation' ? (
+                // عرض نافذة تعديل أيام الـ Rotation (Day 1, Day 2...)
+                draftRotationDays.map((d, index) => (
                   <div
-                    key={dayItem.day}
+                    key={d.id || index}
                     className={`rounded-xl border p-4 space-y-3 ${
                       isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]' : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <h3 className="text-sm font-bold">{translateDayName(dayItem.day, lang)}</h3>
+                      <h3 className="text-sm font-bold">
+                        {isArabic ? `اليوم ${index + 1}` : `Day ${index + 1}`}
+                      </h3>
                       <button
                         type="button"
-                        onClick={() => toggleRestDay(dayItem.day)}
+                        onClick={() => handleToggleDraftRotationRest(d.id)}
                         className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-                          isRest ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-500/30'
+                          d.isRest ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-500/30'
                         }`}
                       >
-                        {isRest ? (isArabic ? 'يوم تمرين' : 'Make Training') : (isArabic ? 'يوم راحة' : 'Make Rest')}
+                        {d.isRest ? (isArabic ? 'يوم تمرين' : 'Make Training') : (isArabic ? 'يوم راحة' : 'Make Rest')}
                       </button>
                     </div>
 
-                    {!isRest && (
+                    {!d.isRest && (
                       <div className="flex flex-wrap gap-2">
                         {MUSCLE_GROUPS.map((mg) => {
-                          const active = dayItem.muscleGroups.includes(mg);
+                          const active = d.muscleGroups.includes(mg);
                           return (
                             <button
                               key={mg}
                               type="button"
-                              onClick={() => toggleMuscleGroup(dayItem.day, mg)}
+                              onClick={() => handleToggleDraftRotationMuscle(d.id, mg)}
                               className={`px-3 py-2 rounded-lg text-xs font-medium border cursor-pointer ${
                                 active ? 'bg-indigo-600 text-white border-indigo-600' : isDark ? 'bg-black/20 border-gray-800 text-gray-400' : 'bg-white border-slate-200 text-slate-600'
                               }`}
@@ -774,14 +833,60 @@ export const MyWorkout: React.FC = () => {
                       </div>
                     )}
                   </div>
-                );
-              })}
+                ))
+              ) : (
+                // عرض نافذة تعديل الأيام الثابتة (Monday, Tuesday...)
+                draftSchedule.map((dayItem) => {
+                  const isRest = dayItem.workoutType === 'rest';
+                  return (
+                    <div
+                      key={dayItem.day}
+                      className={`rounded-xl border p-4 space-y-3 ${
+                        isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]' : 'bg-[hsl(40,20%,97.5%)] border-[hsl(40,10%,88%)]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-bold">{translateDayName(dayItem.day, lang)}</h3>
+                        <button
+                          type="button"
+                          onClick={() => toggleRestDay(dayItem.day)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                            isRest ? 'bg-indigo-600 text-white border-indigo-600' : 'border-gray-500/30'
+                          }`}
+                        >
+                          {isRest ? (isArabic ? 'يوم تمرين' : 'Make Training') : (isArabic ? 'يوم راحة' : 'Make Rest')}
+                        </button>
+                      </div>
+
+                      {!isRest && (
+                        <div className="flex flex-wrap gap-2">
+                          {MUSCLE_GROUPS.map((mg) => {
+                            const active = dayItem.muscleGroups.includes(mg);
+                            return (
+                              <button
+                                key={mg}
+                                type="button"
+                                onClick={() => toggleMuscleGroup(dayItem.day, mg)}
+                                className={`px-3 py-2 rounded-lg text-xs font-medium border cursor-pointer ${
+                                  active ? 'bg-indigo-600 text-white border-indigo-600' : isDark ? 'bg-black/20 border-gray-800 text-gray-400' : 'bg-white border-slate-200 text-slate-600'
+                                }`}
+                              >
+                                {translateMuscleGroup(mg, lang)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
             </div>
             <div className={`p-4 sm:p-5 border-t flex items-center justify-end gap-2 ${isDark ? 'border-[hsl(240,4%,19%)] bg-[hsl(240,5%,9%)]' : 'bg-white'}`}>
               <button onClick={handleCancel} className="px-4 py-2.5 rounded-xl text-xs font-semibold border">
                 {isArabic ? 'إلغاء' : 'Cancel'}
               </button>
-              <button onClick={handleSaveSchedule} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold">
+              <button onClick={handleSaveSchedule} disabled={isSaving} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-xs font-bold cursor-pointer">
                 {isArabic ? 'حفظ التعديلات' : 'Save Updates'}
               </button>
             </div>
