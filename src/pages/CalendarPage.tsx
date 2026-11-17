@@ -177,7 +177,6 @@ export const CalendarPage: React.FC = () => {
   // @ts-ignore
   const rotationDays = activeSplitData?.daysData || [];
 
-  // دالة حساب معلومات اليوم وتثبيت بدايته (Day 1) لتكون في تاريخ 2026-11-16 (أمس الاثنين)
   const getDayScheduleInfoForDate = (dateStr: string) => {
     const meta = getDateMetadata(dateStr);
 
@@ -186,8 +185,7 @@ export const CalendarPage: React.FC = () => {
       const targetDateObj = new Date(y, m - 1, d);
       targetDateObj.setHours(0, 0, 0, 0);
 
-      // تعيين التاريخ المرجعي ليكون 16 نوفمبر 2026 كبداية لـ Day 1 تماماً كما طلبت
-      const refDateObj = new Date(2026, 10, 16); // الشهر 10 يمثل نوفمبر في جافاسكريبت (0-indexed)
+      const refDateObj = new Date(2026, 10, 16);
       refDateObj.setHours(0, 0, 0, 0);
 
       const diffTime = targetDateObj.getTime() - refDateObj.getTime();
@@ -1089,23 +1087,6 @@ export const CalendarPage: React.FC = () => {
                           )}` : ''}
                         </div>
                       </div>
-
-                      {workout.muscleGroups.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {workout.muscleGroups.map((mg) => (
-                            <span
-                              key={mg}
-                              className={`text-[10px] px-2 py-0.5 rounded font-medium ${
-                                isDark
-                                  ? 'bg-[hsl(240,6%,4%)] text-gray-300'
-                                  : 'bg-white text-slate-700'
-                              }`}
-                            >
-                              {translateMuscleGroup(mg, lang)}
-                            </span>
-                          ))}
-                        </div>
-                      )}
 
                       {expanded && (
                         <div className="space-y-3 pt-2 border-t border-inherit">
