@@ -169,14 +169,13 @@ export const CalendarPage: React.FC = () => {
 
   // @ts-ignore
   const activeSplitId = settings.activeSplitId || 'default';
+  // @ts-ignore
+  const currentSplitType = settings.activeSplitType || 'fixed';
   const savedSplits = useLiveQuery(() => db.workoutSplits.toArray(), [], []) || [];
   // @ts-ignore
   const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
-  const currentSplitType = activeSplitId === 'default' ? 'fixed' : (activeSplitData?.type || 'fixed');
   // @ts-ignore
   const rotationDays = activeSplitData?.daysData || [];
-  // @ts-ignore
-  const fixedDaysData = activeSplitData?.daysData || [];
 
   const getDayScheduleInfoForDate = (dateStr: string) => {
     const meta = getDateMetadata(dateStr);
@@ -214,21 +213,6 @@ export const CalendarPage: React.FC = () => {
         }; 
       } 
     } 
-
-    if (activeSplitId !== 'default' && Array.isArray(fixedDaysData) && fixedDaysData.length > 0) {
-      const matchedFixedDay = fixedDaysData.find((d: any) => d.day === meta.dayOfWeek);
-      if (matchedFixedDay) {
-        const isRest = matchedFixedDay.workoutType === 'rest';
-        return {
-          title: isRest ? (lang === 'ar' ? 'يوم راحة' : 'Rest Day') : (matchedFixedDay.title || matchedFixedDay.muscleGroups?.join(' + ') || (lang === 'ar' ? 'تمرين' : 'Workout')),
-          workoutType: matchedFixedDay.workoutType || 'strength',
-          muscleGroups: matchedFixedDay.muscleGroups || [],
-          isRotation: false,
-          rotationDayNumber: null,
-        };
-      }
-    }
-
     const standardDaySchedule = weeklySchedule.find((d) => d.day === meta.dayOfWeek); 
     return { 
       title: standardDaySchedule?.title || (lang === 'ar' ? 'تمرين' : 'Workout'), 
@@ -292,19 +276,12 @@ export const CalendarPage: React.FC = () => {
     if (currentSplitType === 'rotation') {
       return new Set();
     }
-    if (activeSplitId !== 'default' && Array.isArray(fixedDaysData) && fixedDaysData.length > 0) {
-      return new Set(
-        fixedDaysData
-          .filter((d: any) => d.workoutType === 'rest')
-          .map((d: any) => d.day)
-      );
-    }
     return new Set(
       weeklySchedule
         .filter((d) => d.workoutType === 'rest')
         .map((d) => d.day)
     );
-  }, [weeklySchedule, currentSplitType, activeSplitId, fixedDaysData]);
+  }, [weeklySchedule, currentSplitType]);
 
   const selectedDateWorkouts = useMemo(
     () => workoutsByDate.get(selectedCalendarDate) || [],
@@ -323,7 +300,7 @@ export const CalendarPage: React.FC = () => {
 
   const selectedDaySchedule = useMemo(
     () => getDayScheduleInfoForDate(selectedCalendarDate),
-    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays, fixedDaysData, activeSplitId]
+    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays]
   );
 
   const isTodayOrFutureDate = useMemo(() => {
@@ -869,6 +846,7 @@ export const CalendarPage: React.FC = () => {
                     )}
                   </div>
 
+                  {/* Rotation Day Badge (D1, D2...) with Planned yellow dot underneath */}
                   {cellDayInfo.isRotation && cellDayInfo.rotationDayNumber !== null && (
                     <div className="w-full flex flex-col items-center mt-0.5">
                       <span
@@ -1808,4 +1786,3 @@ export const CalendarPage: React.FC = () => {
     </div>
   );
 };
-
