@@ -34,8 +34,6 @@ import {
   UI_TEXT,
 } from '../utils/i18n';
 import { formatSetPerformance } from '../utils/unitConversion';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../database/db';
 
 export const Dashboard: React.FC = () => {
   const {
@@ -56,46 +54,11 @@ export const Dashboard: React.FC = () => {
 
   const todayStr = toLocalDateString(new Date());
   const todayMeta = getDateMetadata(todayStr);
+  const todayPlan = weeklySchedule.find(
+    (d) => d.day === todayMeta.dayOfWeek
+  );
 
-  // جلب البرامج المحفوظة للتحقق من البرنامج النشط (Rotation أو Fixed)
-  const savedSplits = useLiveQuery(() => db.workoutSplits.toArray(), [], []) || [];
-  // @ts-ignore
-  const activeSplitId = settings.activeSplitId || 'default';
-  // @ts-ignore
-  const currentSplitType = settings.activeSplitType || 'fixed';
-  // @ts-ignore
-  const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
-
-  // تحديد خطة اليوم بناءً على النظام النشط مع مطابقة دقيقة لدورة الـ Rotation والتمارين المسجلة
-  const activeDayInfo = useMemo(() => {
-    if (currentSplitType === 'rotation' && activeSplitData && Array.isArray(activeSplitData.daysData)) {
-      const rotationDays = activeSplitData.daysData;
-      if (rotationDays.length > 0) {
-        // حساب مؤشر دقيق يعتمد على عدد التمارين المكتملة أو الأيام المنقضية لتجنب القفز الخاطئ بين الأيام
-        const actualCompleted = completedWorkouts.filter(w => (w.status as string) !== 'planned');
-        const dayIndex = actualCompleted.length % rotationDays.length;
-        const rotDay = rotationDays[dayIndex];
-        
-        return {
-          isRest: rotDay.isRest || rotDay.muscleGroups?.length === 0,
-          title: rotDay.isRest ? (lang === 'ar' ? 'يوم راحة' : 'Rest Day') : rotDay.title,
-          muscleGroups: rotDay.muscleGroups || [],
-          workoutType: rotDay.isRest ? 'rest' : 'strength',
-        };
-      }
-    }
-
-    // النظام الثابت (Fixed)
-    const todayPlan = weeklySchedule.find((d) => d.day === todayMeta.dayOfWeek);
-    return {
-      isRest: todayPlan?.workoutType === 'rest' || !todayPlan || todayPlan.muscleGroups.length === 0,
-      title: todayPlan ? todayPlan.title : (lang === 'ar' ? 'يوم راحة' : 'Rest Day'),
-      muscleGroups: todayPlan ? todayPlan.muscleGroups : [],
-      workoutType: todayPlan ? todayPlan.workoutType : 'rest',
-    };
-  }, [currentSplitType, activeSplitData, weeklySchedule, todayMeta.dayOfWeek, lang, completedWorkouts]);
-
-  const isRestDay = activeDayInfo.isRest;
+  const isRestDay = todayPlan?.workoutType === 'rest';
 
   // البحث عن خطة مخصصة لليوم في التقويم (Put a Plan)
   const todayCalendarPlan = useMemo(
@@ -224,12 +187,12 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    if (activeDayInfo && activeDayInfo.workoutType !== 'rest') {
+    if (todayPlan && todayPlan.workoutType !== 'rest') {
       await startNewWorkout({
-        workoutType: activeDayInfo.workoutType as any,
-        title: activeDayInfo.title,
-        muscleGroups: activeDayInfo.muscleGroups as any,
-        exerciseIds: [],
+        workoutType: todayPlan.workoutType,
+        title: todayPlan.title,
+        muscleGroups: todayPlan.muscleGroups,
+        exerciseIds: todayPlan.assignedExerciseIds,
         actualDate: todayStr,
       });
       return;
@@ -291,10 +254,15 @@ export const Dashboard: React.FC = () => {
                     {todayCalendarPlan.title}
                   </span>
                 </>
-              ) : activeDayInfo ? (
+              ) : todayPlan ? (
                 <>
                   <span>
-                    {lang === 'ar' ? 'خطة اليوم النشطة: ' : "Today's Active Plan: "}
+                    {lang === 'ar'
+                      ? `خطة ${translateDayName(
+                          todayMeta.dayOfWeek,
+                          lang
+                        )} المقترحة: `
+                      : `${todayMeta.dayOfWeek}'s Scheduled Plan: `}
                   </span>
                   <span
                     className={`font-semibold ${
@@ -303,7 +271,7 @@ export const Dashboard: React.FC = () => {
                         : 'text-[hsl(76,78%,42%)]'
                     }`}
                   >
-                    {activeDayInfo.title}
+                    {todayPlan.title}
                   </span>
                 </>
               ) : null}
@@ -328,7 +296,7 @@ export const Dashboard: React.FC = () => {
                     : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white shadow-[hsl(76,78%,42%)]/15'
                 }`}
               >
-                <Play className={`w-4 h-4 fill-current ${isRestDay && !todayCalendarPlan ? 'hidden' : ''}`} />
+                <Play className="w-4 h-4 fill-current" />
                 <span>
                   {isRestDay && !todayCalendarPlan
                     ? lang === 'ar'
@@ -342,7 +310,6 @@ export const Dashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* باقي الأقسام تبقي كما هي بدون أي تغيير */}
       {/* 3 KPI SUMMARY CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
         {/* TOTAL SESSIONS */}
