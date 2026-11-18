@@ -121,29 +121,8 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const rawExercises = useLiveQuery(() => db.exercises.toArray(), [], []);
   const rawSchedule = useLiveQuery(() => db.weeklySchedule.toArray(), [], []);
   const rawSettings = useLiveQuery(() => db.settings.get('user_settings'), [], DEFAULT_USER_SETTINGS);
-  const rawSplits = useLiveQuery(() => db.workoutSplits.toArray(), [], []) || [];
 
   const settings: UserSettings = rawSettings || DEFAULT_USER_SETTINGS;
-
-  // Auto-sync or fallback active split if it gets deleted
-  useEffect(() => {
-    if (rawSplits.length > 0) {
-      // @ts-ignore
-      const activeExists = rawSplits.some(s => s.id === settings.activeSplitId);
-      if (!activeExists) {
-        db.settings.put({
-          ...settings,
-          // @ts-ignore
-          activeSplitId: rawSplits[0].id,
-          // @ts-ignore
-          activeSplitName: rawSplits[0].name,
-          // @ts-ignore
-          activeSplitType: rawSplits[0].type,
-          updatedAt: Date.now(),
-        });
-      }
-    }
-  }, [rawSplits, settings]);
 
   useEffect(() => {
     const htmlEl = document.documentElement;
@@ -174,22 +153,6 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [rawExercises]);
 
   const weeklySchedule = useMemo(() => {
-    // @ts-ignore
-    const activeId = settings.activeSplitId;
-    const activeSplit = rawSplits.find(s => s.id === activeId);
-
-    if (activeSplit && activeSplit.type === 'fixed' && Array.isArray(activeSplit.daysData)) {
-      const map = new Map<DayName, WeeklyScheduleDay>();
-      for (const d of activeSplit.daysData) {
-        map.set(d.day, d);
-      }
-      return ORDERED_WEEK_DAYS.map(
-        (dayName) =>
-          map.get(dayName) ||
-          DEFAULT_WEEKLY_SCHEDULE.find((d) => d.day === dayName)!
-      );
-    }
-
     const list =
       rawSchedule && rawSchedule.length > 0 ? rawSchedule : DEFAULT_WEEKLY_SCHEDULE;
     const map = new Map<DayName, WeeklyScheduleDay>();
@@ -201,7 +164,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         map.get(dayName) ||
         DEFAULT_WEEKLY_SCHEDULE.find((d) => d.day === dayName)!
     );
-  }, [rawSchedule, rawSplits, settings]);
+  }, [rawSchedule]);
 
   const workouts = useMemo(() => rawWorkouts || [], [rawWorkouts]);
 
@@ -263,6 +226,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       for (const exId of resolvedExerciseIds) {
         const libEx = exercises.find((e) => e.id === exId);
         if (libEx) {
+          // تعيين الكيلو (kg) كافتراضي دائماً للتمارين (ما عدا الكارديو/الوزن الصرف إن رغبت، وهنا جعلناها 'kg' حصراً كما طلبتم)
           const unit: WeightUnit = libEx.muscleGroup === 'Cardio' ? 'none' : 'kg';
 
           exerciseEntries.push({
@@ -551,22 +515,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateScheduleDay = async (dayConfig: WeeklyScheduleDay): Promise<void> => {
-    // @ts-ignore
-    const activeId = settings.activeSplitId;
-    const activeSplit = rawSplits.find(s => s.id === activeId);
-
-    if (activeSplit && activeSplit.type === 'fixed' && Array.isArray(activeSplit.daysData)) {
-      const updatedDays = activeSplit.daysData.map((d: any) => 
-        d.day === dayConfig.day ? dayConfig : d
-      );
-      await db.workoutSplits.put({
-        ...activeSplit,
-        daysData: updatedDays,
-      });
-    } else {
-      await db.weeklySchedule.put(dayConfig);
-    }
-
+    await db.weeklySchedule.put(dayConfig);
     showToast(
       settings.language === 'ar'
         ? 'تم تحديث جدول اليوم بنجاح'
@@ -579,7 +528,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const target = weeklySchedule.find((d) => d.day === day);
     if (!target) return;
     if (!target.assignedExerciseIds.includes(exerciseId)) {
-      await updateScheduleDay({
+      await db.weeklySchedule.put({
         ...target,
         assignedExerciseIds: [...target.assignedExerciseIds, exerciseId],
       });
@@ -589,7 +538,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const removeExerciseFromDay = async (day: DayName, exerciseId: string): Promise<void> => {
     const target = weeklySchedule.find((d) => d.day === day);
     if (!target) return;
-    await updateScheduleDay({
+    await db.weeklySchedule.put({
       ...target,
       assignedExerciseIds: target.assignedExerciseIds.filter((id) => id !== exerciseId),
     });
