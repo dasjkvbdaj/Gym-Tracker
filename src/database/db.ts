@@ -11,7 +11,6 @@ import {
   DEFAULT_WEEKLY_SCHEDULE,
 } from './defaultData';
 
-// واجهة تعريف هيكل نظام التمرين المخزن
 export interface WorkoutSplitRecord {
   id: string;
   name: string;
@@ -25,12 +24,11 @@ export class GymTrackerDatabase extends Dexie {
   exercises!: Table<Exercise, string>;
   weeklySchedule!: Table<WeeklyScheduleDay, string>;
   settings!: Table<UserSettings, string>;
-  workoutSplits!: Table<WorkoutSplitRecord, string>; // جدول تخزين البرامج المتعددة
+  workoutSplits!: Table<WorkoutSplitRecord, string>;
 
   constructor() {
     super('IronPulseGymTrackerDB');
 
-    // ترقية الإصدار إلى 2 لدعم جدول البرامج الجديدة
     this.version(1).stores({
       workouts: 'id, actualDate, status, workoutType, startTimestamp, year, month',
       exercises: 'id, name, muscleGroup, createdAt',
@@ -43,7 +41,7 @@ export class GymTrackerDatabase extends Dexie {
       exercises: 'id, name, muscleGroup, createdAt',
       weeklySchedule: 'day',
       settings: 'id',
-      workoutSplits: 'id, name, type, createdAt', // إضافة الجدول الجديد هنا
+      workoutSplits: 'id, name, type, createdAt',
     });
   }
 }
@@ -52,10 +50,6 @@ export const db = new GymTrackerDatabase();
 
 let seedPromise: Promise<void> | null = null;
 
-/**
- * Ensures the reference tables (Exercise Library, Weekly Schedule, and Settings) are initialized.
- * Never seeds fake workout history.
- */
 export async function ensureDatabaseInitialized(): Promise<void> {
   if (seedPromise) {
     return seedPromise;
@@ -64,7 +58,6 @@ export async function ensureDatabaseInitialized(): Promise<void> {
   seedPromise = (async () => {
     try {
       await db.transaction('rw', db.exercises, db.weeklySchedule, db.settings, db.workoutSplits, async () => {
-        // Purge preloaded dummy exercises to guarantee a clean, user-managed exercise library
         const DUMMY_PURGE_KEY = 'ironpulse_dummy_purged_v2';
         if (typeof window !== 'undefined' && localStorage.getItem(DUMMY_PURGE_KEY) !== 'true') {
           await db.exercises
@@ -116,9 +109,6 @@ export async function ensureDatabaseInitialized(): Promise<void> {
   return seedPromise;
 }
 
-/**
- * Generates a unique, collision-resistant ID for entities
- */
 export function generateId(prefix = 'rec'): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `${prefix}_${crypto.randomUUID()}`;
