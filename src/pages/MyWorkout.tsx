@@ -455,9 +455,6 @@ export const MyWorkout: React.FC = () => {
                   : 'bg-white border-[hsl(40,10%,88%)] text-slate-900 focus:border-indigo-600 shadow-xs'
               }`}
             >
-              <option value="default">
-                {isArabic ? '⭐ النظام الافتراضي (Standard Split)' : '⭐ Standard Weekly Split'}
-              </option>
               {savedSplits.map((split) => (
                 <option key={split.id} value={split.id}>
                   {split.name} ({split.type.toUpperCase()})
