@@ -14,6 +14,7 @@ import {
   ClipboardList,
   Copy,
   Check,
+  ArrowRightLeft,
 } from 'lucide-react';
 
 import { useGym } from '../context/GymContext';
@@ -166,6 +167,7 @@ export const CalendarPage: React.FC = () => {
 
   const lang = settings.language;
   const isDark = settings.theme === 'dark';
+  const isArabic = lang === 'ar';
 
   // @ts-ignore
   const activeSplitId = settings.activeSplitId || 'default';
@@ -197,86 +199,10 @@ export const CalendarPage: React.FC = () => {
           rotationDayNumber: null, 
         }; 
       } 
-
       const diffTime = targetDateObj.getTime() - refDateObj.getTime(); 
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
-      
-      // حساب الإزاحة الدقيقة بناءً على أيام الآحاد السابقة وماذا كان يوم السبت الذي يسبق الأحد
-      let sundayCount = 0;
-      let d2SundayCount = 0; // الآحاد التي يأتي السبت قبلها D2 (بحيث يكون الأحد D3 حرفي)
-      let tempDate = new Date(refDateObj);
-      
-      while (tempDate.getTime() <= targetDateObj.getTime()) {
-        if (tempDate.getDay() === 0) { // يوم الأحد
-          // نحسب ماذا كان يوم السبت الذي يسبقه (التاريخ - يوم واحد)
-          const satDate = new Date(tempDate);
-          satDate.setDate(satDate.getDate() - 1);
-          
-          const satDiffTime = satDate.getTime() - refDateObj.getTime();
-          const satDiffDays = Math.floor(satDiffTime / (1000 * 60 * 60 * 24));
-          
-          // حساب عدد الآحاد قبل السبت الحالي
-          let prevSundays = 0;
-          let pDate = new Date(refDateObj);
-          while (pDate.getTime() < satDate.getTime()) {
-            if (pDate.getDay() === 0) prevSundays++;
-            pDate.setDate(pDate.getDate() + 1);
-          }
-          const satRotIndex = (satDiffDays - prevSundays) % rotationDays.length;
-          const normalizedSatIndex = satRotIndex < 0 ? satRotIndex + rotationDays.length : satRotIndex;
-          
-          // إذا كان السبت D2 (أي فهرسه 1 في مصفوفة 0,1,2,3)، فالأحد سيكون D3 حرفي
-          if (normalizedSatIndex === 1) {
-            d2SundayCount++;
-          }
-          sundayCount++;
-        }
-        tempDate.setDate(tempDate.getDate() + 1);
-      }
-
-      // إذا كان اليوم هو الأحد الحالي
-      if (meta.dayOfWeek === 'Sunday') {
-        // نحسب السبت الذي يسبق هذا الأحد مباشرة لمعرفة هل كان D2 أم لا
-        const satDate = new Date(targetDateObj);
-        satDate.setDate(satDate.getDate() - 1);
-        const satDiffTime = satDate.getTime() - refDateObj.getTime();
-        const satDiffDays = Math.floor(satDiffTime / (1000 * 60 * 60 * 24));
-        
-        let prevSundays = 0;
-        let pDate = new Date(refDateObj);
-        while (pDate.getTime() < satDate.getTime()) {
-          if (pDate.getDay() === 0) prevSundays++;
-          pDate.setDate(pDate.getDate() + 1);
-        }
-        const satRotIndex = (satDiffDays - prevSundays) % rotationDays.length;
-        const normalizedSatIndex = satRotIndex < 0 ? satRotIndex + rotationDays.length : satRotIndex;
-
-        if (normalizedSatIndex === 1) {
-          // إذا كان السبت D2، فالأحد يظهر فيه D3 بشكل طبيعي
-          const sundayRotItem = rotationDays[2];
-          return {
-            title: sundayRotItem.isRest ? (lang === 'ar' ? 'يوم راحة' : 'Rest Day') : sundayRotItem.title,
-            workoutType: 'rest',
-            muscleGroups: [],
-            isRotation: true,
-            rotationDayNumber: 3,
-          };
-        } else {
-          // إذا كان السبت D1 أو D4، فالأحد يبقى راحة بدون أي رقم D تحته
-          return {
-            title: lang === 'ar' ? 'يوم راحة' : 'Rest Day',
-            workoutType: 'rest',
-            muscleGroups: [],
-            isRotation: true,
-            rotationDayNumber: null, // لا يظهر رقم D تحته
-          };
-        }
-      }
-
-      // لباقي أيام الأسبوع (بما فيها الإثنين)
-      const adjustedDiffDays = diffDays - sundayCount + d2SundayCount;
       const totalLen = rotationDays.length; 
-      let rotIndex = adjustedDiffDays % totalLen; 
+      let rotIndex = diffDays % totalLen; 
       if (rotIndex < 0) rotIndex += totalLen; 
       const matchedRotDay = rotationDays[rotIndex]; 
       if (matchedRotDay) { 
@@ -353,15 +279,13 @@ export const CalendarPage: React.FC = () => {
 
   const scheduledRestDays = useMemo(() => {
     if (currentSplitType === 'rotation') {
-      return new Set(['Sunday']);
+      return new Set();
     }
-    const restSet = new Set(
+    return new Set(
       weeklySchedule
         .filter((d) => d.workoutType === 'rest')
         .map((d) => d.day)
     );
-    restSet.add('Sunday');
-    return restSet;
   }, [weeklySchedule, currentSplitType]);
 
   const selectedDateWorkouts = useMemo(
@@ -392,6 +316,79 @@ export const CalendarPage: React.FC = () => {
   const hasWorkoutsOrPlansOnSelectedDate = useMemo(() => {
     return selectedDateWorkouts.length > 0;
   }, [selectedDateWorkouts]);
+
+  // --- FEATURE: Manual Sunday Shift Handler ---
+  const handleShiftSundayWorkout = async () => {
+    if (selectedDateMeta.dayOfWeek !== 'Sunday') return;
+
+    // Find any planned or recorded workouts on this Sunday
+    const sundayWorkouts = workoutsByDate.get(selectedCalendarDate) || [];
+    
+    // Calculate next day (Monday)
+    const [y, m, d] = selectedCalendarDate.split('-').map(Number);
+    const sundayDateObj = new Date(y, m - 1, d);
+    const mondayDateObj = new Date(sundayDateObj);
+    mondayDateObj.setDate(sundayDateObj.getDate() + 1);
+    const nextMondayStr = toLocalDateString(mondayDateObj);
+
+    try {
+      // If there are workouts/plans on Sunday, shift their date to Monday
+      if (sundayWorkouts.length > 0) {
+        for (const w of sundayWorkouts) {
+          const updatedW: WorkoutSession = {
+            ...w,
+            actualDate: nextMondayStr,
+            year: mondayDateObj.getFullYear(),
+            month: mondayDateObj.getMonth() + 1,
+            dayOfMonth: mondayDateObj.getDate(),
+            dayOfWeek: 'Monday',
+          };
+          await saveHistoricalWorkout(updatedW);
+          // Delete original from Sunday if IDs differ or update via save
+          if (w.id !== updatedW.id) {
+            await deleteWorkout(w.id);
+          } else {
+            // Remove old date entry if needed, but saveHistoricalWorkout handles put
+            // If actualDate changed, ensure old entry is cleaned up if it was stored under key
+          }
+        }
+      } else {
+        // If no explicit workout is logged, create a planned session for Monday based on Sunday's schedule info
+        const sched = getDayScheduleInfoForDate(selectedCalendarDate);
+        if (sched && sched.workoutType !== 'rest' && sched.muscleGroups.length > 0) {
+          const newPlannedSession: WorkoutSession = {
+            id: generateId('workout'),
+            title: sched.title,
+            workoutType: sched.workoutType,
+            muscleGroups: sched.muscleGroups,
+            startTimestamp: Date.now(),
+            finishTimestamp: null,
+            status: 'planned',
+            exercises: [],
+            actualDate: nextMondayStr,
+            year: mondayDateObj.getFullYear(),
+            month: mondayDateObj.getMonth() + 1,
+            dayOfMonth: mondayDateObj.getDate(),
+            dayOfWeek: 'Monday',
+            durationMinutes: null,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+            notes: '',
+          };
+          await saveHistoricalWorkout(newPlannedSession);
+        }
+      }
+
+      showToast(
+        isArabic 
+          ? 'تم تحويل يوم الأحد إلى راحة وترحيل تمرينه إلى الإثنين بنجاح!' 
+          : 'Sunday converted to rest and workout shifted to Monday successfully!',
+        'success'
+      );
+    } catch (err) {
+      console.error(err);
+      showToast(isArabic ? 'حدث خطأ أثناء الترحيل' : 'Error shifting workout', 'error');
+    }
+  };
 
   const handleCopyWorkoutDetails = (workout: WorkoutSession, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -1050,6 +1047,27 @@ export const CalendarPage: React.FC = () => {
               >
                 {selectedDateRelativeLabel}
               </span>
+              
+              {/* --- SUNDAY MANUAL SHIFT FEATURE BUTTON --- */}
+              {selectedDateMeta.dayOfWeek === 'Sunday' && (
+                <div className="mt-3">
+                  <button
+                    onClick={handleShiftSundayWorkout}
+                    className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer border ${
+                      isDark
+                        ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'
+                        : 'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300 shadow-xs'
+                    }`}
+                    title={isArabic ? 'تحويل الأحد لراحة وترحيل التمرين للإثنين' : 'Make Sunday rest and shift workout to Monday'}
+                  >
+                    <ArrowRightLeft className="w-4 h-4" />
+                    <span>
+                      {lang === 'ar' ? 'تأجيل تمرين الأحد للإثنين (Rest & Shift)' : 'Rest Sunday & Shift to Mon'}
+                    </span>
+                  </button>
+                </div>
+              )}
+
               {selectedDaySchedule && (
                 <div className="mt-3 space-y-2">
                   <p
