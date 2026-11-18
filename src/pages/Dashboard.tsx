@@ -66,16 +66,16 @@ export const Dashboard: React.FC = () => {
   // @ts-ignore
   const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
 
-  // تحديد خطة اليوم بناءً على النظام النشط بدقة مطابقة لصفحة My Workout
+  // تحديد خطة اليوم بناءً على النظام النشط مع مطابقة دقيقة لدورة الـ Rotation والتمارين المسجلة
   const activeDayInfo = useMemo(() => {
     if (currentSplitType === 'rotation' && activeSplitData && Array.isArray(activeSplitData.daysData)) {
-      // حساب يومي دوري بناءً على الأيام المنقضية أو استخدام فهرس يعتمد على الأيام المسجلة / أو اليوم الحالي
-      // كحل دقيق ومتناسق مع نظام الـ rotation المتبع:
       const rotationDays = activeSplitData.daysData;
       if (rotationDays.length > 0) {
-        // حساب مؤشر يعتمد على تاريخ اليوم لتدوير الأيام بشكل متسلسل ومستقر
-        const dayIndex = Math.abs(Math.floor(new Date().getTime() / (1000 * 60 * 60 * 24))) % rotationDays.length;
+        // حساب مؤشر دقيق يعتمد على عدد التمارين المكتملة أو الأيام المنقضية لتجنب القفز الخاطئ بين الأيام
+        const actualCompleted = completedWorkouts.filter(w => (w.status as string) !== 'planned');
+        const dayIndex = actualCompleted.length % rotationDays.length;
         const rotDay = rotationDays[dayIndex];
+        
         return {
           isRest: rotDay.isRest || rotDay.muscleGroups?.length === 0,
           title: rotDay.isRest ? (lang === 'ar' ? 'يوم راحة' : 'Rest Day') : rotDay.title,
@@ -93,7 +93,7 @@ export const Dashboard: React.FC = () => {
       muscleGroups: todayPlan ? todayPlan.muscleGroups : [],
       workoutType: todayPlan ? todayPlan.workoutType : 'rest',
     };
-  }, [currentSplitType, activeSplitData, weeklySchedule, todayMeta.dayOfWeek, lang]);
+  }, [currentSplitType, activeSplitData, weeklySchedule, todayMeta.dayOfWeek, lang, completedWorkouts]);
 
   const isRestDay = activeDayInfo.isRest;
 
