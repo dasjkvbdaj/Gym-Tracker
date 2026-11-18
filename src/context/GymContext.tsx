@@ -125,7 +125,7 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const settings: UserSettings = rawSettings || DEFAULT_USER_SETTINGS;
 
-  // مزامنة البرنامج النشط تلقائياً إذا تم حذف البرنامج الحالي
+  // Auto-sync or fallback active split if it gets deleted
   useEffect(() => {
     if (rawSplits.length > 0) {
       // @ts-ignore
@@ -174,7 +174,6 @@ export const GymProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [rawExercises]);
 
   const weeklySchedule = useMemo(() => {
-    // ربط الجدول الأسبوعي بالبرنامج النشط إذا كان نوعه fixed ومحفوظاً كـ split
     // @ts-ignore
     const activeId = settings.activeSplitId;
     const activeSplit = rawSplits.find(s => s.id === activeId);
