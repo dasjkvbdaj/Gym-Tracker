@@ -178,6 +178,25 @@ export const CalendarPage: React.FC = () => {
   const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
   // @ts-ignore
   const rotationDays = activeSplitData?.daysData || [];
+  // @ts-ignore
+  const shiftOffsets: Record<string, number> = activeSplitData?.shiftOffsets || {};
+
+  // Helper to compute cumulative shift offset for a given date string
+  const getCumulativeShiftForDate = (dateStr: string) => {
+    if (!shiftOffsets || Object.keys(shiftOffsets).length === 0) return 0;
+    let totalShift = 0;
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const targetTime = new Date(y, m - 1, d).getTime();
+
+    for (const [sDate, offsetVal] of Object.entries(shiftOffsets)) {
+      const [sy, sm, sd] = sDate.split('-').map(Number);
+      const sTime = new Date(sy, sm - 1, sd).getTime();
+      if (targetTime >= sTime) {
+        totalShift += (offsetVal as number);
+      }
+    }
+    return totalShift;
+  };
 
   const getDayScheduleInfoForDate = (dateStr: string) => {
     const meta = getDateMetadata(dateStr);
@@ -200,7 +219,12 @@ export const CalendarPage: React.FC = () => {
         }; 
       } 
       const diffTime = targetDateObj.getTime() - refDateObj.getTime(); 
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+      const rawDiffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+      
+      // Apply cumulative manual shift offset
+      const manualShift = getCumulativeShiftForDate(dateStr);
+      const diffDays = rawDiffDays - manualShift;
+
       const totalLen = rotationDays.length; 
       let rotIndex = diffDays % totalLen; 
       if (rotIndex < 0) rotIndex += totalLen; 
@@ -305,7 +329,7 @@ export const CalendarPage: React.FC = () => {
 
   const selectedDaySchedule = useMemo(
     () => getDayScheduleInfoForDate(selectedCalendarDate),
-    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays, activeSplitData]
+    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays, activeSplitData, shiftOffsets]
   );
 
   const isTodayOrFutureDate = useMemo(() => {
@@ -317,14 +341,11 @@ export const CalendarPage: React.FC = () => {
     return selectedDateWorkouts.length > 0;
   }, [selectedDateWorkouts]);
 
-  // --- FEATURE: Manual Sunday Shift Handler ---
+  // --- UPDATED FEATURE: Manual Sunday Shift Handler with Dynamic Offset Integration ---
   const handleShiftSundayWorkout = async () => {
     if (selectedDateMeta.dayOfWeek !== 'Sunday') return;
 
-    // Find any planned or recorded workouts on this Sunday
     const sundayWorkouts = workoutsByDate.get(selectedCalendarDate) || [];
-    
-    // Calculate next day (Monday)
     const [y, m, d] = selectedCalendarDate.split('-').map(Number);
     const sundayDateObj = new Date(y, m - 1, d);
     const mondayDateObj = new Date(sundayDateObj);
@@ -332,7 +353,7 @@ export const CalendarPage: React.FC = () => {
     const nextMondayStr = toLocalDateString(mondayDateObj);
 
     try {
-      // If there are workouts/plans on Sunday, shift their date to Monday
+      // 1. Shift recorded/planned workouts from Sunday to Monday
       if (sundayWorkouts.length > 0) {
         for (const w of sundayWorkouts) {
           const updatedW: WorkoutSession = {
@@ -344,16 +365,12 @@ export const CalendarPage: React.FC = () => {
             dayOfWeek: 'Monday',
           };
           await saveHistoricalWorkout(updatedW);
-          // Delete original from Sunday if IDs differ or update via save
           if (w.id !== updatedW.id) {
             await deleteWorkout(w.id);
-          } else {
-            // Remove old date entry if needed, but saveHistoricalWorkout handles put
-            // If actualDate changed, ensure old entry is cleaned up if it was stored under key
           }
         }
       } else {
-        // If no explicit workout is logged, create a planned session for Monday based on Sunday's schedule info
+        // Create planned session for Monday if none existed
         const sched = getDayScheduleInfoForDate(selectedCalendarDate);
         if (sched && sched.workoutType !== 'rest' && sched.muscleGroups.length > 0) {
           const newPlannedSession: WorkoutSession = {
@@ -378,10 +395,22 @@ export const CalendarPage: React.FC = () => {
         }
       }
 
+      // 2. Update shift offsets in active split so rotation formula adjusts from this Sunday forward
+      if (activeSplitData) {
+        const updatedOffsets = { ...(activeSplitData.shiftOffsets || {}) };
+        updatedOffsets[selectedCalendarDate] = (updatedOffsets[selectedCalendarDate] || 0) + 1;
+
+        const updatedSplitData = {
+          ...activeSplitData,
+          shiftOffsets: updatedOffsets,
+        };
+        await db.workoutSplits.put(updatedSplitData);
+      }
+
       showToast(
         isArabic 
-          ? 'تم تحويل يوم الأحد إلى راحة وترحيل تمرينه إلى الإثنين بنجاح!' 
-          : 'Sunday converted to rest and workout shifted to Monday successfully!',
+          ? 'تم تحويل يوم الأحد إلى راحة وترحيل تمرينه إلى الإثنين بنجاح وتحديث الجدول!' 
+          : 'Sunday converted to rest and workout shifted to Monday successfully with schedule updated!',
         'success'
       );
     } catch (err) {
