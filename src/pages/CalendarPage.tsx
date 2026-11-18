@@ -180,17 +180,6 @@ export const CalendarPage: React.FC = () => {
   const getDayScheduleInfoForDate = (dateStr: string) => {
     const meta = getDateMetadata(dateStr);
 
-    // قاعدة حماية يوم الأحد: جعله يوم راحة دائماً وترحيل التمارين
-    if (meta.dayOfWeek === 'Sunday') {
-      return {
-        title: lang === 'ar' ? 'يوم راحة' : 'Rest Day',
-        workoutType: 'rest',
-        muscleGroups: [],
-        isRotation: currentSplitType === 'rotation',
-        rotationDayNumber: null,
-      };
-    }
-
     if (currentSplitType === 'rotation' && Array.isArray(rotationDays) && rotationDays.length > 0) { 
       const [y, m, d] = dateStr.split('-').map(Number); 
       const targetDateObj = new Date(y, m - 1, d); 
@@ -208,20 +197,84 @@ export const CalendarPage: React.FC = () => {
           rotationDayNumber: null, 
         }; 
       } 
+
       const diffTime = targetDateObj.getTime() - refDateObj.getTime(); 
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
       
-      // حساب عدد أيام الآحاد السابقة لتعويض إزاحة الجدول بسبب راحة الأحد
+      // حساب الإزاحة الدقيقة بناءً على أيام الآحاد السابقة وماذا كان يوم السبت الذي يسبق الأحد
       let sundayCount = 0;
+      let d2SundayCount = 0; // الآحاد التي يأتي السبت قبلها D2 (بحيث يكون الأحد D3 حرفي)
       let tempDate = new Date(refDateObj);
-      while (tempDate.getTime() < targetDateObj.getTime()) {
-        if (tempDate.getDay() === 0) { // الأحد
+      
+      while (tempDate.getTime() <= targetDateObj.getTime()) {
+        if (tempDate.getDay() === 0) { // يوم الأحد
+          // نحسب ماذا كان يوم السبت الذي يسبقه (التاريخ - يوم واحد)
+          const satDate = new Date(tempDate);
+          satDate.setDate(satDate.getDate() - 1);
+          
+          const satDiffTime = satDate.getTime() - refDateObj.getTime();
+          const satDiffDays = Math.floor(satDiffTime / (1000 * 60 * 60 * 24));
+          
+          // حساب عدد الآحاد قبل السبت الحالي
+          let prevSundays = 0;
+          let pDate = new Date(refDateObj);
+          while (pDate.getTime() < satDate.getTime()) {
+            if (pDate.getDay() === 0) prevSundays++;
+            pDate.setDate(pDate.getDate() + 1);
+          }
+          const satRotIndex = (satDiffDays - prevSundays) % rotationDays.length;
+          const normalizedSatIndex = satRotIndex < 0 ? satRotIndex + rotationDays.length : satRotIndex;
+          
+          // إذا كان السبت D2 (أي فهرسه 1 في مصفوفة 0,1,2,3)، فالأحد سيكون D3 حرفي
+          if (normalizedSatIndex === 1) {
+            d2SundayCount++;
+          }
           sundayCount++;
         }
         tempDate.setDate(tempDate.getDate() + 1);
       }
 
-      const adjustedDiffDays = diffDays - sundayCount;
+      // إذا كان اليوم هو الأحد الحالي
+      if (meta.dayOfWeek === 'Sunday') {
+        // نحسب السبت الذي يسبق هذا الأحد مباشرة لمعرفة هل كان D2 أم لا
+        const satDate = new Date(targetDateObj);
+        satDate.setDate(satDate.getDate() - 1);
+        const satDiffTime = satDate.getTime() - refDateObj.getTime();
+        const satDiffDays = Math.floor(satDiffTime / (1000 * 60 * 60 * 24));
+        
+        let prevSundays = 0;
+        let pDate = new Date(refDateObj);
+        while (pDate.getTime() < satDate.getTime()) {
+          if (pDate.getDay() === 0) prevSundays++;
+          pDate.setDate(pDate.getDate() + 1);
+        }
+        const satRotIndex = (satDiffDays - prevSundays) % rotationDays.length;
+        const normalizedSatIndex = satRotIndex < 0 ? satRotIndex + rotationDays.length : satRotIndex;
+
+        if (normalizedSatIndex === 1) {
+          // إذا كان السبت D2، فالأحد يظهر فيه D3 بشكل طبيعي
+          const sundayRotItem = rotationDays[2];
+          return {
+            title: sundayRotItem.isRest ? (lang === 'ar' ? 'يوم راحة' : 'Rest Day') : sundayRotItem.title,
+            workoutType: 'rest',
+            muscleGroups: [],
+            isRotation: true,
+            rotationDayNumber: 3,
+          };
+        } else {
+          // إذا كان السبت D1 أو D4، فالأحد يبقى راحة بدون أي رقم D تحته
+          return {
+            title: lang === 'ar' ? 'يوم راحة' : 'Rest Day',
+            workoutType: 'rest',
+            muscleGroups: [],
+            isRotation: true,
+            rotationDayNumber: null, // لا يظهر رقم D تحته
+          };
+        }
+      }
+
+      // لباقي أيام الأسبوع (بما فيها الإثنين)
+      const adjustedDiffDays = diffDays - sundayCount + d2SundayCount;
       const totalLen = rotationDays.length; 
       let rotIndex = adjustedDiffDays % totalLen; 
       if (rotIndex < 0) rotIndex += totalLen; 
@@ -300,8 +353,7 @@ export const CalendarPage: React.FC = () => {
 
   const scheduledRestDays = useMemo(() => {
     if (currentSplitType === 'rotation') {
-      const restSet = new Set(['Sunday']);
-      return restSet;
+      return new Set(['Sunday']);
     }
     const restSet = new Set(
       weeklySchedule
