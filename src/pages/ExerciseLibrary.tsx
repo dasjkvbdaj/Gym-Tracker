@@ -19,6 +19,9 @@ import {
   WeightUnit,
 } from '../types/workout';
 import {
+  formatFullDate,
+} from '../utils/dateUtils';
+import {
   MUSCLE_GROUPS,
   translateDayName,
   translateMuscleGroup,
@@ -705,7 +708,7 @@ export const ExerciseLibrary: React.FC = () => {
                             : 'text-[hsl(76,78%,42%)]'
                         }`}
                       >
-                        {log.actualDate}
+                        {formatFullDate(log.actualDate, lang)}
                       </span>
 
                       <span className="font-mono-num uppercase text-gray-400">
