@@ -213,7 +213,13 @@ export const CalendarPage: React.FC = () => {
         }; 
       } 
     } 
-    const standardDaySchedule = weeklySchedule.find((d) => d.day === meta.dayOfWeek); 
+
+    let fixedList = weeklySchedule;
+    if (activeSplitId !== 'default' && activeSplitData && Array.isArray(activeSplitData.daysData)) {
+      fixedList = activeSplitData.daysData;
+    }
+
+    const standardDaySchedule = fixedList.find((d: any) => d.day === meta.dayOfWeek); 
     return { 
       title: standardDaySchedule?.title || (lang === 'ar' ? 'تمرين' : 'Workout'), 
       workoutType: standardDaySchedule?.workoutType || 'strength', 
@@ -300,7 +306,7 @@ export const CalendarPage: React.FC = () => {
 
   const selectedDaySchedule = useMemo(
     () => getDayScheduleInfoForDate(selectedCalendarDate),
-    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays]
+    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays, activeSplitData]
   );
 
   const isTodayOrFutureDate = useMemo(() => {
@@ -846,7 +852,6 @@ export const CalendarPage: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Rotation Day Badge (D1, D2...) with Planned yellow dot underneath */}
                   {cellDayInfo.isRotation && cellDayInfo.rotationDayNumber !== null && (
                     <div className="w-full flex flex-col items-center mt-0.5">
                       <span
