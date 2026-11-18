@@ -1018,7 +1018,7 @@ export const CalendarPage: React.FC = () => {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+              <div className="space-y-3">
                 {selectedDateWorkouts.map((workout) => {
                   const isPlan = (workout.status as string) === 'planned';
                   const isCopied = copiedWorkoutId === workout.id;
