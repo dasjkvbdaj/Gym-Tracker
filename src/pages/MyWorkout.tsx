@@ -11,6 +11,7 @@ import {
   Plus,
   RefreshCw,
   ChevronDown,
+  Trash2,
 } from 'lucide-react';
 
 import { useGym } from '../context/GymContext';
@@ -44,12 +45,17 @@ export const MyWorkout: React.FC = () => {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [draftSchedule, setDraftSchedule] = useState<WeeklyScheduleDay[]>([]);
   
-  // حالة خاصة لتعديل الـ Rotation Split النشط
   const [draftRotationDays, setDraftRotationDays] = useState<Array<{
     id: string;
     title: string;
     muscleGroups: MuscleGroup[];
     isRest: boolean;
+  }>>([]);
+
+  const [draftFixedDays, setDraftFixedDays] = useState<Array<{
+    day: DayName;
+    muscleGroups: MuscleGroup[];
+    workoutType: 'strength' | 'rest';
   }>>([]);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -73,7 +79,6 @@ export const MyWorkout: React.FC = () => {
     { id: '4', title: 'Day 4 (Rest)', muscleGroups: [], isRest: true },
   ]);
 
-  // حالة الأيام الثابتة عند إنشاء برنامج جديد (Fixed Days Creation)
   const [newFixedDays, setNewFixedDays] = useState<Array<{
     day: DayName;
     muscleGroups: MuscleGroup[];
@@ -94,18 +99,32 @@ export const MyWorkout: React.FC = () => {
   const currentSplitType = settings.activeSplitType || 'fixed';
   // @ts-ignore
   const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
-  const currentRotationList = activeSplitData?.daysData || rotationDays;
+
+  // تحديد القائمة الحالية بناءً على الـ Split النشط سواء كان Fixed أو Rotation
+  const currentDaysList = useMemo(() => {
+    if (activeSplitId === 'default') {
+      return weeklySchedule;
+    }
+    if (activeSplitData) {
+      return activeSplitData.daysData;
+    }
+    return weeklySchedule;
+  }, [activeSplitId, activeSplitData, weeklySchedule]);
 
   const trainingDays = useMemo(() => {
-    if (currentSplitType === 'rotation' && Array.isArray(currentRotationList)) {
-      return currentRotationList.filter((d: any) => !d.isRest && d.muscleGroups?.length > 0);
+    if (activeSplitId === 'default') {
+      return weeklySchedule.filter(
+        (day) => day.workoutType !== 'rest' && day.muscleGroups.length > 0
+      );
     }
-    return weeklySchedule.filter(
-      (day) =>
-        day.workoutType !== 'rest' &&
-        day.muscleGroups.length > 0
-    );
-  }, [weeklySchedule, currentSplitType, currentRotationList]);
+    if (activeSplitData?.type === 'rotation' && Array.isArray(activeSplitData.daysData)) {
+      return activeSplitData.daysData.filter((d: any) => !d.isRest && d.muscleGroups?.length > 0);
+    }
+    if (activeSplitData?.type === 'fixed' && Array.isArray(activeSplitData.daysData)) {
+      return activeSplitData.daysData.filter((d: any) => d.workoutType !== 'rest' && d.muscleGroups?.length > 0);
+    }
+    return [];
+  }, [weeklySchedule, activeSplitId, activeSplitData]);
 
   const generateDayTitle = (groups: MuscleGroup[]) => {
     if (groups.length === 0) {
@@ -115,9 +134,9 @@ export const MyWorkout: React.FC = () => {
   };
 
   const handleCopySchedule = () => {
-    const scheduleText = currentSplitType === 'rotation'
-      ? currentRotationList.map((d: any, idx: number) => `Day ${idx + 1} (${d.title}): ${d.isRest ? 'Rest' : d.muscleGroups.join(', ')}`).join('\n')
-      : weeklySchedule.map((day) => `${translateDayName(day.day, lang)}: ${day.muscleGroups.join(', ')}`).join('\n');
+    const scheduleText = activeSplitData?.type === 'rotation'
+      ? activeSplitData.daysData.map((d: any, idx: number) => `Day ${idx + 1} (${d.title}): ${d.isRest ? 'Rest' : d.muscleGroups.join(', ')}`).join('\n')
+      : currentDaysList.map((day: any) => `${translateDayName(day.day, lang)}: ${day.muscleGroups.join(', ')}`).join('\n');
 
     navigator.clipboard.writeText(scheduleText).then(() => {
       setScheduleCopied(true);
@@ -126,11 +145,7 @@ export const MyWorkout: React.FC = () => {
   };
 
   const openEditSchedule = () => {
-    if (currentSplitType === 'rotation') {
-      setDraftRotationDays(
-        JSON.parse(JSON.stringify(currentRotationList))
-      );
-    } else {
+    if (activeSplitId === 'default') {
       setDraftSchedule(
         weeklySchedule.map((day) => ({
           ...day,
@@ -138,8 +153,41 @@ export const MyWorkout: React.FC = () => {
           assignedExerciseIds: [...day.assignedExerciseIds],
         }))
       );
+    } else if (activeSplitData?.type === 'rotation') {
+      setDraftRotationDays(
+        JSON.parse(JSON.stringify(activeSplitData.daysData))
+      );
+    } else if (activeSplitData?.type === 'fixed') {
+      setDraftFixedDays(
+        JSON.parse(JSON.stringify(activeSplitData.daysData))
+      );
     }
     setIsEditModalOpen(true);
+  };
+
+  const toggleDraftFixedMuscle = (dayName: DayName, mg: MuscleGroup) => {
+    setDraftFixedDays(prev => prev.map(d => {
+      if (d.day !== dayName) return d;
+      const exists = d.muscleGroups.includes(mg);
+      const updatedGroups = exists ? d.muscleGroups.filter(item => item !== mg) : [...d.muscleGroups, mg];
+      return {
+        ...d,
+        muscleGroups: updatedGroups,
+        workoutType: updatedGroups.length === 0 ? 'rest' : 'strength'
+      };
+    }));
+  };
+
+  const toggleDraftFixedRest = (dayName: DayName) => {
+    setDraftFixedDays(prev => prev.map(d => {
+      if (d.day !== dayName) return d;
+      const isRest = d.workoutType === 'rest';
+      return {
+        ...d,
+        workoutType: isRest ? 'strength' : 'rest',
+        muscleGroups: isRest ? ['Chest', 'Shoulders', 'Triceps'] : []
+      };
+    }));
   };
 
   const toggleMuscleGroup = (
@@ -244,14 +292,7 @@ export const MyWorkout: React.FC = () => {
   const handleSaveSchedule = async () => {
     setIsSaving(true);
     try {
-      if (currentSplitType === 'rotation' && activeSplitData) {
-        const updatedSplitData = {
-          ...activeSplitData,
-          daysData: draftRotationDays,
-        };
-        await db.workoutSplits.put(updatedSplitData);
-        showToast(isArabic ? 'تم حفظ تعديلات الـ Rotation بنجاح' : 'Rotation schedule updated successfully', 'success');
-      } else {
+      if (activeSplitId === 'default') {
         for (const day of draftSchedule) {
           const updatedDay: WeeklyScheduleDay = {
             ...day,
@@ -262,6 +303,13 @@ export const MyWorkout: React.FC = () => {
           await updateScheduleDay(updatedDay);
         }
         showToast(isArabic ? 'تم حفظ التعديلات بنجاح' : 'Schedule updated successfully', 'success');
+      } else if (activeSplitData) {
+        const updatedSplitData = {
+          ...activeSplitData,
+          daysData: activeSplitData.type === 'rotation' ? draftRotationDays : draftFixedDays,
+        };
+        await db.workoutSplits.put(updatedSplitData);
+        showToast(isArabic ? 'تم حفظ تعديلات البرنامج بنجاح' : 'Split schedule updated successfully', 'success');
       }
       setIsEditModalOpen(false);
     } catch (error) {
@@ -275,6 +323,7 @@ export const MyWorkout: React.FC = () => {
   const handleCancel = () => {
     setDraftSchedule([]);
     setDraftRotationDays([]);
+    setDraftFixedDays([]);
     setIsEditModalOpen(false);
   };
 
@@ -321,7 +370,7 @@ export const MyWorkout: React.FC = () => {
         createdAt: Date.now(),
       };
 
-      await db.workoutSplits.put(splitData);
+      await db.workoutSplits.put(newSplitId ? splitData : splitData);
 
       await updateSettings({
         // @ts-ignore
@@ -342,6 +391,44 @@ export const MyWorkout: React.FC = () => {
     } catch (err) {
       console.error(err);
       showToast(isArabic ? 'حدث خطأ أثناء الحفظ' : 'Error saving schedule', 'error');
+    }
+  };
+
+  // ميزة حذف البرنامج النشط من القاعدة والـ UI
+  const handleDeleteCurrentSplit = async () => {
+    if (activeSplitId === 'default') {
+      showToast(isArabic ? 'لا يمكن حذف النظام الافتراضي' : 'Cannot delete default split', 'error');
+      return;
+    }
+
+    const confirmDelete = window.confirm(
+      isArabic 
+        ? 'هل أنت متأكد من رغبتك في حذف هذا البرنامج نهائياً؟' 
+        : 'Are you sure you want to permanently delete this split?'
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await db.workoutSplits.delete(activeSplitId);
+      
+      // العودة إلى النظام الافتراضي بعد الحذف
+      await updateSettings({
+        // @ts-ignore
+        activeSplitId: 'default',
+        // @ts-ignore
+        activeSplitName: 'Standard Split',
+        // @ts-ignore
+        activeSplitType: 'fixed',
+      });
+
+      showToast(
+        isArabic ? 'تم حذف البرنامج بنجاح' : 'Split deleted successfully',
+        'success'
+      );
+    } catch (err) {
+      console.error(err);
+      showToast(isArabic ? 'حدث خطأ أثناء الحذف' : 'Error deleting split', 'error');
     }
   };
 
@@ -452,6 +539,18 @@ export const MyWorkout: React.FC = () => {
             <span>{isArabic ? 'تعديل الجدول' : 'Edit'}</span>
           </button>
 
+          {activeSplitId !== 'default' && (
+            <button
+              onClick={handleDeleteCurrentSplit}
+              className={`p-3 rounded-xl border transition-all cursor-pointer text-red-500 hover:bg-red-500/10 ${
+                isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)]' : 'bg-white border-[hsl(40,10%,88%)]'
+              }`}
+              title={isArabic ? 'حذف البرنامج الحالي' : 'Delete Current Split'}
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+
           <button
             onClick={handleCopySchedule}
             className={`p-3 rounded-xl border transition-all cursor-pointer ${
@@ -490,7 +589,7 @@ export const MyWorkout: React.FC = () => {
               {isArabic ? 'نوع الجدول النشط حالياً' : 'Active Split Mode'}
             </p>
             <h3 className="text-base font-bold mt-0.5">
-              {currentSplitType === 'rotation' 
+              {activeSplitData?.type === 'rotation' 
                 ? (isArabic ? 'نظام تدوير دوري (Rotation Cycle)' : 'Rotation Cycle Split') 
                 : (isArabic ? 'نظام يومي ثابت (Fixed Day-by-Day)' : 'Fixed Day-by-Day Split')}
             </h3>
@@ -509,7 +608,7 @@ export const MyWorkout: React.FC = () => {
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-display font-bold text-base">
-            {currentSplitType === 'rotation' ? (isArabic ? 'تسلسل أيام الـ Rotation' : 'Rotation Sequence') : (isArabic ? 'توزيع أيام الأسبوع' : 'Weekly Training Split')}
+            {activeSplitData?.type === 'rotation' ? (isArabic ? 'تسلسل أيام الـ Rotation' : 'Rotation Sequence') : (isArabic ? 'توزيع أيام الأسبوع' : 'Weekly Training Split')}
           </h2>
           <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-slate-400'}`}>
             {trainingDays.length} {isArabic ? 'أيام تمرين' : 'Training Days'}
@@ -517,8 +616,8 @@ export const MyWorkout: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {currentSplitType === 'rotation' && Array.isArray(currentRotationList) ? (
-            currentRotationList.map((rotDay: any, index: number) => (
+          {activeSplitData?.type === 'rotation' && Array.isArray(activeSplitData.daysData) ? (
+            activeSplitData.daysData.map((rotDay: any, index: number) => (
               <div
                 key={rotDay.id || index}
                 className={`relative overflow-hidden rounded-2xl border p-4 transition-colors ${
@@ -568,11 +667,11 @@ export const MyWorkout: React.FC = () => {
               </div>
             ))
           ) : (
-            weeklySchedule.map((dayItem, index) => {
+            currentDaysList.map((dayItem: any, index: number) => {
               const isRest = dayItem.workoutType === 'rest';
               return (
                 <div
-                  key={dayItem.day}
+                  key={dayItem.day || index}
                   className={`relative overflow-hidden rounded-2xl border p-4 transition-colors ${
                     isDark
                       ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
@@ -601,7 +700,7 @@ export const MyWorkout: React.FC = () => {
                       {generateDayTitle(dayItem.muscleGroups)}
                     </h3>
                     <div className="flex flex-wrap gap-1.5 mt-3">
-                      {dayItem.muscleGroups.map((mg) => (
+                      {dayItem.muscleGroups.map((mg: any) => (
                         <span
                           key={mg}
                           className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
@@ -620,7 +719,7 @@ export const MyWorkout: React.FC = () => {
         </div>
       </div>
 
-      {/* CREATE NEW SCHEDULE MODAL (تم تحديث الألوان والتصميم ليكون احترافياً ومناسباً للـ theme) */}
+      {/* CREATE NEW SCHEDULE MODAL */}
       {isCreateModalOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
@@ -890,7 +989,7 @@ export const MyWorkout: React.FC = () => {
         </div>
       )}
 
-      {/* EDIT SCHEDULE MODAL (تم إعادة تصميم النافذة لتكون عصرية، وتنسيق زر "+ Add Day" بشكل منفصل واحترافي) */}
+      {/* EDIT SCHEDULE MODAL */}
       {isEditModalOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6"
@@ -911,7 +1010,7 @@ export const MyWorkout: React.FC = () => {
               <div className="flex items-center justify-between w-full">
                 <div>
                   <h2 className="text-xl font-display font-bold tracking-tight">
-                    {currentSplitType === 'rotation' 
+                    {activeSplitData?.type === 'rotation' 
                       ? (isArabic ? 'تعديل جدول الـ Rotation' : 'Edit Rotation Schedule')
                       : (isArabic ? 'تعديل الجدول الثابت' : 'Edit Fixed Schedule')}
                   </h2>
@@ -920,8 +1019,7 @@ export const MyWorkout: React.FC = () => {
                   </p>
                 </div>
                 
-                {/* تم تعديل مكان وتصميم زر Add Day ليكون مرتباً تماماً في الهيدر بدون أي تداخل */}
-                {currentSplitType === 'rotation' && (
+                {activeSplitData?.type === 'rotation' && (
                   <button
                     type="button"
                     onClick={() => {
@@ -956,7 +1054,7 @@ export const MyWorkout: React.FC = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {currentSplitType === 'rotation' ? (
+              {activeSplitData?.type === 'rotation' ? (
                 draftRotationDays.map((d, index) => (
                   <div
                     key={d.id || index}
@@ -1020,6 +1118,55 @@ export const MyWorkout: React.FC = () => {
                     )}
                   </div>
                 ))
+              ) : activeSplitData?.type === 'fixed' ? (
+                draftFixedDays.map((dayItem) => {
+                  const isRest = dayItem.workoutType === 'rest';
+                  return (
+                    <div
+                      key={dayItem.day}
+                      className={`rounded-2xl border p-5 space-y-4 transition-all ${
+                        isDark ? 'bg-[hsl(240,5%,13%)] border-[hsl(240,5%,22%)]' : 'bg-[hsl(40,20%,97%)] border-[hsl(40,15%,86%)]'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-bold uppercase tracking-wide">{translateDayName(dayItem.day, lang)}</h3>
+                        <button
+                          type="button"
+                          onClick={() => toggleDraftFixedRest(dayItem.day)}
+                          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                            isRest 
+                              ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]')
+                              : (isDark ? 'border-gray-600 text-gray-300 hover:border-gray-400' : 'border-slate-300 text-slate-700 hover:border-slate-400')
+                          }`}
+                        >
+                          {isRest ? (isArabic ? 'يوم تمرين' : 'Make Training') : (isArabic ? 'يوم راحة' : 'Make Rest')}
+                        </button>
+                      </div>
+
+                      {!isRest && (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {MUSCLE_GROUPS.map((mg) => {
+                            const active = dayItem.muscleGroups.includes(mg);
+                            return (
+                              <button
+                                key={mg}
+                                type="button"
+                                onClick={() => toggleDraftFixedMuscle(dayItem.day, mg)}
+                                className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
+                                  active 
+                                    ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)] font-bold shadow-md' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)] font-bold shadow-sm') 
+                                    : (isDark ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,5%,20%)] text-gray-400 hover:border-gray-500' : 'bg-white border-[hsl(40,15%,88%)] text-slate-600 hover:border-slate-400')
+                                }`}
+                              >
+                                {translateMuscleGroup(mg, lang)}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               ) : (
                 draftSchedule.map((dayItem) => {
                   const isRest = dayItem.workoutType === 'rest';
