@@ -251,9 +251,6 @@ export const CalendarPage: React.FC = () => {
   const [forgottenMuscleFilter, setForgottenMuscleFilter] =
     useState(defaultMuscle);
 
-  const [expandedWorkoutId, setExpandedWorkoutId] =
-    useState<string | null>(null);
-
   const exerciseMap = useMemo(() => {
     const map = new Map<string, Exercise>();
     for (const ex of exercises) {
@@ -1023,7 +1020,6 @@ export const CalendarPage: React.FC = () => {
             ) : (
               <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
                 {selectedDateWorkouts.map((workout) => {
-                  const expanded = expandedWorkoutId === workout.id;
                   const isPlan = (workout.status as string) === 'planned';
                   const isCopied = copiedWorkoutId === workout.id;
 
@@ -1088,18 +1084,6 @@ export const CalendarPage: React.FC = () => {
                               <Copy className="w-3.5 h-3.5" />
                             )}
                           </button>
-                          <button
-                            onClick={() =>
-                              setExpandedWorkoutId(
-                                expanded ? null : workout.id
-                              )
-                            }
-                            className="text-xs text-indigo-600 dark:text-[hsl(75,92%,56%)] font-semibold cursor-pointer"
-                          >
-                            {expanded
-                              ? lang === 'ar' ? 'إخفاء' : 'Hide'
-                              : lang === 'ar' ? 'التفاصيل' : 'Details'}
-                          </button>
                         </div>
                       </div>
 
@@ -1119,135 +1103,133 @@ export const CalendarPage: React.FC = () => {
                         </div>
                       </div>
 
-                      {expanded && (
-                        <div className="space-y-3 pt-2 border-t border-inherit">
-                          {(() => {
-                            let lastGroup: string | null = null;
-                            return workout.exercises.map((ex) => {
-                              const exObj = exerciseMap.get(ex.exerciseId);
-                              const displayName =
-                                exObj?.name || ex.exerciseNameSnapshot;
-                              const targetMuscle =
-                                exObj?.targetMuscle ||
-                                ex.targetMuscleSnapshot;
-                              const isCardio = isCardioExercise(
-                                displayName,
-                                ex.muscleGroup
-                              );
-                              const showGroupDivider =
-                                lastGroup !== ex.muscleGroup;
-                              lastGroup = ex.muscleGroup;
+                      <div className="space-y-3 pt-2 border-t border-inherit">
+                        {(() => {
+                          let lastGroup: string | null = null;
+                          return workout.exercises.map((ex) => {
+                            const exObj = exerciseMap.get(ex.exerciseId);
+                            const displayName =
+                              exObj?.name || ex.exerciseNameSnapshot;
+                            const targetMuscle =
+                              exObj?.targetMuscle ||
+                              ex.targetMuscleSnapshot;
+                            const isCardio = isCardioExercise(
+                              displayName,
+                              ex.muscleGroup
+                            );
+                            const showGroupDivider =
+                              lastGroup !== ex.muscleGroup;
+                            lastGroup = ex.muscleGroup;
 
-                              return (
-                                <React.Fragment key={ex.id}>
-                                  {showGroupDivider && (
-                                    <div className="pt-2 pb-1 first:pt-0">
-                                      <div className="flex items-center gap-2">
-                                        <div
-                                          className={`h-[1px] flex-1 ${
-                                            isDark ? 'bg-gray-800' : 'bg-slate-200'
-                                          }`}
-                                        />
+                            return (
+                              <React.Fragment key={ex.id}>
+                                {showGroupDivider && (
+                                  <div className="pt-2 pb-1 first:pt-0">
+                                    <div className="flex items-center gap-2">
+                                      <div
+                                        className={`h-[1px] flex-1 ${
+                                          isDark ? 'bg-gray-800' : 'bg-slate-200'
+                                        }`}
+                                      />
+                                      <span
+                                        className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                                          isDark
+                                            ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
+                                            : 'bg-indigo-50 text-indigo-700'
+                                        }`}
+                                      >
+                                        {translateMuscleGroup(
+                                          ex.muscleGroup,
+                                          lang
+                                        )}
+                                      </span>
+                                      <div
+                                        className={`h-[1px] flex-1 ${
+                                          isDark ? 'bg-gray-800' : 'bg-slate-200'
+                                        }`}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                                <div className="space-y-1.5 pl-1">
+                                  <div
+                                    className={`font-semibold text-xs flex items-center justify-between ${
+                                      isCardio
+                                        ? isDark
+                                          ? 'text-cyan-400'
+                                          : 'text-cyan-700 font-bold'
+                                        : isDark
+                                        ? 'text-[hsl(75,92%,56%)]'
+                                        : 'text-indigo-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span>{displayName}</span>
+                                      {targetMuscle && (
                                         <span
-                                          className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+                                          className={`text-[10px] px-1.5 py-0.2 rounded border ${
                                             isDark
-                                              ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]'
-                                              : 'bg-indigo-50 text-indigo-700'
+                                              ? 'bg-gray-800 text-gray-300 border-gray-700'
+                                              : 'bg-gray-100 text-gray-600 border-gray-200'
                                           }`}
                                         >
-                                          {translateMuscleGroup(
-                                            ex.muscleGroup,
+                                          🎯 {targetMuscle}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {isCardio && ex.caloriesBurned ? (
+                                      <span className="text-cyan-400 font-mono-num text-[11px] flex items-center gap-1">
+                                        <Flame className="w-3 h-3" />{' '}
+                                        {ex.caloriesBurned} kcal
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <div className="flex flex-wrap gap-1.5 font-mono-num text-[11px]">
+                                    {isCardio ? (
+                                      <span
+                                        className={`px-2 py-1 rounded flex items-center gap-1.5 text-xs font-semibold ${
+                                          isDark
+                                            ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
+                                            : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
+                                        }`}
+                                      >
+                                        <Clock className="w-3.5 h-3.5 text-cyan-500" />
+                                        <span>
+                                          {ex.sets[0]?.reps || 30}{' '}
+                                          {lang === 'ar' ? 'دقائق' : 'minutes'}
+                                        </span>
+                                      </span>
+                                    ) : (
+                                      ex.sets.map((s) => (
+                                        <span
+                                          key={s.id}
+                                          className={`px-1.5 py-0.5 rounded ${
+                                            isDark
+                                              ? 'bg-[hsl(240,6%,4%)]'
+                                              : 'bg-white border border-slate-200 text-slate-700'
+                                          }`}
+                                        >
+                                          {formatSetPerformance(
+                                            s.weight,
+                                            ex.weightType,
+                                            s.reps,
                                             lang
                                           )}
                                         </span>
-                                        <div
-                                          className={`h-[1px] flex-1 ${
-                                            isDark ? 'bg-gray-800' : 'bg-slate-200'
-                                          }`}
-                                        />
-                                      </div>
-                                    </div>
-                                  )}
-                                  <div className="space-y-1.5 pl-1">
-                                    <div
-                                      className={`font-semibold text-xs flex items-center justify-between ${
-                                        isCardio
-                                          ? isDark
-                                            ? 'text-cyan-400'
-                                            : 'text-cyan-700 font-bold'
-                                          : isDark
-                                          ? 'text-[hsl(75,92%,56%)]'
-                                          : 'text-indigo-700'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-1.5 flex-wrap">
-                                        <span>{displayName}</span>
-                                        {targetMuscle && (
-                                          <span
-                                            className={`text-[10px] px-1.5 py-0.2 rounded border ${
-                                              isDark
-                                                ? 'bg-gray-800 text-gray-300 border-gray-700'
-                                                : 'bg-gray-100 text-gray-600 border-gray-200'
-                                            }`}
-                                          >
-                                            🎯 {targetMuscle}
-                                          </span>
-                                        )}
-                                      </div>
-                                      {isCardio && ex.caloriesBurned ? (
-                                        <span className="text-cyan-400 font-mono-num text-[11px] flex items-center gap-1">
-                                          <Flame className="w-3 h-3" />{' '}
-                                          {ex.caloriesBurned} kcal
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                    <div className="flex flex-wrap gap-1.5 font-mono-num text-[11px]">
-                                      {isCardio ? (
-                                        <span
-                                          className={`px-2 py-1 rounded flex items-center gap-1.5 text-xs font-semibold ${
-                                            isDark
-                                              ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30'
-                                              : 'bg-cyan-50 text-cyan-700 border border-cyan-200'
-                                          }`}
-                                        >
-                                          <Clock className="w-3.5 h-3.5 text-cyan-500" />
-                                          <span>
-                                            {ex.sets[0]?.reps || 30}{' '}
-                                            {lang === 'ar' ? 'دقائق' : 'minutes'}
-                                          </span>
-                                        </span>
-                                      ) : (
-                                        ex.sets.map((s) => (
-                                          <span
-                                            key={s.id}
-                                            className={`px-1.5 py-0.5 rounded ${
-                                              isDark
-                                                ? 'bg-[hsl(240,6%,4%)]'
-                                                : 'bg-white border border-slate-200 text-slate-700'
-                                            }`}
-                                          >
-                                            {formatSetPerformance(
-                                              s.weight,
-                                              ex.weightType,
-                                              s.reps,
-                                              lang
-                                            )}
-                                          </span>
-                                        ))
-                                      )}
-                                    </div>
-                                    {ex.notes && (
-                                      <p className="text-xs text-gray-400 italic">
-                                        {ex.notes}
-                                      </p>
+                                      ))
                                     )}
                                   </div>
-                                </React.Fragment>
-                              );
-                            });
-                          })()}
-                        </div>
-                      )}
+                                  {ex.notes && (
+                                    <p className="text-xs text-gray-400 italic">
+                                      {ex.notes}
+                                    </p>
+                                  )}
+                                </div>
+                              </React.Fragment>
+                            );
+                          });
+                        })()}
+                      </div>
 
                       <div className="flex gap-2 pt-2 border-t border-inherit">
                         <button
