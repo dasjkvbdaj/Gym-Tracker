@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import {
   Calendar,
@@ -19,9 +18,6 @@ import {
   MuscleGroup,
   WeightUnit,
 } from '../types/workout';
-import {
-  formatFullDate,
-} from '../utils/dateUtils';
 import {
   MUSCLE_GROUPS,
   translateDayName,
@@ -709,7 +705,7 @@ export const ExerciseLibrary: React.FC = () => {
                             : 'text-[hsl(76,78%,42%)]'
                         }`}
                       >
-                        {formatFullDate(log.actualDate, lang)}
+                        {log.actualDate}
                       </span>
 
                       <span className="font-mono-num uppercase text-gray-400">
