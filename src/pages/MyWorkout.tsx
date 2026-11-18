@@ -38,8 +38,8 @@ export const MyWorkout: React.FC = () => {
     showToast,
   } = useGym();
 
-  const lang = settings.language;
-  const isDark = settings.theme === 'dark';
+  const lang = settings?.language || 'en';
+  const isDark = settings?.theme === 'dark';
   const isArabic = lang === 'ar';
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -94,82 +94,90 @@ export const MyWorkout: React.FC = () => {
   ]);
 
   // @ts-ignore
-  const activeSplitId = settings.activeSplitId || 'default';
+  const activeSplitId = settings?.activeSplitId || 'default';
   // @ts-ignore
-  const currentSplitType = settings.activeSplitType || 'fixed';
+  const currentSplitType = settings?.activeSplitType || 'fixed';
   // @ts-ignore
   const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
 
-  // تحديد القائمة الحالية بناءً على الـ Split النشط سواء كان Fixed أو Rotation
   const currentDaysList = useMemo(() => {
     if (activeSplitId === 'default') {
-      return weeklySchedule;
+      return weeklySchedule || [];
     }
-    if (activeSplitData) {
+    if (activeSplitData && Array.isArray(activeSplitData.daysData)) {
       return activeSplitData.daysData;
     }
-    return weeklySchedule;
+    return weeklySchedule || [];
   }, [activeSplitId, activeSplitData, weeklySchedule]);
 
   const trainingDays = useMemo(() => {
     if (activeSplitId === 'default') {
-      return weeklySchedule.filter(
-        (day) => day.workoutType !== 'rest' && day.muscleGroups.length > 0
+      return (weeklySchedule || []).filter(
+        (day) => day && day.workoutType !== 'rest' && Array.isArray(day.muscleGroups) && day.muscleGroups.length > 0
       );
     }
     if (activeSplitData?.type === 'rotation' && Array.isArray(activeSplitData.daysData)) {
-      return activeSplitData.daysData.filter((d: any) => !d.isRest && d.muscleGroups?.length > 0);
+      return activeSplitData.daysData.filter((d: any) => d && !d.isRest && Array.isArray(d.muscleGroups) && d.muscleGroups.length > 0);
     }
     if (activeSplitData?.type === 'fixed' && Array.isArray(activeSplitData.daysData)) {
-      return activeSplitData.daysData.filter((d: any) => d.workoutType !== 'rest' && d.muscleGroups?.length > 0);
+      return activeSplitData.daysData.filter((d: any) => d && d.workoutType !== 'rest' && Array.isArray(d.muscleGroups) && d.muscleGroups.length > 0);
     }
     return [];
   }, [weeklySchedule, activeSplitId, activeSplitData]);
 
   const generateDayTitle = (groups: MuscleGroup[]) => {
-    if (groups.length === 0) {
+    if (!groups || groups.length === 0) {
       return isArabic ? 'يوم راحة' : 'Rest Day';
     }
     return groups.map((group) => translateMuscleGroup(group, lang)).join(' + ');
   };
 
   const handleCopySchedule = () => {
-    const scheduleText = activeSplitData?.type === 'rotation'
-      ? activeSplitData.daysData.map((d: any, idx: number) => `Day ${idx + 1} (${d.title}): ${d.isRest ? 'Rest' : d.muscleGroups.join(', ')}`).join('\n')
-      : currentDaysList.map((day: any) => `${translateDayName(day.day, lang)}: ${day.muscleGroups.join(', ')}`).join('\n');
+    try {
+      const scheduleText = activeSplitData?.type === 'rotation' && Array.isArray(activeSplitData.daysData)
+        ? activeSplitData.daysData.map((d: any, idx: number) => `Day ${idx + 1} (${d?.title || ''}): ${d?.isRest ? 'Rest' : (d?.muscleGroups || []).join(', ')}`).join('\n')
+        : (currentDaysList || []).map((day: any) => `${translateDayName(day?.day, lang)}: ${(day?.muscleGroups || []).join(', ')}`).join('\n');
 
-    navigator.clipboard.writeText(scheduleText).then(() => {
-      setScheduleCopied(true);
-      setTimeout(() => setScheduleCopied(false), 2000);
-    });
+      navigator.clipboard.writeText(scheduleText).then(() => {
+        setScheduleCopied(true);
+        setTimeout(() => setScheduleCopied(false), 2000);
+      });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   const openEditSchedule = () => {
-    if (activeSplitId === 'default') {
-      setDraftSchedule(
-        weeklySchedule.map((day) => ({
-          ...day,
-          muscleGroups: [...day.muscleGroups],
-          assignedExerciseIds: [...day.assignedExerciseIds],
-        }))
-      );
-    } else if (activeSplitData?.type === 'rotation') {
-      setDraftRotationDays(
-        JSON.parse(JSON.stringify(activeSplitData.daysData))
-      );
-    } else if (activeSplitData?.type === 'fixed') {
-      setDraftFixedDays(
-        JSON.parse(JSON.stringify(activeSplitData.daysData))
-      );
+    try {
+      if (activeSplitId === 'default') {
+        setDraftSchedule(
+          (weeklySchedule || []).map((day) => ({
+            ...day,
+            muscleGroups: [...(day.muscleGroups || [])],
+            assignedExerciseIds: [...(day.assignedExerciseIds || [])],
+          }))
+        );
+      } else if (activeSplitData?.type === 'rotation' && Array.isArray(activeSplitData.daysData)) {
+        setDraftRotationDays(
+          JSON.parse(JSON.stringify(activeSplitData.daysData))
+        );
+      } else if (activeSplitData?.type === 'fixed' && Array.isArray(activeSplitData.daysData)) {
+        setDraftFixedDays(
+          JSON.parse(JSON.stringify(activeSplitData.daysData))
+        );
+      }
+      setIsEditModalOpen(true);
+    } catch (err) {
+      console.error(err);
     }
-    setIsEditModalOpen(true);
   };
 
   const toggleDraftFixedMuscle = (dayName: DayName, mg: MuscleGroup) => {
-    setDraftFixedDays(prev => prev.map(d => {
-      if (d.day !== dayName) return d;
-      const exists = d.muscleGroups.includes(mg);
-      const updatedGroups = exists ? d.muscleGroups.filter(item => item !== mg) : [...d.muscleGroups, mg];
+    setDraftFixedDays(prev => (prev || []).map(d => {
+      if (!d || d.day !== dayName) return d;
+      const mgList = d.muscleGroups || [];
+      const exists = mgList.includes(mg);
+      const updatedGroups = exists ? mgList.filter(item => item !== mg) : [...mgList, mg];
       return {
         ...d,
         muscleGroups: updatedGroups,
@@ -179,8 +187,8 @@ export const MyWorkout: React.FC = () => {
   };
 
   const toggleDraftFixedRest = (dayName: DayName) => {
-    setDraftFixedDays(prev => prev.map(d => {
-      if (d.day !== dayName) return d;
+    setDraftFixedDays(prev => (prev || []).map(d => {
+      if (!d || d.day !== dayName) return d;
       const isRest = d.workoutType === 'rest';
       return {
         ...d,
@@ -195,13 +203,14 @@ export const MyWorkout: React.FC = () => {
     muscleGroup: MuscleGroup
   ) => {
     setDraftSchedule((previous) =>
-      previous.map((item) => {
-        if (item.day !== day) return item;
+      (previous || []).map((item) => {
+        if (!item || item.day !== day) return item;
 
-        const exists = item.muscleGroups.includes(muscleGroup);
+        const mgList = item.muscleGroups || [];
+        const exists = mgList.includes(muscleGroup);
         const updatedGroups = exists
-          ? item.muscleGroups.filter((group) => group !== muscleGroup)
-          : [...item.muscleGroups, muscleGroup];
+          ? mgList.filter((group) => group !== muscleGroup)
+          : [...mgList, muscleGroup];
         return {
           ...item,
           muscleGroups: updatedGroups,
@@ -214,16 +223,17 @@ export const MyWorkout: React.FC = () => {
 
   const toggleRestDay = (day: DayName) => {
     setDraftSchedule((previous) =>
-      previous.map((item) => {
-        if (item.day !== day) return item;
+      (previous || []).map((item) => {
+        if (!item || item.day !== day) return item;
 
         if (item.workoutType === 'rest') {
+          const mgList = item.muscleGroups || [];
           return {
             ...item,
             workoutType: 'strength',
-            muscleGroups: item.muscleGroups.length > 0 ? item.muscleGroups : ['Back'],
+            muscleGroups: mgList.length > 0 ? mgList : ['Back'],
             title: generateDayTitle(
-              item.muscleGroups.length > 0 ? item.muscleGroups : ['Back']
+              mgList.length > 0 ? mgList : ['Back']
             ),
           };
         }
@@ -238,22 +248,24 @@ export const MyWorkout: React.FC = () => {
   };
 
   const handleToggleDraftRotationMuscle = (dayId: string, mg: MuscleGroup) => {
-    setDraftRotationDays(prev => prev.map(d => {
-      if (d.id !== dayId) return d;
-      const exists = d.muscleGroups.includes(mg);
-      const updatedGroups = exists ? d.muscleGroups.filter(item => item !== mg) : [...d.muscleGroups, mg];
+    setDraftRotationDays(prev => (prev || []).map(d => {
+      if (!d || d.id !== dayId) return d;
+      const mgList = d.muscleGroups || [];
+      const exists = mgList.includes(mg);
+      const updatedGroups = exists ? mgList.filter(item => item !== mg) : [...mgList, mg];
+      const dayNum = (d.title || '').replace(/[^0-9]/g, '') || '1';
       return {
         ...d,
         muscleGroups: updatedGroups,
         isRest: updatedGroups.length === 0,
-        title: `Day ${d.title.replace(/[^0-9]/g, '') || '1'} (${generateDayTitle(updatedGroups)})`
+        title: `Day ${dayNum} (${generateDayTitle(updatedGroups)})`
       };
     }));
   };
 
   const handleToggleDraftRotationRest = (dayId: string) => {
-    setDraftRotationDays(prev => prev.map(d => {
-      if (d.id !== dayId) return d;
+    setDraftRotationDays(prev => (prev || []).map(d => {
+      if (!d || d.id !== dayId) return d;
       const nextRest = !d.isRest;
       return {
         ...d,
@@ -265,10 +277,11 @@ export const MyWorkout: React.FC = () => {
   };
 
   const handleToggleNewFixedMuscle = (dayName: DayName, mg: MuscleGroup) => {
-    setNewFixedDays(prev => prev.map(d => {
-      if (d.day !== dayName) return d;
-      const exists = d.muscleGroups.includes(mg);
-      const updatedGroups = exists ? d.muscleGroups.filter(item => item !== mg) : [...d.muscleGroups, mg];
+    setNewFixedDays(prev => (prev || []).map(d => {
+      if (!d || d.day !== dayName) return d;
+      const mgList = d.muscleGroups || [];
+      const exists = mgList.includes(mg);
+      const updatedGroups = exists ? mgList.filter(item => item !== mg) : [...mgList, mg];
       return {
         ...d,
         muscleGroups: updatedGroups,
@@ -278,8 +291,8 @@ export const MyWorkout: React.FC = () => {
   };
 
   const handleToggleNewFixedRest = (dayName: DayName) => {
-    setNewFixedDays(prev => prev.map(d => {
-      if (d.day !== dayName) return d;
+    setNewFixedDays(prev => (prev || []).map(d => {
+      if (!d || d.day !== dayName) return d;
       const isRest = d.workoutType === 'rest';
       return {
         ...d,
@@ -294,11 +307,12 @@ export const MyWorkout: React.FC = () => {
     try {
       if (activeSplitId === 'default') {
         for (const day of draftSchedule) {
+          if (!day) continue;
           const updatedDay: WeeklyScheduleDay = {
             ...day,
-            title: generateDayTitle(day.muscleGroups),
-            workoutType: day.muscleGroups.length === 0 ? 'rest' : 'strength',
-            muscleGroups: [...day.muscleGroups],
+            title: generateDayTitle(day.muscleGroups || []),
+            workoutType: (!day.muscleGroups || day.muscleGroups.length === 0) ? 'rest' : 'strength',
+            muscleGroups: [...(day.muscleGroups || [])],
           };
           await updateScheduleDay(updatedDay);
         }
@@ -328,22 +342,24 @@ export const MyWorkout: React.FC = () => {
   };
 
   const handleToggleRotationMuscle = (dayId: string, mg: MuscleGroup) => {
-    setRotationDays(prev => prev.map(d => {
-      if (d.id !== dayId) return d;
-      const exists = d.muscleGroups.includes(mg);
-      const updatedGroups = exists ? d.muscleGroups.filter(item => item !== mg) : [...d.muscleGroups, mg];
+    setRotationDays(prev => (prev || []).map(d => {
+      if (!d || d.id !== dayId) return d;
+      const mgList = d.muscleGroups || [];
+      const exists = mgList.includes(mg);
+      const updatedGroups = exists ? mgList.filter(item => item !== mg) : [...mgList, mg];
+      const baseTitle = (d.title || '').split('(')[0].trim();
       return {
         ...d,
         muscleGroups: updatedGroups,
         isRest: updatedGroups.length === 0,
-        title: `${d.title.split('(')[0].trim()} (${generateDayTitle(updatedGroups)})`
+        title: `${baseTitle} (${generateDayTitle(updatedGroups)})`
       };
     }));
   };
 
   const handleToggleRotationRest = (dayId: string) => {
-    setRotationDays(prev => prev.map(d => {
-      if (d.id !== dayId) return d;
+    setRotationDays(prev => (prev || []).map(d => {
+      if (!d || d.id !== dayId) return d;
       const nextRest = !d.isRest;
       return {
         ...d,
@@ -355,7 +371,7 @@ export const MyWorkout: React.FC = () => {
   };
 
   const handleSaveNewSplit = async () => {
-    if (!newScheduleName.trim()) {
+    if (!newScheduleName || !newScheduleName.trim()) {
       showToast(isArabic ? 'يرجى إدخال اسم للبرنامج' : 'Please enter a schedule name', 'error');
       return;
     }
@@ -370,7 +386,7 @@ export const MyWorkout: React.FC = () => {
         createdAt: Date.now(),
       };
 
-      await db.workoutSplits.put(newSplitId ? splitData : splitData);
+      await db.workoutSplits.put(splitData);
 
       await updateSettings({
         // @ts-ignore
@@ -394,7 +410,6 @@ export const MyWorkout: React.FC = () => {
     }
   };
 
-  // ميزة حذف البرنامج النشط من القاعدة والـ UI
   const handleDeleteCurrentSplit = async () => {
     if (activeSplitId === 'default') {
       showToast(isArabic ? 'لا يمكن حذف النظام الافتراضي' : 'Cannot delete default split', 'error');
@@ -412,7 +427,6 @@ export const MyWorkout: React.FC = () => {
     try {
       await db.workoutSplits.delete(activeSplitId);
       
-      // العودة إلى النظام الافتراضي بعد الحذف
       await updateSettings({
         // @ts-ignore
         activeSplitId: 'default',
@@ -446,7 +460,7 @@ export const MyWorkout: React.FC = () => {
       return;
     }
 
-    const foundSplit = savedSplits.find(s => s.id === selectedId);
+    const foundSplit = (savedSplits || []).find(s => s && s.id === selectedId);
     if (foundSplit) {
       await updateSettings({
         // @ts-ignore
@@ -502,9 +516,9 @@ export const MyWorkout: React.FC = () => {
               <option value="default">
                 {isArabic ? '⭐ النظام الافتراضي (Standard Split)' : '⭐ Standard Weekly Split'}
               </option>
-              {savedSplits.map((split) => (
+              {(savedSplits || []).map((split) => split && (
                 <option key={split.id} value={split.id}>
-                  {split.name} ({split.type.toUpperCase()})
+                  {split.name} ({String(split.type || '').toUpperCase()})
                 </option>
               ))}
             </select>
@@ -617,7 +631,7 @@ export const MyWorkout: React.FC = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {activeSplitData?.type === 'rotation' && Array.isArray(activeSplitData.daysData) ? (
-            activeSplitData.daysData.map((rotDay: any, index: number) => (
+            activeSplitData.daysData.map((rotDay: any, index: number) => rotDay && (
               <div
                 key={rotDay.id || index}
                 className={`relative overflow-hidden rounded-2xl border p-4 transition-colors ${
@@ -647,11 +661,11 @@ export const MyWorkout: React.FC = () => {
                 </div>
                 <div className={`mt-4 pt-3 border-t ${isDark ? 'border-[hsl(240,4%,16%)]' : 'border-[hsl(40,10%,92%)]'}`}>
                   <h3 className={`text-base font-display font-bold leading-relaxed ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                    {rotDay.isRest ? (isArabic ? 'يوم راحة' : 'Rest Day') : generateDayTitle(rotDay.muscleGroups)}
+                    {rotDay.isRest ? (isArabic ? 'يوم راحة' : 'Rest Day') : generateDayTitle(rotDay.muscleGroups || [])}
                   </h3>
-                  {!rotDay.isRest && rotDay.muscleGroups?.length > 0 && (
+                  {!rotDay.isRest && Array.isArray(rotDay.muscleGroups) && rotDay.muscleGroups.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-3">
-                      {rotDay.muscleGroups.map((mg: string) => (
+                      {rotDay.muscleGroups.map((mg: string) => mg && (
                         <span
                           key={mg}
                           className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
@@ -667,54 +681,51 @@ export const MyWorkout: React.FC = () => {
               </div>
             ))
           ) : (
-            currentDaysList.map((dayItem: any, index: number) => {
-              const isRest = dayItem.workoutType === 'rest';
-              return (
-                <div
-                  key={dayItem.day || index}
-                  className={`relative overflow-hidden rounded-2xl border p-4 transition-colors ${
-                    isDark
-                      ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
-                      : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
-                  }`}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-                        isDark ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
-                      }`}>
-                        {String(index + 1).padStart(2, '0')}
-                      </span>
-                      <span className={`text-sm font-bold uppercase tracking-wide ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
-                        {translateDayName(dayItem.day, lang)}
-                      </span>
-                    </div>
-                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-md ${
-                      isRest ? 'bg-gray-500/10 text-gray-400' : isDark ? 'bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
+            (currentDaysList || []).map((dayItem: any, index: number) => dayItem && (
+              <div
+                key={dayItem.day || index}
+                className={`relative overflow-hidden rounded-2xl border p-4 transition-colors ${
+                  isDark
+                    ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+                    : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                      isDark ? 'bg-[hsl(75,92%,56%)]/15 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
                     }`}>
-                      {isRest ? (isArabic ? 'راحة' : 'REST') : (isArabic ? 'تمرين' : 'TRAINING')}
+                      {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className={`text-sm font-bold uppercase tracking-wide ${isDark ? 'text-gray-300' : 'text-slate-600'}`}>
+                      {translateDayName(dayItem.day, lang)}
                     </span>
                   </div>
-                  <div className={`mt-4 pt-3 border-t ${isDark ? 'border-[hsl(240,4%,16%)]' : 'border-[hsl(40,10%,92%)]'}`}>
-                    <h3 className={`text-base font-display font-bold leading-relaxed ${isDark ? 'text-white' : 'text-slate-900'}`}>
-                      {generateDayTitle(dayItem.muscleGroups)}
-                    </h3>
-                    <div className="flex flex-wrap gap-1.5 mt-3">
-                      {dayItem.muscleGroups.map((mg: any) => (
-                        <span
-                          key={mg}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
-                            isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300' : 'bg-[hsl(40,15%,96%)] border-[hsl(40,10%,88%)] text-slate-700'
-                          }`}
-                        >
-                          {translateMuscleGroup(mg, lang)}
-                        </span>
-                      ))}
-                    </div>
+                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-md ${
+                    dayItem.workoutType === 'rest' ? 'bg-gray-500/10 text-gray-400' : isDark ? 'bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)]'
+                  }`}>
+                    {dayItem.workoutType === 'rest' ? (isArabic ? 'راحة' : 'REST') : (isArabic ? 'تمرين' : 'TRAINING')}
+                  </span>
+                </div>
+                <div className={`mt-4 pt-3 border-t ${isDark ? 'border-[hsl(240,4%,16%)]' : 'border-[hsl(40,10%,92%)]'}`}>
+                  <h3 className={`text-base font-display font-bold leading-relaxed ${isDark ? 'text-white' : 'text-slate-900'}`}>
+                    {generateDayTitle(dayItem.muscleGroups || [])}
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5 mt-3">
+                    {Array.isArray(dayItem.muscleGroups) && dayItem.muscleGroups.map((mg: any) => mg && (
+                      <span
+                        key={mg}
+                        className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border ${
+                          isDark ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-gray-300' : 'bg-[hsl(40,15%,96%)] border-[hsl(40,10%,88%)] text-slate-700'
+                        }`}
+                      >
+                        {translateMuscleGroup(mg, lang)}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              );
-            })
+              </div>
+            ))
           )}
         </div>
       </div>
@@ -809,10 +820,10 @@ export const MyWorkout: React.FC = () => {
                       type="button"
                       onClick={() => {
                         setRotationDays([
-                          ...rotationDays,
+                          ...(rotationDays || []),
                           {
                             id: Date.now().toString(),
-                            title: `Day ${rotationDays.length + 1}`,
+                            title: `Day ${(rotationDays || []).length + 1}`,
                             muscleGroups: ['Back', 'Biceps'],
                             isRest: false,
                           },
@@ -830,9 +841,9 @@ export const MyWorkout: React.FC = () => {
                   </div>
 
                   <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                    {rotationDays.map((d, idx) => (
+                    {(rotationDays || []).map((d, idx) => d && (
                       <div
-                        key={d.id}
+                        key={d.id || idx}
                         className={`p-4 rounded-2xl border space-y-3 transition-all ${
                           isDark ? 'bg-[hsl(240,5%,13%)] border-[hsl(240,5%,22%)]' : 'bg-[hsl(40,20%,97%)] border-[hsl(40,15%,86%)]'
                         }`}
@@ -855,7 +866,7 @@ export const MyWorkout: React.FC = () => {
                             </button>
                             <button
                               type="button"
-                              onClick={() => setRotationDays(rotationDays.filter(item => item.id !== d.id))}
+                              onClick={() => setRotationDays((rotationDays || []).filter(item => item && item.id !== d.id))}
                               className="text-red-400 hover:text-red-500 text-xs font-semibold px-2 py-1 rounded-lg transition-colors cursor-pointer"
                             >
                               {isArabic ? 'حذف' : 'Remove'}
@@ -866,7 +877,7 @@ export const MyWorkout: React.FC = () => {
                         {!d.isRest ? (
                           <div className="flex flex-wrap gap-1.5">
                             {MUSCLE_GROUPS.map((mg) => {
-                              const active = d.muscleGroups.includes(mg);
+                              const active = Array.isArray(d.muscleGroups) && d.muscleGroups.includes(mg);
                               return (
                                 <button
                                   key={mg}
@@ -903,60 +914,57 @@ export const MyWorkout: React.FC = () => {
                   </div>
 
                   <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
-                    {newFixedDays.map((item) => {
-                      const isRest = item.workoutType === 'rest';
-                      return (
-                        <div
-                          key={item.day}
-                          className={`p-4 rounded-2xl border space-y-3 transition-all ${
-                            isDark ? 'bg-[hsl(240,5%,13%)] border-[hsl(240,5%,22%)]' : 'bg-[hsl(40,20%,97%)] border-[hsl(40,15%,86%)]'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold uppercase tracking-wide">
-                              {translateDayName(item.day, lang)}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleToggleNewFixedRest(item.day)}
-                              className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all ${
-                                isRest 
-                                  ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]')
-                                  : (isDark ? 'border-gray-600 text-gray-300' : 'border-slate-300 text-slate-700')
-                              }`}
-                            >
-                              {isRest ? (isArabic ? 'تحويل لتمرين' : 'Make Training') : (isArabic ? 'تحويل لراحة' : 'Make Rest')}
-                            </button>
-                          </div>
-
-                          {!isRest ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {MUSCLE_GROUPS.map((mg) => {
-                                const active = item.muscleGroups.includes(mg);
-                                return (
-                                  <button
-                                    key={mg}
-                                    type="button"
-                                    onClick={() => handleToggleNewFixedMuscle(item.day, mg)}
-                                    className={`px-2.5 py-1.5 rounded-xl text-[11px] font-medium border transition-all cursor-pointer ${
-                                      active
-                                        ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)] font-bold' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)] font-bold')
-                                        : (isDark ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,5%,20%)] text-gray-400 hover:border-gray-500' : 'bg-white border-[hsl(40,15%,88%)] text-slate-600 hover:border-slate-400')
-                                    }`}
-                                  >
-                                    {translateMuscleGroup(mg, lang)}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-gray-400 italic">
-                              {isArabic ? 'يوم راحة (Rest Day)' : 'Rest Day'}
-                            </p>
-                          )}
+                    {(newFixedDays || []).map((item) => item && (
+                      <div
+                        key={item.day}
+                        className={`p-4 rounded-2xl border space-y-3 transition-all ${
+                          isDark ? 'bg-[hsl(240,5%,13%)] border-[hsl(240,5%,22%)]' : 'bg-[hsl(40,20%,97%)] border-[hsl(40,15%,86%)]'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-wide">
+                            {translateDayName(item.day, lang)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleNewFixedRest(item.day)}
+                            className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all ${
+                              item.workoutType === 'rest' 
+                                ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]')
+                                : (isDark ? 'border-gray-600 text-gray-300' : 'border-slate-300 text-slate-700')
+                            }`}
+                          >
+                            {item.workoutType === 'rest' ? (isArabic ? 'تحويل لتمرين' : 'Make Training') : (isArabic ? 'تحويل لراحة' : 'Make Rest')}
+                          </button>
                         </div>
-                      );
-                    })}
+
+                        {item.workoutType !== 'rest' ? (
+                          <div className="flex flex-wrap gap-1.5">
+                            {MUSCLE_GROUPS.map((mg) => {
+                              const active = Array.isArray(item.muscleGroups) && item.muscleGroups.includes(mg);
+                              return (
+                                <button
+                                  key={mg}
+                                  type="button"
+                                  onClick={() => handleToggleNewFixedMuscle(item.day, mg)}
+                                  className={`px-2.5 py-1.5 rounded-xl text-[11px] font-medium border transition-all cursor-pointer ${
+                                    active
+                                      ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)] font-bold' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)] font-bold')
+                                      : (isDark ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,5%,20%)] text-gray-400 hover:border-gray-500' : 'bg-white border-[hsl(40,15%,88%)] text-slate-600 hover:border-slate-400')
+                                  }`}
+                                >
+                                  {translateMuscleGroup(mg, lang)}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400 italic">
+                            {isArabic ? 'يوم راحة (Rest Day)' : 'Rest Day'}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )}
@@ -1024,10 +1032,10 @@ export const MyWorkout: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setDraftRotationDays([
-                        ...draftRotationDays,
+                        ...(draftRotationDays || []),
                         {
                           id: Date.now().toString(),
-                          title: `Day ${draftRotationDays.length + 1}`,
+                          title: `Day ${(draftRotationDays || []).length + 1}`,
                           muscleGroups: ['Chest', 'Triceps'],
                           isRest: false,
                         },
@@ -1055,7 +1063,7 @@ export const MyWorkout: React.FC = () => {
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {activeSplitData?.type === 'rotation' ? (
-                draftRotationDays.map((d, index) => (
+                (draftRotationDays || []).map((d, index) => d && (
                   <div
                     key={d.id || index}
                     className={`rounded-2xl border p-5 space-y-4 transition-all ${
@@ -1075,7 +1083,7 @@ export const MyWorkout: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            setDraftRotationDays(draftRotationDays.filter(item => item.id !== d.id));
+                            setDraftRotationDays((draftRotationDays || []).filter(item => item && item.id !== d.id));
                           }}
                           className="text-red-400 hover:text-red-500 text-xs font-semibold px-2.5 py-1 rounded-xl border border-red-500/20 transition-colors cursor-pointer"
                         >
@@ -1098,7 +1106,7 @@ export const MyWorkout: React.FC = () => {
                     {!d.isRest && (
                       <div className="flex flex-wrap gap-2 pt-1">
                         {MUSCLE_GROUPS.map((mg) => {
-                          const active = d.muscleGroups.includes(mg);
+                          const active = Array.isArray(d.muscleGroups) && d.muscleGroups.includes(mg);
                           return (
                             <button
                               key={mg}
@@ -1119,103 +1127,97 @@ export const MyWorkout: React.FC = () => {
                   </div>
                 ))
               ) : activeSplitData?.type === 'fixed' ? (
-                draftFixedDays.map((dayItem) => {
-                  const isRest = dayItem.workoutType === 'rest';
-                  return (
-                    <div
-                      key={dayItem.day}
-                      className={`rounded-2xl border p-5 space-y-4 transition-all ${
-                        isDark ? 'bg-[hsl(240,5%,13%)] border-[hsl(240,5%,22%)]' : 'bg-[hsl(40,20%,97%)] border-[hsl(40,15%,86%)]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-bold uppercase tracking-wide">{translateDayName(dayItem.day, lang)}</h3>
-                        <button
-                          type="button"
-                          onClick={() => toggleDraftFixedRest(dayItem.day)}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                            isRest 
-                              ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]')
-                              : (isDark ? 'border-gray-600 text-gray-300 hover:border-gray-400' : 'border-slate-300 text-slate-700 hover:border-slate-400')
-                          }`}
-                        >
-                          {isRest ? (isArabic ? 'يوم تمرين' : 'Make Training') : (isArabic ? 'يوم راحة' : 'Make Rest')}
-                        </button>
-                      </div>
-
-                      {!isRest && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {MUSCLE_GROUPS.map((mg) => {
-                            const active = dayItem.muscleGroups.includes(mg);
-                            return (
-                              <button
-                                key={mg}
-                                type="button"
-                                onClick={() => toggleDraftFixedMuscle(dayItem.day, mg)}
-                                className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
-                                  active 
-                                    ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)] font-bold shadow-md' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)] font-bold shadow-sm') 
-                                    : (isDark ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,5%,20%)] text-gray-400 hover:border-gray-500' : 'bg-white border-[hsl(40,15%,88%)] text-slate-600 hover:border-slate-400')
-                                }`}
-                              >
-                                {translateMuscleGroup(mg, lang)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                (draftFixedDays || []).map((dayItem) => dayItem && (
+                  <div
+                    key={dayItem.day}
+                    className={`rounded-2xl border p-5 space-y-4 transition-all ${
+                      isDark ? 'bg-[hsl(240,5%,13%)] border-[hsl(240,5%,22%)]' : 'bg-[hsl(40,20%,97%)] border-[hsl(40,15%,86%)]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-bold uppercase tracking-wide">{translateDayName(dayItem.day, lang)}</h3>
+                      <button
+                        type="button"
+                        onClick={() => toggleDraftFixedRest(dayItem.day)}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                          dayItem.workoutType === 'rest' 
+                            ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]')
+                            : (isDark ? 'border-gray-600 text-gray-300 hover:border-gray-400' : 'border-slate-300 text-slate-700 hover:border-slate-400')
+                        }`}
+                      >
+                        {dayItem.workoutType === 'rest' ? (isArabic ? 'يوم تمرين' : 'Make Training') : (isArabic ? 'يوم راحة' : 'Make Rest')}
+                      </button>
                     </div>
-                  );
-                })
+
+                    {dayItem.workoutType !== 'rest' && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {MUSCLE_GROUPS.map((mg) => {
+                          const active = Array.isArray(dayItem.muscleGroups) && dayItem.muscleGroups.includes(mg);
+                          return (
+                            <button
+                              key={mg}
+                              type="button"
+                              onClick={() => toggleDraftFixedMuscle(dayItem.day, mg)}
+                              className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
+                                active 
+                                  ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)] font-bold shadow-md' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)] font-bold shadow-sm') 
+                                  : (isDark ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,5%,20%)] text-gray-400 hover:border-gray-500' : 'bg-white border-[hsl(40,15%,88%)] text-slate-600 hover:border-slate-400')
+                              }`}
+                            >
+                              {translateMuscleGroup(mg, lang)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))
               ) : (
-                draftSchedule.map((dayItem) => {
-                  const isRest = dayItem.workoutType === 'rest';
-                  return (
-                    <div
-                      key={dayItem.day}
-                      className={`rounded-2xl border p-5 space-y-4 transition-all ${
-                        isDark ? 'bg-[hsl(240,5%,13%)] border-[hsl(240,5%,22%)]' : 'bg-[hsl(40,20%,97%)] border-[hsl(40,15%,86%)]'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-bold uppercase tracking-wide">{translateDayName(dayItem.day, lang)}</h3>
-                        <button
-                          type="button"
-                          onClick={() => toggleRestDay(dayItem.day)}
-                          className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                            isRest 
-                              ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]')
-                              : (isDark ? 'border-gray-600 text-gray-300 hover:border-gray-400' : 'border-slate-300 text-slate-700 hover:border-slate-400')
-                          }`}
-                        >
-                          {isRest ? (isArabic ? 'يوم تمرين' : 'Make Training') : (isArabic ? 'يوم راحة' : 'Make Rest')}
-                        </button>
-                      </div>
-
-                      {!isRest && (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {MUSCLE_GROUPS.map((mg) => {
-                            const active = dayItem.muscleGroups.includes(mg);
-                            return (
-                              <button
-                                key={mg}
-                                type="button"
-                                onClick={() => toggleMuscleGroup(dayItem.day, mg)}
-                                className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
-                                  active 
-                                    ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)] font-bold shadow-md' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)] font-bold shadow-sm') 
-                                    : (isDark ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,5%,20%)] text-gray-400 hover:border-gray-500' : 'bg-white border-[hsl(40,15%,88%)] text-slate-600 hover:border-slate-400')
-                                }`}
-                              >
-                                {translateMuscleGroup(mg, lang)}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                (draftSchedule || []).map((dayItem) => dayItem && (
+                  <div
+                    key={dayItem.day}
+                    className={`rounded-2xl border p-5 space-y-4 transition-all ${
+                      isDark ? 'bg-[hsl(240,5%,13%)] border-[hsl(240,5%,22%)]' : 'bg-[hsl(40,20%,97%)] border-[hsl(40,15%,86%)]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-bold uppercase tracking-wide">{translateDayName(dayItem.day, lang)}</h3>
+                      <button
+                        type="button"
+                        onClick={() => toggleRestDay(dayItem.day)}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                          dayItem.workoutType === 'rest' 
+                            ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)]' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)]')
+                            : (isDark ? 'border-gray-600 text-gray-300 hover:border-gray-400' : 'border-slate-300 text-slate-700 hover:border-slate-400')
+                        }`}
+                      >
+                        {dayItem.workoutType === 'rest' ? (isArabic ? 'يوم تمرين' : 'Make Training') : (isArabic ? 'يوم راحة' : 'Make Rest')}
+                      </button>
                     </div>
-                  );
-                })
+
+                    {dayItem.workoutType !== 'rest' && (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {MUSCLE_GROUPS.map((mg) => {
+                          const active = Array.isArray(dayItem.muscleGroups) && dayItem.muscleGroups.includes(mg);
+                          return (
+                            <button
+                              key={mg}
+                              type="button"
+                              onClick={() => toggleMuscleGroup(dayItem.day, mg)}
+                              className={`px-3 py-2 rounded-xl text-xs font-medium border transition-all cursor-pointer ${
+                                active 
+                                  ? (isDark ? 'bg-[hsl(75,92%,56%)] text-[hsl(240,10%,9%)] border-[hsl(75,92%,56%)] font-bold shadow-md' : 'bg-[hsl(76,78%,42%)] text-white border-[hsl(76,78%,42%)] font-bold shadow-sm') 
+                                  : (isDark ? 'bg-[hsl(240,5%,10%)] border-[hsl(240,5%,20%)] text-gray-400 hover:border-gray-500' : 'bg-white border-[hsl(40,15%,88%)] text-slate-600 hover:border-slate-400')
+                              }`}
+                            >
+                              {translateMuscleGroup(mg, lang)}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                ))
               )}
             </div>
 
