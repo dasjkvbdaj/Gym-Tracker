@@ -88,13 +88,31 @@ export const MyWorkout: React.FC = () => {
   ]);
 
   // @ts-ignore
-  const activeSplitId = settings.activeSplitId || 'default';
-  // @ts-ignore
-  const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
-  const currentSplitType = activeSplitId === 'default' ? 'fixed' : (activeSplitData?.type || 'fixed');
+  let activeSplitId = settings.activeSplitId;
   
+  // إذا لم يتم تحديد برنامج أو كان البرنامج النشط غير موجود في القائمة المحفوظة، نقوم باختيار أول برنامج متوفر تلقائياً
+  useEffect(() => {
+    if (savedSplits.length > 0) {
+      const exists = savedSplits.some(s => s.id === activeSplitId);
+      if (!exists) {
+        updateSettings({
+          // @ts-ignore
+          activeSplitId: savedSplits[0].id,
+          // @ts-ignore
+          activeSplitName: savedSplits[0].name,
+          // @ts-ignore
+          activeSplitType: savedSplits[0].type,
+        });
+      }
+    }
+  }, [savedSplits, activeSplitId]);
+
+  const activeSplitData = savedSplits.find(s => s.id === activeSplitId) || savedSplits[0];
+  const currentSplitType = activeSplitData?.type || 'fixed';
+  const effectiveSplitId = activeSplitData?.id || '';
+
   const currentRotationList = activeSplitData?.daysData || rotationDays;
-  const currentFixedList = activeSplitId === 'default' ? weeklySchedule : (activeSplitData?.daysData || newFixedDays);
+  const currentFixedList = activeSplitData?.daysData || newFixedDays;
 
   const trainingDays = useMemo(() => {
     if (currentSplitType === 'rotation' && Array.isArray(currentRotationList)) {
@@ -254,7 +272,7 @@ export const MyWorkout: React.FC = () => {
         };
         await db.workoutSplits.put(updatedSplitData);
         showToast(isArabic ? 'تم حفظ تعديلات الـ Rotation بنجاح' : 'Rotation schedule updated successfully', 'success');
-      } else if (activeSplitId !== 'default' && activeSplitData) {
+      } else if (activeSplitData) {
         const updatedFixedDays = draftSchedule.map(day => ({
           day: day.day,
           muscleGroups: day.muscleGroups,
@@ -267,17 +285,6 @@ export const MyWorkout: React.FC = () => {
           daysData: updatedFixedDays,
         };
         await db.workoutSplits.put(updatedSplitData);
-        showToast(isArabic ? 'تم حفظ التعديلات بنجاح' : 'Schedule updated successfully', 'success');
-      } else {
-        for (const day of draftSchedule) {
-          const updatedDay: WeeklyScheduleDay = {
-            ...day,
-            title: generateDayTitle(day.muscleGroups),
-            workoutType: day.muscleGroups.length === 0 ? 'rest' : 'strength',
-            muscleGroups: [...day.muscleGroups],
-          };
-          await updateScheduleDay(updatedDay);
-        }
         showToast(isArabic ? 'تم حفظ التعديلات بنجاح' : 'Schedule updated successfully', 'success');
       }
       setIsEditModalOpen(false);
@@ -363,19 +370,33 @@ export const MyWorkout: React.FC = () => {
   };
 
   const handleDeleteCurrentSplit = async () => {
-    if (activeSplitId === 'default') return;
+    if (!effectiveSplitId) return;
     const splitNameToDelete = activeSplitData?.name || '';
     
     try {
-      await db.workoutSplits.delete(activeSplitId);
-      await updateSettings({
-        // @ts-ignore
-        activeSplitId: 'default',
-        // @ts-ignore
-        activeSplitName: 'Standard Split',
-        // @ts-ignore
-        activeSplitType: 'fixed',
-      });
+      await db.workoutSplits.delete(effectiveSplitId);
+      
+      const remainingSplits = await db.workoutSplits.toArray();
+      if (remainingSplits.length > 0) {
+        await updateSettings({
+          // @ts-ignore
+          activeSplitId: remainingSplits[0].id,
+          // @ts-ignore
+          activeSplitName: remainingSplits[0].name,
+          // @ts-ignore
+          activeSplitType: remainingSplits[0].type,
+        });
+      } else {
+        await updateSettings({
+          // @ts-ignore
+          activeSplitId: '',
+          // @ts-ignore
+          activeSplitName: '',
+          // @ts-ignore
+          activeSplitType: 'fixed',
+        });
+      }
+
       showToast(
         isArabic 
           ? `تم حذف البرنامج "${splitNameToDelete}" بنجاح` 
@@ -390,18 +411,6 @@ export const MyWorkout: React.FC = () => {
 
   const handleSelectSplit = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedId = e.target.value;
-    if (selectedId === 'default') {
-      await updateSettings({
-        // @ts-ignore
-        activeSplitId: 'default',
-        // @ts-ignore
-        activeSplitName: 'Standard Split',
-        // @ts-ignore
-        activeSplitType: 'fixed',
-      });
-      return;
-    }
-
     const foundSplit = savedSplits.find(s => s.id === selectedId);
     if (foundSplit) {
       await updateSettings({
@@ -446,7 +455,7 @@ export const MyWorkout: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
           <div className="relative flex-1 sm:flex-initial min-w-[220px]">
             <select
-              value={activeSplitId}
+              value={effectiveSplitId}
               onChange={handleSelectSplit}
               aria-label="Select Workout Split"
               className={`w-full px-4 py-3 rounded-xl font-display font-bold text-sm border appearance-none pr-10 cursor-pointer focus:outline-none ${
@@ -455,9 +464,6 @@ export const MyWorkout: React.FC = () => {
                   : 'bg-white border-[hsl(40,10%,88%)] text-slate-900 focus:border-indigo-600 shadow-xs'
               }`}
             >
-              <option value="default">
-                {isArabic ? '⭐ النظام الافتراضي (Standard Split)' : '⭐ Standard Weekly Split'}
-              </option>
               {savedSplits.map((split) => (
                 <option key={split.id} value={split.id}>
                   {split.name} ({split.type.toUpperCase()})
@@ -467,7 +473,7 @@ export const MyWorkout: React.FC = () => {
             <ChevronDown className={`absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none ${isDark ? 'text-gray-400' : 'text-slate-500'}`} />
           </div>
 
-          {activeSplitId !== 'default' && (
+          {savedSplits.length > 0 && (
             <button
               onClick={handleDeleteCurrentSplit}
               className={`p-3 rounded-xl border transition-all cursor-pointer ${
