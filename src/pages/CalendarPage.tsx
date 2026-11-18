@@ -14,7 +14,6 @@ import {
   ClipboardList,
   Copy,
   Check,
-  ArrowRightLeft,
 } from 'lucide-react';
 
 import { useGym } from '../context/GymContext';
@@ -167,7 +166,6 @@ export const CalendarPage: React.FC = () => {
 
   const lang = settings.language;
   const isDark = settings.theme === 'dark';
-  const isArabic = lang === 'ar';
 
   // @ts-ignore
   const activeSplitId = settings.activeSplitId || 'default';
@@ -178,28 +176,20 @@ export const CalendarPage: React.FC = () => {
   const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
   // @ts-ignore
   const rotationDays = activeSplitData?.daysData || [];
-  // @ts-ignore
-  const shiftOffsets: Record<string, number> = activeSplitData?.shiftOffsets || {};
-
-  // Helper to compute cumulative shift offset for a given date string
-  const getCumulativeShiftForDate = (dateStr: string) => {
-    if (!shiftOffsets || Object.keys(shiftOffsets).length === 0) return 0;
-    let totalShift = 0;
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const targetTime = new Date(y, m - 1, d).getTime();
-
-    for (const [sDate, offsetVal] of Object.entries(shiftOffsets)) {
-      const [sy, sm, sd] = sDate.split('-').map(Number);
-      const sTime = new Date(sy, sm - 1, sd).getTime();
-      if (targetTime >= sTime) {
-        totalShift += (offsetVal as number);
-      }
-    }
-    return totalShift;
-  };
 
   const getDayScheduleInfoForDate = (dateStr: string) => {
     const meta = getDateMetadata(dateStr);
+
+    // قاعدة حماية يوم الأحد: جعله يوم راحة دائماً وترحيل التمارين
+    if (meta.dayOfWeek === 'Sunday') {
+      return {
+        title: lang === 'ar' ? 'يوم راحة' : 'Rest Day',
+        workoutType: 'rest',
+        muscleGroups: [],
+        isRotation: currentSplitType === 'rotation',
+        rotationDayNumber: null,
+      };
+    }
 
     if (currentSplitType === 'rotation' && Array.isArray(rotationDays) && rotationDays.length > 0) { 
       const [y, m, d] = dateStr.split('-').map(Number); 
@@ -219,14 +209,21 @@ export const CalendarPage: React.FC = () => {
         }; 
       } 
       const diffTime = targetDateObj.getTime() - refDateObj.getTime(); 
-      const rawDiffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
       
-      // Apply cumulative manual shift offset
-      const manualShift = getCumulativeShiftForDate(dateStr);
-      const diffDays = rawDiffDays - manualShift;
+      // حساب عدد أيام الآحاد السابقة لتعويض إزاحة الجدول بسبب راحة الأحد
+      let sundayCount = 0;
+      let tempDate = new Date(refDateObj);
+      while (tempDate.getTime() < targetDateObj.getTime()) {
+        if (tempDate.getDay() === 0) { // الأحد
+          sundayCount++;
+        }
+        tempDate.setDate(tempDate.getDate() + 1);
+      }
 
+      const adjustedDiffDays = diffDays - sundayCount;
       const totalLen = rotationDays.length; 
-      let rotIndex = diffDays % totalLen; 
+      let rotIndex = adjustedDiffDays % totalLen; 
       if (rotIndex < 0) rotIndex += totalLen; 
       const matchedRotDay = rotationDays[rotIndex]; 
       if (matchedRotDay) { 
@@ -303,13 +300,16 @@ export const CalendarPage: React.FC = () => {
 
   const scheduledRestDays = useMemo(() => {
     if (currentSplitType === 'rotation') {
-      return new Set();
+      const restSet = new Set(['Sunday']);
+      return restSet;
     }
-    return new Set(
+    const restSet = new Set(
       weeklySchedule
         .filter((d) => d.workoutType === 'rest')
         .map((d) => d.day)
     );
+    restSet.add('Sunday');
+    return restSet;
   }, [weeklySchedule, currentSplitType]);
 
   const selectedDateWorkouts = useMemo(
@@ -329,7 +329,7 @@ export const CalendarPage: React.FC = () => {
 
   const selectedDaySchedule = useMemo(
     () => getDayScheduleInfoForDate(selectedCalendarDate),
-    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays, activeSplitData, shiftOffsets]
+    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays, activeSplitData]
   );
 
   const isTodayOrFutureDate = useMemo(() => {
@@ -340,84 +340,6 @@ export const CalendarPage: React.FC = () => {
   const hasWorkoutsOrPlansOnSelectedDate = useMemo(() => {
     return selectedDateWorkouts.length > 0;
   }, [selectedDateWorkouts]);
-
-  // --- UPDATED FEATURE: Manual Sunday Shift Handler with Dynamic Offset Integration ---
-  const handleShiftSundayWorkout = async () => {
-    if (selectedDateMeta.dayOfWeek !== 'Sunday') return;
-
-    const sundayWorkouts = workoutsByDate.get(selectedCalendarDate) || [];
-    const [y, m, d] = selectedCalendarDate.split('-').map(Number);
-    const sundayDateObj = new Date(y, m - 1, d);
-    const mondayDateObj = new Date(sundayDateObj);
-    mondayDateObj.setDate(sundayDateObj.getDate() + 1);
-    const nextMondayStr = toLocalDateString(mondayDateObj);
-
-    try {
-      // 1. Shift recorded/planned workouts from Sunday to Monday
-      if (sundayWorkouts.length > 0) {
-        for (const w of sundayWorkouts) {
-          const updatedW: WorkoutSession = {
-            ...w,
-            actualDate: nextMondayStr,
-            year: mondayDateObj.getFullYear(),
-            month: mondayDateObj.getMonth() + 1,
-            dayOfMonth: mondayDateObj.getDate(),
-            dayOfWeek: 'Monday',
-          };
-          await saveHistoricalWorkout(updatedW);
-          if (w.id !== updatedW.id) {
-            await deleteWorkout(w.id);
-          }
-        }
-      } else {
-        // Create planned session for Monday if none existed
-        const sched = getDayScheduleInfoForDate(selectedCalendarDate);
-        if (sched && sched.workoutType !== 'rest' && sched.muscleGroups.length > 0) {
-          const newPlannedSession: WorkoutSession = {
-            id: generateId('workout'),
-            title: sched.title,
-            workoutType: sched.workoutType,
-            muscleGroups: sched.muscleGroups,
-            startTimestamp: Date.now(),
-            finishTimestamp: null,
-            status: 'planned',
-            exercises: [],
-            actualDate: nextMondayStr,
-            year: mondayDateObj.getFullYear(),
-            month: mondayDateObj.getMonth() + 1,
-            dayOfMonth: mondayDateObj.getDate(),
-            dayOfWeek: 'Monday',
-            durationMinutes: null,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            notes: '',
-          };
-          await saveHistoricalWorkout(newPlannedSession);
-        }
-      }
-
-      // 2. Update shift offsets in active split so rotation formula adjusts from this Sunday forward
-      if (activeSplitData) {
-        const updatedOffsets = { ...(activeSplitData.shiftOffsets || {}) };
-        updatedOffsets[selectedCalendarDate] = (updatedOffsets[selectedCalendarDate] || 0) + 1;
-
-        const updatedSplitData = {
-          ...activeSplitData,
-          shiftOffsets: updatedOffsets,
-        };
-        await db.workoutSplits.put(updatedSplitData);
-      }
-
-      showToast(
-        isArabic 
-          ? 'تم تحويل يوم الأحد إلى راحة وترحيل تمرينه إلى الإثنين بنجاح وتحديث الجدول!' 
-          : 'Sunday converted to rest and workout shifted to Monday successfully with schedule updated!',
-        'success'
-      );
-    } catch (err) {
-      console.error(err);
-      showToast(isArabic ? 'حدث خطأ أثناء الترحيل' : 'Error shifting workout', 'error');
-    }
-  };
 
   const handleCopyWorkoutDetails = (workout: WorkoutSession, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -1076,27 +998,6 @@ export const CalendarPage: React.FC = () => {
               >
                 {selectedDateRelativeLabel}
               </span>
-              
-              {/* --- SUNDAY MANUAL SHIFT FEATURE BUTTON --- */}
-              {selectedDateMeta.dayOfWeek === 'Sunday' && (
-                <div className="mt-3">
-                  <button
-                    onClick={handleShiftSundayWorkout}
-                    className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer border ${
-                      isDark
-                        ? 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border-amber-500/40'
-                        : 'bg-amber-100 hover:bg-amber-200 text-amber-800 border-amber-300 shadow-xs'
-                    }`}
-                    title={isArabic ? 'تحويل الأحد لراحة وترحيل التمرين للإثنين' : 'Make Sunday rest and shift workout to Monday'}
-                  >
-                    <ArrowRightLeft className="w-4 h-4" />
-                    <span>
-                      {lang === 'ar' ? 'تأجيل تمرين الأحد للإثنين (Rest & Shift)' : 'Rest Sunday & Shift to Mon'}
-                    </span>
-                  </button>
-                </div>
-              )}
-
               {selectedDaySchedule && (
                 <div className="mt-3 space-y-2">
                   <p
