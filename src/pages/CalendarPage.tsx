@@ -1,4 +1,3 @@
-
 import React, { useMemo, useState } from 'react';
 import {
   Calendar as CalendarIcon,
@@ -178,6 +177,36 @@ export const CalendarPage: React.FC = () => {
   // @ts-ignore
   const rotationDays = activeSplitData?.daysData || [];
 
+  // State for postponed / shifted workout dates
+  const [postponedDates, setPostponedDates] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('gym_postponed_dates');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const handleTogglePostpone = (dateStr: string) => {
+    let updated: string[];
+    const isAlreadyPostponed = postponedDates.includes(dateStr);
+    if (isAlreadyPostponed) {
+      updated = postponedDates.filter(d => d !== dateStr);
+    } else {
+      updated = [...postponedDates, dateStr].sort();
+    }
+    setPostponedDates(updated);
+    try {
+      localStorage.setItem('gym_postponed_dates', JSON.stringify(updated));
+    } catch {}
+    showToast(
+      lang === 'ar'
+        ? (isAlreadyPostponed ? 'تم إلغاء تأجيل هذا اليوم بنجاح' : 'تم تأجيل تمرين اليوم وجعله يوم راحة وتدوير الجدول')
+        : (isAlreadyPostponed ? 'Postponement cancelled' : 'Workout postponed & schedule shifted'),
+      'success'
+    );
+  };
+
   const getDayScheduleInfoForDate = (dateStr: string) => {
     const meta = getDateMetadata(dateStr);
 
@@ -196,10 +225,32 @@ export const CalendarPage: React.FC = () => {
           muscleGroups: standardDaySchedule?.muscleGroups || [], 
           isRotation: false, 
           rotationDayNumber: null, 
+          isPostponedRest: false,
         }; 
       } 
+
+      // If THIS specific date is postponed, force it to be a Rest Day
+      if (postponedDates.includes(dateStr)) {
+        return {
+          title: lang === 'ar' ? 'يوم راحة (مؤجل)' : 'Rest Day (Postponed)',
+          workoutType: 'rest',
+          muscleGroups: [],
+          isRotation: true,
+          rotationDayNumber: null,
+          isPostponedRest: true,
+        };
+      }
+
+      // Count how many postponed dates occurred strictly before `dateStr` to shift subsequent rotation
+      let shiftOffset = 0;
+      for (const pDate of postponedDates) {
+        if (pDate < dateStr) {
+          shiftOffset++;
+        }
+      }
+
       const diffTime = targetDateObj.getTime() - refDateObj.getTime(); 
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) - shiftOffset; 
       const totalLen = rotationDays.length; 
       let rotIndex = diffDays % totalLen; 
       if (rotIndex < 0) rotIndex += totalLen; 
@@ -211,6 +262,7 @@ export const CalendarPage: React.FC = () => {
           muscleGroups: matchedRotDay.muscleGroups || [], 
           isRotation: true, 
           rotationDayNumber: rotIndex + 1, 
+          isPostponedRest: false,
         }; 
       } 
     } 
@@ -227,6 +279,7 @@ export const CalendarPage: React.FC = () => {
       muscleGroups: standardDaySchedule?.muscleGroups || [], 
       isRotation: false, 
       rotationDayNumber: null, 
+      isPostponedRest: false,
     }; 
   };
 
@@ -304,7 +357,7 @@ export const CalendarPage: React.FC = () => {
 
   const selectedDaySchedule = useMemo(
     () => getDayScheduleInfoForDate(selectedCalendarDate),
-    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays, activeSplitData]
+    [selectedCalendarDate, weeklySchedule, currentSplitType, rotationDays, activeSplitData, postponedDates]
   );
 
   const isTodayOrFutureDate = useMemo(() => {
@@ -843,14 +896,14 @@ export const CalendarPage: React.FC = () => {
                       {cell.dayNumber}
                     </span>
 
-                    {isScheduledRest && dayWorkouts.length === 0 && !cellDayInfo.isRotation && (
-                      <span title="Scheduled Rest Day">
-                        <Moon className="w-3 h-3 text-gray-500 opacity-60" />
+                    {((isScheduledRest && dayWorkouts.length === 0 && !cellDayInfo.isRotation) || cellDayInfo.isPostponedRest) && (
+                      <span title={cellDayInfo.isPostponedRest ? (lang === 'ar' ? 'يوم راحة مؤجل' : 'Postponed Rest Day') : 'Scheduled Rest Day'}>
+                        <Moon className={`w-3 h-3 ${cellDayInfo.isPostponedRest ? 'text-amber-400' : 'text-gray-500 opacity-60'}`} />
                       </span>
                     )}
                   </div>
 
-                  {cellDayInfo.isRotation && cellDayInfo.rotationDayNumber !== null && (
+                  {cellDayInfo.isRotation && cellDayInfo.rotationDayNumber !== null && !cellDayInfo.isPostponedRest && (
                     <div className="w-full flex flex-col items-center mt-0.5">
                       <span
                         className={`text-[9px] sm:text-[10px] font-mono-num font-bold px-1.5 py-0.2 rounded-md border text-center ${
@@ -940,9 +993,9 @@ export const CalendarPage: React.FC = () => {
               </span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Moon className="w-3.5 h-3.5 text-gray-500" />
+              <Moon className="w-3.5 h-3.5 text-amber-400" />
               <span>
-                {lang === 'ar' ? 'يوم راحة مخطط' : 'Planned Rest Day'}
+                {lang === 'ar' ? 'يوم راحة مؤجل' : 'Postponed Rest Day'}
               </span>
             </div>
           </div>
@@ -959,7 +1012,7 @@ export const CalendarPage: React.FC = () => {
               <h2 className="text-lg font-display font-bold mt-0.5">
                 {formatFullDate(selectedCalendarDate, lang)}
               </h2>
-              {selectedDaySchedule.isRotation && selectedDaySchedule.rotationDayNumber !== null && (
+              {selectedDaySchedule.isRotation && selectedDaySchedule.rotationDayNumber !== null && !selectedDaySchedule.isPostponedRest && (
                 <div className="mt-1 text-xs font-bold text-indigo-600 dark:text-amber-400">
                   {lang === 'ar' ? `اليوم الدوري: Day ${selectedDaySchedule.rotationDayNumber}` : `Rotation Day: Day ${selectedDaySchedule.rotationDayNumber}`}
                 </div>
@@ -983,7 +1036,29 @@ export const CalendarPage: React.FC = () => {
                     {lang === 'ar' ? 'الخطة المرجعية لهذا اليوم:' : 'Reference plan:'}{' '}
                     <strong>{selectedDaySchedule.title}</strong>
                   </p>
-                  {isTodayOrFutureDate && !hasWorkoutsOrPlansOnSelectedDate && selectedDaySchedule.workoutType !== 'rest' && (
+
+                  {/* Postpone / Shift Button */}
+                  {currentSplitType === 'rotation' && (
+                    <div className="pt-1">
+                      {selectedDaySchedule.isPostponedRest ? (
+                        <button
+                          onClick={() => handleTogglePostpone(selectedCalendarDate)}
+                          className="w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer bg-amber-500/20 hover:bg-amber-500/30 text-amber-400 border border-amber-500/40"
+                        >
+                          <span>{lang === 'ar' ? 'إلغاء تأجيل هذا اليوم وإعادة الجدول' : 'Cancel Postponement'}</span>
+                        </button>
+                      ) : selectedDaySchedule.workoutType !== 'rest' ? (
+                        <button
+                          onClick={() => handleTogglePostpone(selectedCalendarDate)}
+                          className="w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 border border-amber-500/30"
+                        >
+                          <span>{lang === 'ar' ? '🔄 تأجيل تمرين اليوم وجعله راحة (ترحيل الجدول)' : '🔄 Postpone Today & Make Rest'}</span>
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+
+                  {isTodayOrFutureDate && !hasWorkoutsOrPlansOnSelectedDate && selectedDaySchedule.workoutType !== 'rest' && !selectedDaySchedule.isPostponedRest && (
                     <button
                       onClick={handleOpenPlanDay}
                       className={`w-full py-2 px-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer ${
@@ -1015,7 +1090,9 @@ export const CalendarPage: React.FC = () => {
                   {lang === 'ar' ? 'لا توجد تمارين مسجلة في هذا التاريخ.' : 'No workouts recorded on this date.'}
                 </p>
                 <p className="text-[11px] opacity-75">
-                  {lang === 'ar' ? 'يمكنك إضافة تمرين أو وضع خطة لهذا التاريخ.' : 'You can record or plan a session on this date.'}
+                  {selectedDaySchedule.isPostponedRest
+                    ? (lang === 'ar' ? 'تم تأجيل تمرين هذا اليوم وتحويله لراحة، وتم ترحيل الجدول.' : 'This workout was postponed.')
+                    : (lang === 'ar' ? 'يمكنك إضافة تمرين أو وضع خطة لهذا التاريخ.' : 'You can record or plan a session on this date.')}
                 </p>
               </div>
             ) : (
@@ -1774,4 +1851,3 @@ export const CalendarPage: React.FC = () => {
     </div>
   );
 };
-
