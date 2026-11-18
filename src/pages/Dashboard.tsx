@@ -603,236 +603,108 @@ export const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* MIDDLE GRID: WEEKLY ACTIVITY + WEEKLY SCHEDULE */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* WEEKLY ACTIVITY CHART */}
-        <div
-          className={`lg:col-span-7 rounded-xl p-5 border flex flex-col justify-between ${
-            isDark
-              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
-              : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-base font-display font-bold">
-                {t.weeklyActivityChart}
-              </h2>
-              <p
-                className={`text-xs ${
-                  isDark ? 'text-gray-400' : 'text-slate-500'
-                }`}
-              >
-                {isArabic
-                  ? 'عدد المجموعات والجلسات المسجلة فعلياً خلال هذا الأسبوع'
-                  : 'Actual recorded sets and sessions completed this week'}
-              </p>
-            </div>
-            <span
-              className={`text-xs font-mono-num px-2.5 py-1 rounded-lg ${
-                isDark
-                  ? 'bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/20'
-                  : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/20'
-              } border`}
-            >
-              {formatShortDate(weekRange.startOfWeek, lang)} –{' '}
-              {formatShortDate(weekRange.endOfWeek, lang)}
-            </span>
-          </div>
-          <div className="h-60 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={weeklyChartData}
-                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke={
-                    isDark ? 'hsl(240, 4%, 16%)' : 'hsl(40, 10%, 88%)'
-                  }
-                  vertical={false}
-                />
-                <XAxis
-                  dataKey="dayName"
-                  tick={{
-                    fill: isDark ? '#9CA3AF' : '#64748B',
-                    fontSize: 12,
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{
-                    fill: isDark ? '#9CA3AF' : '#64748B',
-                    fontSize: 12,
-                  }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: isDark
-                      ? 'hsl(240, 5%, 7.5%)'
-                      : '#FFFFFF',
-                    borderColor: isDark
-                      ? 'hsl(240, 4%, 19%)'
-                      : 'hsl(40, 10%, 88%)',
-                    borderRadius: '12px',
-                    color: isDark ? '#F3F4F6' : '#0F172A',
-                    fontSize: '12px',
-                  }}
-                  formatter={(value: unknown, name: unknown) => [
-                    String(value),
-                    name === 'sets'
-                      ? (isArabic ? 'المجموعات المكتملة' : 'Completed Sets')
-                      : (isArabic ? 'الجلسات' : 'Workout Sessions'),
-                  ]}
-                />
-                <Bar
-                  dataKey="sets"
-                  name="sets"
-                  fill={
-                    isDark ? 'hsl(75, 92%, 56%)' : 'hsl(76, 78%, 42%)'
-                  }
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={36}
-                />
-                <Bar
-                  dataKey="sessions"
-                  name="sessions"
-                  fill="#06B6D4"
-                  radius={[6, 6, 0, 0]}
-                  maxBarSize={24}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* WEEKLY SCHEDULE OVERVIEW - UPDATED DYNAMICALLY BASED ON ACTIVE SPLIT / ROTATION */}
-        <div
-          className={`lg:col-span-5 rounded-xl p-5 border flex flex-col justify-between ${
-            isDark
-              ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
-              : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-base font-display font-bold">
-                {t.weeklySchedule}
-              </h2>
-              <p
-                className={`text-xs ${
-                  isDark ? 'text-gray-400' : 'text-slate-500'
-                }`}
-              >
-                {isArabic
-                  ? 'مرجع تخطيطي — يعرض الجدول النشط حالياً'
-                  : 'Planning reference — displays currently active schedule'}
-              </p>
-            </div>
-            <button
-              onClick={() => setCurrentSection('schedule')}
-              className={`text-xs font-semibold px-3 py-1.5 rounded-lg border ml-2 transition-colors cursor-pointer ${
-                isDark
-                  ? 'bg-[hsl(240,5%,11%)] border-[hsl(240,4%,19%)] text-[hsl(75,92%,56%)] hover:bg-[hsl(240,5%,14%)]'
-                  : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-[hsl(76,78%,42%)] hover:bg-[hsl(40,15%,92%)]'
+      {/* WEEKLY ACTIVITY CHART (Full Width) */}
+      <div
+        className={`rounded-xl p-5 border flex flex-col justify-between ${
+          isDark
+            ? 'bg-[hsl(240,5%,7.5%)] border-[hsl(240,4%,16%)]'
+            : 'bg-white border-[hsl(40,10%,88%)] shadow-xs'
+        }`}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-base font-display font-bold">
+              {t.weeklyActivityChart}
+            </h2>
+            <p
+              className={`text-xs ${
+                isDark ? 'text-gray-400' : 'text-slate-500'
               }`}
             >
-              {isArabic ? 'تعديل الجدول' : 'Customize'}
-            </button>
+              {isArabic
+                ? 'عدد المجموعات والجلسات المسجلة فعلياً خلال هذا الأسبوع'
+                : 'Actual recorded sets and sessions completed this week'}
+            </p>
           </div>
-          <div className="space-y-2">
-            {currentSplitType === 'rotation' && Array.isArray(rotationDays) && rotationDays.length > 0 ? (
-              rotationDays.map((rotDay: any, index: number) => {
-                const isRest = rotDay.isRest;
-                return (
-                  <div
-                    key={rotDay.id || index}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition-colors ${
-                      isDark
-                        ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,16%)]'
-                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className={`font-display font-bold w-16 shrink-0 ${
-                          isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
-                        }`}
-                      >
-                        {isArabic ? `اليوم ${index + 1}` : `Day ${index + 1}`}
-                      </span>
-                      <span
-                        className={`truncate font-medium ${
-                          isRest
-                            ? 'text-gray-500 italic'
-                            : isDark
-                            ? 'text-gray-200'
-                            : 'text-slate-800'
-                        }`}
-                      >
-                        {isRest ? (isArabic ? 'يوم راحة' : 'Rest Day') : rotDay.title}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              weeklySchedule.map((dayPlan) => {
-                const isToday = dayPlan.day === todayMeta.dayOfWeek;
-                return (
-                  <div
-                    key={dayPlan.day}
-                    className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition-colors ${
-                      isToday
-                        ? isDark
-                          ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/40'
-                          : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30'
-                        : isDark
-                        ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,16%)]'
-                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span
-                        className={`font-display font-bold w-16 shrink-0 ${
-                          isToday
-                            ? isDark
-                              ? 'text-[hsl(75,92%,56%)]'
-                              : 'text-[hsl(76,78%,42%)]'
-                            : isDark
-                            ? 'text-gray-300'
-                            : 'text-slate-700'
-                        }`}
-                      >
-                        {translateDayName(
-                          dayPlan.day,
-                          lang,
-                          true
-                        )}
-                      </span>
-                      <span
-                        className={`truncate font-medium ${
-                          dayPlan.workoutType === 'rest'
-                            ? 'text-gray-500 italic'
-                            : dayPlan.workoutType === 'cardio'
-                            ? 'text-cyan-400'
-                            : isDark
-                            ? 'text-gray-200'
-                            : 'text-slate-800'
-                        }`}
-                      >
-                        {dayPlan.title}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
+          <span
+            className={`text-xs font-mono-num px-2.5 py-1 rounded-lg ${
+              isDark
+                ? 'bg-[hsl(75,92%,56%)]/10 text-[hsl(75,92%,56%)] border-[hsl(75,92%,56%)]/20'
+                : 'bg-[hsl(76,78%,42%)]/10 text-[hsl(76,78%,42%)] border-[hsl(76,78%,42%)]/20'
+            } border`}
+          >
+            {formatShortDate(weekRange.startOfWeek, lang)} –{' '}
+            {formatShortDate(weekRange.endOfWeek, lang)}
+          </span>
+        </div>
+        <div className="h-60 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={weeklyChartData}
+              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            >
+              <CartesianGrid
+                strokeDasharray="3 3"
+                stroke={
+                  isDark ? 'hsl(240, 4%, 16%)' : 'hsl(40, 10%, 88%)'
+                }
+                vertical={false}
+              />
+              <XAxis
+                dataKey="dayName"
+                tick={{
+                  fill: isDark ? '#9CA3AF' : '#64748B',
+                  fontSize: 12,
+                }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{
+                  fill: isDark ? '#9CA3AF' : '#64748B',
+                  fontSize: 12,
+                }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: isDark
+                    ? 'hsl(240, 5%, 7.5%)'
+                    : '#FFFFFF',
+                  borderColor: isDark
+                    ? 'hsl(240, 4%, 19%)'
+                    : 'hsl(40, 10%, 88%)',
+                  borderRadius: '12px',
+                  color: isDark ? '#F3F4F6' : '#0F172A',
+                  fontSize: '12px',
+                }}
+                formatter={(value: unknown, name: unknown) => [
+                  String(value),
+                  name === 'sets'
+                    ? (isArabic ? 'المجموعات المكتملة' : 'Completed Sets')
+                    : (isArabic ? 'الجلسات' : 'Workout Sessions'),
+                ]}
+              />
+              <Bar
+                dataKey="sets"
+                name="sets"
+                fill={
+                  isDark ? 'hsl(75, 92%, 56%)' : 'hsl(76, 78%, 42%)'
+                }
+                radius={[6, 6, 0, 0]}
+                maxBarSize={36}
+              />
+              <Bar
+                dataKey="sessions"
+                name="sessions"
+                fill="#06B6D4"
+                radius={[6, 6, 0, 0]}
+                maxBarSize={24}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
