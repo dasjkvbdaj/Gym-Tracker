@@ -180,6 +180,17 @@ export const CalendarPage: React.FC = () => {
   const getDayScheduleInfoForDate = (dateStr: string) => {
     const meta = getDateMetadata(dateStr);
 
+    // قاعدة حماية يوم الأحد: جعله يوم راحة دائماً وترحيل التمارين
+    if (meta.dayOfWeek === 'Sunday') {
+      return {
+        title: lang === 'ar' ? 'يوم راحة' : 'Rest Day',
+        workoutType: 'rest',
+        muscleGroups: [],
+        isRotation: currentSplitType === 'rotation',
+        rotationDayNumber: null,
+      };
+    }
+
     if (currentSplitType === 'rotation' && Array.isArray(rotationDays) && rotationDays.length > 0) { 
       const [y, m, d] = dateStr.split('-').map(Number); 
       const targetDateObj = new Date(y, m - 1, d); 
@@ -199,8 +210,20 @@ export const CalendarPage: React.FC = () => {
       } 
       const diffTime = targetDateObj.getTime() - refDateObj.getTime(); 
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+      
+      // حساب عدد أيام الآحاد السابقة لتعويض إزاحة الجدول بسبب راحة الأحد
+      let sundayCount = 0;
+      let tempDate = new Date(refDateObj);
+      while (tempDate.getTime() < targetDateObj.getTime()) {
+        if (tempDate.getDay() === 0) { // الأحد
+          sundayCount++;
+        }
+        tempDate.setDate(tempDate.getDate() + 1);
+      }
+
+      const adjustedDiffDays = diffDays - sundayCount;
       const totalLen = rotationDays.length; 
-      let rotIndex = diffDays % totalLen; 
+      let rotIndex = adjustedDiffDays % totalLen; 
       if (rotIndex < 0) rotIndex += totalLen; 
       const matchedRotDay = rotationDays[rotIndex]; 
       if (matchedRotDay) { 
@@ -277,13 +300,16 @@ export const CalendarPage: React.FC = () => {
 
   const scheduledRestDays = useMemo(() => {
     if (currentSplitType === 'rotation') {
-      return new Set();
+      const restSet = new Set(['Sunday']);
+      return restSet;
     }
-    return new Set(
+    const restSet = new Set(
       weeklySchedule
         .filter((d) => d.workoutType === 'rest')
         .map((d) => d.day)
     );
+    restSet.add('Sunday');
+    return restSet;
   }, [weeklySchedule, currentSplitType]);
 
   const selectedDateWorkouts = useMemo(
