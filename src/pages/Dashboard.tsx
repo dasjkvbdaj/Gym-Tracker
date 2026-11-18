@@ -8,6 +8,7 @@ import {
   Flame,
   History,
   Play,
+  Moon,
 } from 'lucide-react';
 import {
   Bar,
@@ -34,6 +35,8 @@ import {
   UI_TEXT,
 } from '../utils/i18n';
 import { formatSetPerformance } from '../utils/unitConversion';
+import { useLiveQuery } from 'dexie-react-hooks';
+import { db } from '../database/db';
 
 export const Dashboard: React.FC = () => {
   const {
@@ -54,11 +57,71 @@ export const Dashboard: React.FC = () => {
 
   const todayStr = toLocalDateString(new Date());
   const todayMeta = getDateMetadata(todayStr);
-  const todayPlan = weeklySchedule.find(
-    (d) => d.day === todayMeta.dayOfWeek
+
+  // Active Split Support (Matching Calendar Page Logic)
+  // @ts-ignore
+  const activeSplitId = settings.activeSplitId || 'default';
+  // @ts-ignore
+  const currentSplitType = settings.activeSplitType || 'fixed';
+  const savedSplits = useLiveQuery(() => db.workoutSplits.toArray(), [], []) || [];
+  // @ts-ignore
+  const activeSplitData = savedSplits.find(s => s.id === activeSplitId);
+  // @ts-ignore
+  const rotationDays = activeSplitData?.daysData || [];
+
+  // Get Today's Schedule info accurately supporting Rotation and Fixed splits (like CalendarPage)
+  const getDayScheduleInfoForDate = (dateStr: string) => {
+    const meta = getDateMetadata(dateStr);
+
+    if (currentSplitType === 'rotation' && Array.isArray(rotationDays) && rotationDays.length > 0) { 
+      const [y, m, d] = dateStr.split('-').map(Number); 
+      const targetDateObj = new Date(y, m - 1, d); 
+      targetDateObj.setHours(0, 0, 0, 0); 
+      const refDateObj = new Date(2026, 10, 16); 
+      refDateObj.setHours(0, 0, 0, 0); 
+      
+      if (targetDateObj.getTime() < refDateObj.getTime()) { 
+        const standardDaySchedule = weeklySchedule.find((ds) => ds.day === meta.dayOfWeek); 
+        return { 
+          title: standardDaySchedule?.title || (lang === 'ar' ? 'تمرين' : 'Workout'), 
+          workoutType: standardDaySchedule?.workoutType || 'strength', 
+          muscleGroups: standardDaySchedule?.muscleGroups || [], 
+          isRotation: false, 
+          isRest: standardDaySchedule?.workoutType === 'rest',
+        }; 
+      } 
+      const diffTime = targetDateObj.getTime() - refDateObj.getTime(); 
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)); 
+      const totalLen = rotationDays.length; 
+      let rotIndex = diffDays % totalLen; 
+      if (rotIndex < 0) rotIndex += totalLen; 
+      const matchedRotDay = rotationDays[rotIndex]; 
+      if (matchedRotDay) { 
+        return { 
+          title: matchedRotDay.isRest ? (lang === 'ar' ? 'يوم راحة' : 'Rest Day') : matchedRotDay.title, 
+          workoutType: matchedRotDay.isRest ? 'rest' : 'strength', 
+          muscleGroups: matchedRotDay.muscleGroups || [], 
+          isRotation: true, 
+          isRest: matchedRotDay.isRest,
+        }; 
+      } 
+    } 
+    const standardDaySchedule = weeklySchedule.find((d) => d.day === meta.dayOfWeek); 
+    return { 
+      title: standardDaySchedule?.title || (lang === 'ar' ? 'تمرين' : 'Workout'), 
+      workoutType: standardDaySchedule?.workoutType || 'strength', 
+      muscleGroups: standardDaySchedule?.muscleGroups || [], 
+      isRotation: false, 
+      isRest: standardDaySchedule?.workoutType === 'rest',
+    }; 
+  };
+
+  const todayScheduleInfo = useMemo(
+    () => getDayScheduleInfoForDate(todayStr),
+    [todayStr, weeklySchedule, currentSplitType, rotationDays]
   );
 
-  const isRestDay = todayPlan?.workoutType === 'rest';
+  const isRestDay = todayScheduleInfo.isRest;
 
   // البحث عن خطة مخصصة لليوم في التقويم (Put a Plan)
   const todayCalendarPlan = useMemo(
@@ -187,12 +250,14 @@ export const Dashboard: React.FC = () => {
       return;
     }
 
-    if (todayPlan && todayPlan.workoutType !== 'rest') {
+    if (todayScheduleInfo && !todayScheduleInfo.isRest) {
+      // Find matching standard schedule exercise IDs if available
+      const standardDay = weeklySchedule.find((d) => d.day === todayMeta.dayOfWeek);
       await startNewWorkout({
-        workoutType: todayPlan.workoutType,
-        title: todayPlan.title,
-        muscleGroups: todayPlan.muscleGroups,
-        exerciseIds: todayPlan.assignedExerciseIds,
+        workoutType: todayScheduleInfo.workoutType,
+        title: todayScheduleInfo.title,
+        muscleGroups: todayScheduleInfo.muscleGroups,
+        exerciseIds: standardDay?.assignedExerciseIds || [],
         actualDate: todayStr,
       });
       return;
@@ -237,12 +302,7 @@ export const Dashboard: React.FC = () => {
               {todayCalendarPlan ? (
                 <>
                   <span>
-                    {lang === 'ar'
-                      ? `خطة ${translateDayName(
-                          todayMeta.dayOfWeek,
-                          lang
-                        )} المقترحة: `
-                      : `${todayMeta.dayOfWeek}'s Scheduled Plan: `}
+                    {lang === 'ar' ? 'خطة اليوم المقترحة: ' : "Today's Scheduled Plan: "}
                   </span>
                   <span
                     className={`font-semibold ${
@@ -254,15 +314,10 @@ export const Dashboard: React.FC = () => {
                     {todayCalendarPlan.title}
                   </span>
                 </>
-              ) : todayPlan ? (
+              ) : todayScheduleInfo ? (
                 <>
                   <span>
-                    {lang === 'ar'
-                      ? `خطة ${translateDayName(
-                          todayMeta.dayOfWeek,
-                          lang
-                        )} المقترحة: `
-                      : `${todayMeta.dayOfWeek}'s Scheduled Plan: `}
+                    {lang === 'ar' ? 'خطة اليوم النشطة: ' : "Today's Active Plan: "}
                   </span>
                   <span
                     className={`font-semibold ${
@@ -271,7 +326,7 @@ export const Dashboard: React.FC = () => {
                         : 'text-[hsl(76,78%,42%)]'
                     }`}
                   >
-                    {todayPlan.title}
+                    {todayScheduleInfo.title}
                   </span>
                 </>
               ) : null}
@@ -290,17 +345,25 @@ export const Dashboard: React.FC = () => {
               <button
                 onClick={handleStartTodayPlan}
                 disabled={isRestDay && !todayCalendarPlan}
-                className={`w-full sm:w-auto px-5 py-3 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                  isDark
+                className={`w-full sm:w-auto px-5 py-3 rounded-xl font-display font-bold text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+                  isRestDay && !todayCalendarPlan
+                    ? isDark
+                      ? 'bg-[hsl(240,5%,15%)] text-gray-400 border border-[hsl(240,4%,22%)] shadow-none'
+                      : 'bg-slate-200 text-slate-500 border border-slate-300 shadow-none'
+                    : isDark
                     ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)] shadow-[hsl(75,92%,56%)]/15'
                     : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white shadow-[hsl(76,78%,42%)]/15'
                 }`}
               >
-                <Play className="w-4 h-4 fill-current" />
+                {isRestDay && !todayCalendarPlan ? (
+                  <Moon className="w-4 h-4 text-gray-400" />
+                ) : (
+                  <Play className="w-4 h-4 fill-current" />
+                )}
                 <span>
                   {isRestDay && !todayCalendarPlan
                     ? lang === 'ar'
-                      ? 'يوم راحة'
+                      ? 'يوم راحة (Rest Day)'
                       : 'Rest Day'
                     : t.startWorkout}
                 </span>
@@ -518,12 +581,18 @@ export const Dashboard: React.FC = () => {
               onClick={handleStartTodayPlan}
               disabled={isRestDay && !todayCalendarPlan}
               className={`px-5 py-2.5 rounded-xl font-display font-semibold text-sm flex items-center gap-2 shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                isDark
+                isRestDay && !todayCalendarPlan
+                  ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed shadow-none'
+                  : isDark
                   ? 'bg-[hsl(75,92%,56%)] hover:bg-[hsl(75,92%,50%)] text-[hsl(240,10%,9%)]'
                   : 'bg-[hsl(76,78%,42%)] hover:bg-[hsl(76,78%,37%)] text-white'
               }`}
             >
-              <Play className="w-4 h-4 fill-current" />
+              {isRestDay && !todayCalendarPlan ? (
+                <Moon className="w-4 h-4" />
+              ) : (
+                <Play className="w-4 h-4 fill-current" />
+              )}
               <span>
                 {isRestDay && !todayCalendarPlan
                   ? lang === 'ar'
