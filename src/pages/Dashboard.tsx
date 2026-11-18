@@ -54,11 +54,12 @@ export const Dashboard: React.FC = () => {
   const lang = settings.language;
   const t = UI_TEXT[lang];
   const isDark = settings.theme === 'dark';
+  const isArabic = lang === 'ar';
 
   const todayStr = toLocalDateString(new Date());
   const todayMeta = getDateMetadata(todayStr);
 
-  // Active Split Support (Matching Calendar Page Logic)
+  // Active Split Support
   // @ts-ignore
   const activeSplitId = settings.activeSplitId || 'default';
   // @ts-ignore
@@ -69,7 +70,7 @@ export const Dashboard: React.FC = () => {
   // @ts-ignore
   const rotationDays = activeSplitData?.daysData || [];
 
-  // Get Today's Schedule info accurately supporting Rotation and Fixed splits (like CalendarPage)
+  // Get Today's Schedule info accurately supporting Rotation and Fixed splits
   const getDayScheduleInfoForDate = (dateStr: string) => {
     const meta = getDateMetadata(dateStr);
 
@@ -83,7 +84,7 @@ export const Dashboard: React.FC = () => {
       if (targetDateObj.getTime() < refDateObj.getTime()) { 
         const standardDaySchedule = weeklySchedule.find((ds) => ds.day === meta.dayOfWeek); 
         return { 
-          title: standardDaySchedule?.title || (lang === 'ar' ? 'تمرين' : 'Workout'), 
+          title: standardDaySchedule?.title || (isArabic ? 'تمرين' : 'Workout'), 
           workoutType: standardDaySchedule?.workoutType || 'strength', 
           muscleGroups: standardDaySchedule?.muscleGroups || [], 
           isRotation: false, 
@@ -98,7 +99,7 @@ export const Dashboard: React.FC = () => {
       const matchedRotDay = rotationDays[rotIndex]; 
       if (matchedRotDay) { 
         return { 
-          title: matchedRotDay.isRest ? (lang === 'ar' ? 'يوم راحة' : 'Rest Day') : matchedRotDay.title, 
+          title: matchedRotDay.isRest ? (isArabic ? 'يوم راحة' : 'Rest Day') : matchedRotDay.title, 
           workoutType: matchedRotDay.isRest ? 'rest' : 'strength', 
           muscleGroups: matchedRotDay.muscleGroups || [], 
           isRotation: true, 
@@ -108,7 +109,7 @@ export const Dashboard: React.FC = () => {
     } 
     const standardDaySchedule = weeklySchedule.find((d) => d.day === meta.dayOfWeek); 
     return { 
-      title: standardDaySchedule?.title || (lang === 'ar' ? 'تمرين' : 'Workout'), 
+      title: standardDaySchedule?.title || (isArabic ? 'تمرين' : 'Workout'), 
       workoutType: standardDaySchedule?.workoutType || 'strength', 
       muscleGroups: standardDaySchedule?.muscleGroups || [], 
       isRotation: false, 
@@ -123,7 +124,6 @@ export const Dashboard: React.FC = () => {
 
   const isRestDay = todayScheduleInfo.isRest;
 
-  // البحث عن خطة مخصصة لليوم في التقويم (Put a Plan)
   const todayCalendarPlan = useMemo(
     () =>
       completedWorkouts.find(
@@ -132,7 +132,6 @@ export const Dashboard: React.FC = () => {
     [completedWorkouts, todayStr]
   );
 
-  // الجلسات المكتملة فعلياً فقط (بدون الخطط غير المنفذة)
   const actualCompletedWorkouts = useMemo(
     () => completedWorkouts.filter((w) => (w.status as string) !== 'planned'),
     [completedWorkouts]
@@ -143,7 +142,6 @@ export const Dashboard: React.FC = () => {
     []
   );
 
-  // Core KPI Calculations from actual saved workouts
   const stats = useMemo(() => {
     const totalSessions = actualCompletedWorkouts.length;
     const workoutsThisWeek = actualCompletedWorkouts.filter(
@@ -162,7 +160,6 @@ export const Dashboard: React.FC = () => {
     };
   }, [actualCompletedWorkouts, weekRange]);
 
-  // Weekly Activity Chart Data (Mon - Sun)
   const weeklyChartData = useMemo(() => {
     return weekRange.weekDates.map(({ day, dateStr }) => {
       const dayWorkouts = actualCompletedWorkouts.filter(
@@ -186,7 +183,6 @@ export const Dashboard: React.FC = () => {
     });
   }, [actualCompletedWorkouts, weekRange, lang]);
 
-  // Recent Exercise Progression
   const recentProgressions = useMemo(() => {
     if (actualCompletedWorkouts.length === 0) return [];
 
@@ -251,7 +247,6 @@ export const Dashboard: React.FC = () => {
     }
 
     if (todayScheduleInfo && !todayScheduleInfo.isRest) {
-      // Find matching standard schedule exercise IDs if available
       const standardDay = weeklySchedule.find((d) => d.day === todayMeta.dayOfWeek);
       await startNewWorkout({
         workoutType: todayScheduleInfo.workoutType,
@@ -292,7 +287,7 @@ export const Dashboard: React.FC = () => {
               <span>{formatFullDate(todayStr, lang)}</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-display font-bold tracking-tight">
-              {lang === 'ar' ? 'لوحة متابعة التمارين' : 'Personal Training Dashboard'}
+              {isArabic ? 'لوحة متابعة التمارين' : 'Personal Training Dashboard'}
             </h1>
             <p
               className={`text-sm ${
@@ -302,7 +297,7 @@ export const Dashboard: React.FC = () => {
               {todayCalendarPlan ? (
                 <>
                   <span>
-                    {lang === 'ar' ? 'خطة اليوم المقترحة: ' : "Today's Scheduled Plan: "}
+                    {isArabic ? 'خطة اليوم المقترحة: ' : "Today's Scheduled Plan: "}
                   </span>
                   <span
                     className={`font-semibold ${
@@ -317,7 +312,7 @@ export const Dashboard: React.FC = () => {
               ) : todayScheduleInfo ? (
                 <>
                   <span>
-                    {lang === 'ar' ? 'خطة اليوم النشطة: ' : "Today's Active Plan: "}
+                    {isArabic ? 'خطة اليوم النشطة: ' : "Today's Active Plan: "}
                   </span>
                   <span
                     className={`font-semibold ${
@@ -362,9 +357,7 @@ export const Dashboard: React.FC = () => {
                 )}
                 <span>
                   {isRestDay && !todayCalendarPlan
-                    ? lang === 'ar'
-                      ? 'يوم راحة (Rest Day)'
-                      : 'Rest Day'
+                    ? (isArabic ? 'يوم راحة (Rest Day)' : 'Rest Day')
                     : t.startWorkout}
                 </span>
               </button>
@@ -375,7 +368,6 @@ export const Dashboard: React.FC = () => {
 
       {/* 3 KPI SUMMARY CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4">
-        {/* TOTAL SESSIONS */}
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
             isDark
@@ -403,11 +395,10 @@ export const Dashboard: React.FC = () => {
               isDark ? 'text-gray-500' : 'text-slate-400'
             }`}
           >
-            {lang === 'ar' ? 'جلسات مكتملة ومسجلة' : 'Completed workouts saved'}
+            {isArabic ? 'جلسات مكتملة ومسجلة' : 'Completed workouts saved'}
           </p>
         </div>
 
-        {/* THIS WEEK */}
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
             isDark
@@ -435,11 +426,10 @@ export const Dashboard: React.FC = () => {
               isDark ? 'text-gray-500' : 'text-slate-400'
             }`}
           >
-            {lang === 'ar' ? 'خلال الأسبوع الحالي' : 'Recorded this week'}
+            {isArabic ? 'خلال الأسبوع الحالي' : 'Recorded this week'}
           </p>
         </div>
 
-        {/* CARDIO SESSIONS */}
         <div
           className={`p-4 sm:p-5 rounded-xl border ${
             isDark
@@ -467,7 +457,7 @@ export const Dashboard: React.FC = () => {
               isDark ? 'text-gray-500' : 'text-slate-400'
             }`}
           >
-            {lang === 'ar' ? 'إجمالي جلسات الكارديو' : 'Total cardio sessions'}
+            {isArabic ? 'إجمالي جلسات الكارديو' : 'Total cardio sessions'}
           </p>
         </div>
       </div>
@@ -499,7 +489,7 @@ export const Dashboard: React.FC = () => {
               }`}
             >
               <span>
-                {lang === 'ar' ? 'التاريخ:' : 'Date:'}{' '}
+                {isArabic ? 'التاريخ:' : 'Date:'}{' '}
                 <strong
                   className={isDark ? 'text-gray-200' : 'text-slate-900'}
                 >
@@ -511,7 +501,7 @@ export const Dashboard: React.FC = () => {
               </span>
               {actualCompletedWorkouts[0].durationMinutes && (
                 <span>
-                  {lang === 'ar' ? 'المدة:' : 'Duration:'}{' '}
+                  {isArabic ? 'المدة:' : 'Duration:'}{' '}
                   <strong className="font-mono-num">
                     {formatDurationMinutes(
                       actualCompletedWorkouts[0].durationMinutes,
@@ -522,7 +512,7 @@ export const Dashboard: React.FC = () => {
               )}
               {actualCompletedWorkouts[0].workoutType === 'strength' && (
                 <span>
-                  {lang === 'ar' ? 'التمارين:' : 'Exercises:'}{' '}
+                  {isArabic ? 'التمارين:' : 'Exercises:'}{' '}
                   <strong className="font-mono-num">
                     {actualCompletedWorkouts[0].exercises.length}
                   </strong>
@@ -542,7 +532,7 @@ export const Dashboard: React.FC = () => {
             }`}
           >
             <span>
-              {lang === 'ar' ? 'عرض التفاصيل' : 'View Details'}
+              {isArabic ? 'عرض التفاصيل' : 'View Details'}
             </span>
             <ArrowUpRight className="w-4 h-4" />
           </button>
@@ -595,9 +585,7 @@ export const Dashboard: React.FC = () => {
               )}
               <span>
                 {isRestDay && !todayCalendarPlan
-                  ? lang === 'ar'
-                    ? 'يوم راحة'
-                    : 'Rest Day'
+                  ? (isArabic ? 'يوم راحة' : 'Rest Day')
                   : t.startWorkout}
               </span>
             </button>
@@ -609,7 +597,7 @@ export const Dashboard: React.FC = () => {
                   : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-slate-700 hover:bg-[hsl(40,15%,95%)]'
               }`}
             >
-              {lang === 'ar' ? 'استعراض جدول الأسبوع' : 'Explore Weekly Schedule'}
+              {isArabic ? 'استعراض جدول الأسبوع' : 'Explore Weekly Schedule'}
             </button>
           </div>
         </div>
@@ -635,7 +623,7 @@ export const Dashboard: React.FC = () => {
                   isDark ? 'text-gray-400' : 'text-slate-500'
                 }`}
               >
-                {lang === 'ar'
+                {isArabic
                   ? 'عدد المجموعات والجلسات المسجلة فعلياً خلال هذا الأسبوع'
                   : 'Actual recorded sets and sessions completed this week'}
               </p>
@@ -697,12 +685,8 @@ export const Dashboard: React.FC = () => {
                   formatter={(value: unknown, name: unknown) => [
                     String(value),
                     name === 'sets'
-                      ? lang === 'ar'
-                        ? 'المجموعات المكتملة'
-                        : 'Completed Sets'
-                      : lang === 'ar'
-                      ? 'الجلسات'
-                      : 'Workout Sessions',
+                      ? (isArabic ? 'المجموعات المكتملة' : 'Completed Sets')
+                      : (isArabic ? 'الجلسات' : 'Workout Sessions'),
                   ]}
                 />
                 <Bar
@@ -726,7 +710,7 @@ export const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* WEEKLY SCHEDULE OVERVIEW */}
+        {/* WEEKLY SCHEDULE OVERVIEW - UPDATED DYNAMICALLY BASED ON ACTIVE SPLIT / ROTATION */}
         <div
           className={`lg:col-span-5 rounded-xl p-5 border flex flex-col justify-between ${
             isDark
@@ -744,9 +728,9 @@ export const Dashboard: React.FC = () => {
                   isDark ? 'text-gray-400' : 'text-slate-500'
                 }`}
               >
-                {lang === 'ar'
-                  ? 'مرجع تخطيطي — يمكنك التمرين في أي يوم'
-                  : 'Planning reference — train any workout on any day'}
+                {isArabic
+                  ? 'مرجع تخطيطي — يعرض الجدول النشط حالياً'
+                  : 'Planning reference — displays currently active schedule'}
               </p>
             </div>
             <button
@@ -757,60 +741,97 @@ export const Dashboard: React.FC = () => {
                   : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-[hsl(76,78%,42%)] hover:bg-[hsl(40,15%,92%)]'
               }`}
             >
-              {lang === 'ar' ? 'تعديل الجدول' : 'Customize'}
+              {isArabic ? 'تعديل الجدول' : 'Customize'}
             </button>
           </div>
           <div className="space-y-2">
-            {weeklySchedule.map((dayPlan) => {
-              const isToday = dayPlan.day === todayMeta.dayOfWeek;
-              return (
-                <div
-                  key={dayPlan.day}
-                  className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition-colors ${
-                    isToday
-                      ? isDark
-                        ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/40'
-                        : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30'
-                      : isDark
-                      ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,16%)]'
-                      : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span
-                      className={`font-display font-bold w-16 shrink-0 ${
-                        isToday
-                          ? isDark
-                            ? 'text-[hsl(75,92%,56%)]'
-                            : 'text-[hsl(76,78%,42%)]'
-                          : isDark
-                          ? 'text-gray-300'
-                          : 'text-slate-700'
-                      }`}
-                    >
-                      {translateDayName(
-                        dayPlan.day,
-                        lang,
-                        true
-                      )}
-                    </span>
-                    <span
-                      className={`truncate font-medium ${
-                        dayPlan.workoutType === 'rest'
-                          ? 'text-gray-500 italic'
-                          : dayPlan.workoutType === 'cardio'
-                          ? 'text-cyan-400'
-                          : isDark
-                          ? 'text-gray-200'
-                          : 'text-slate-800'
-                      }`}
-                    >
-                      {dayPlan.title}
-                    </span>
+            {currentSplitType === 'rotation' && Array.isArray(rotationDays) && rotationDays.length > 0 ? (
+              rotationDays.map((rotDay: any, index: number) => {
+                const isRest = rotDay.isRest;
+                return (
+                  <div
+                    key={rotDay.id || index}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition-colors ${
+                      isDark
+                        ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,16%)]'
+                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`font-display font-bold w-16 shrink-0 ${
+                          isDark ? 'text-[hsl(75,92%,56%)]' : 'text-[hsl(76,78%,42%)]'
+                        }`}
+                      >
+                        {isArabic ? `اليوم ${index + 1}` : `Day ${index + 1}`}
+                      </span>
+                      <span
+                        className={`truncate font-medium ${
+                          isRest
+                            ? 'text-gray-500 italic'
+                            : isDark
+                            ? 'text-gray-200'
+                            : 'text-slate-800'
+                        }`}
+                      >
+                        {isRest ? (isArabic ? 'يوم راحة' : 'Rest Day') : rotDay.title}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })
+            ) : (
+              weeklySchedule.map((dayPlan) => {
+                const isToday = dayPlan.day === todayMeta.dayOfWeek;
+                return (
+                  <div
+                    key={dayPlan.day}
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg border text-xs transition-colors ${
+                      isToday
+                        ? isDark
+                          ? 'bg-[hsl(75,92%,56%)]/10 border-[hsl(75,92%,56%)]/40'
+                          : 'bg-[hsl(76,78%,42%)]/10 border-[hsl(76,78%,42%)]/30'
+                        : isDark
+                        ? 'bg-[hsl(240,5%,11%)]/60 border-[hsl(240,4%,16%)]'
+                        : 'bg-[hsl(40,15%,95%)] border-[hsl(40,10%,88%)]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <span
+                        className={`font-display font-bold w-16 shrink-0 ${
+                          isToday
+                            ? isDark
+                              ? 'text-[hsl(75,92%,56%)]'
+                              : 'text-[hsl(76,78%,42%)]'
+                            : isDark
+                            ? 'text-gray-300'
+                            : 'text-slate-700'
+                        }`}
+                      >
+                        {translateDayName(
+                          dayPlan.day,
+                          lang,
+                          true
+                        )}
+                      </span>
+                      <span
+                        className={`truncate font-medium ${
+                          dayPlan.workoutType === 'rest'
+                            ? 'text-gray-500 italic'
+                            : dayPlan.workoutType === 'cardio'
+                            ? 'text-cyan-400'
+                            : isDark
+                            ? 'text-gray-200'
+                            : 'text-slate-800'
+                        }`}
+                      >
+                        {dayPlan.title}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
@@ -837,7 +858,7 @@ export const Dashboard: React.FC = () => {
                   : 'bg-[hsl(40,15%,94%)] border-[hsl(40,10%,88%)] text-[hsl(76,78%,42%)] hover:bg-[hsl(40,15%,92%)]'
               }`}
             >
-              {lang === 'ar' ? 'عرض الكل' : 'View All'}
+              {isArabic ? 'عرض الكل' : 'View All'}
             </button>
           </div>
           {actualCompletedWorkouts.length === 0 ? (
@@ -846,7 +867,7 @@ export const Dashboard: React.FC = () => {
                 isDark ? 'text-gray-500' : 'text-slate-400'
               }`}
             >
-              {lang === 'ar'
+              {isArabic
                 ? 'ستظهر أحدث تمارينك المكتملة هنا بمجرد حفظ أول تمرين.'
                 : 'Your recent completed workouts will appear here once recorded.'}
             </div>
@@ -912,8 +933,8 @@ export const Dashboard: React.FC = () => {
                             } border`}
                           >
                             {session.exercises.length}{' '}
-                            {lang === 'ar' ? 'تمارين' : 'ex'} • {totalSets}{' '}
-                            {lang === 'ar' ? 'مجموعات' : 'sets'}
+                            {isArabic ? 'تمارين' : 'ex'} • {totalSets}{' '}
+                            {isArabic ? 'مجموعات' : 'sets'}
                           </span>
                         )}
                       </div>
@@ -961,7 +982,7 @@ export const Dashboard: React.FC = () => {
                   : 'text-[hsl(76,78%,42%)]'
               } hover:underline cursor-pointer`}
             >
-              {lang === 'ar' ? 'تحليل التطور' : 'Full Progress'}
+              {isArabic ? 'تحليل التطور' : 'Full Progress'}
             </button>
           </div>
           {recentProgressions.length === 0 ? (
@@ -970,7 +991,7 @@ export const Dashboard: React.FC = () => {
                 isDark ? 'text-gray-500' : 'text-slate-400'
               }`}
             >
-              {lang === 'ar'
+              {isArabic
                 ? 'سجّل تمارينك لمشاهدة مقارنات الأوزان والعدات بين الجلسات.'
                 : 'Record workouts to track weight and repetition progression across sessions.'}
             </div>
@@ -1010,7 +1031,7 @@ export const Dashboard: React.FC = () => {
                             isDark ? 'text-gray-400' : 'text-slate-500'
                           }
                         >
-                          {lang === 'ar' ? 'الأخير:' : 'Latest:'}
+                          {isArabic ? 'الأخير:' : 'Latest:'}
                         </span>
                         <span
                           className={`font-mono-num font-bold ${
@@ -1036,7 +1057,7 @@ export const Dashboard: React.FC = () => {
                               isDark ? 'text-gray-500' : 'text-slate-400'
                             }
                           >
-                            {lang === 'ar' ? 'السابق:' : 'Prev:'}
+                            {isArabic ? 'السابق:' : 'Prev:'}
                           </span>
                           <span className="font-mono-num">
                             {formatSetPerformance(
@@ -1053,7 +1074,7 @@ export const Dashboard: React.FC = () => {
                             isDark ? 'text-gray-500' : 'text-slate-400'
                           }`}
                         >
-                          {lang === 'ar' ? 'أول جلسة مسجلة' : 'First logged session'}
+                          {isArabic ? 'أول جلسة مسجلة' : 'First logged session'}
                         </span>
                       )}
                     </div>
