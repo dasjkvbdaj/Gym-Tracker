@@ -291,6 +291,9 @@ export const CalendarPage: React.FC = () => {
   const [editingWorkout, setEditingWorkout] =
     useState<WorkoutSession | null>(null);
 
+  const [pendingAddedExerciseIds, setPendingAddedExerciseIds] =
+    useState<string[]>([]);
+
   const [isPlanningMode, setIsPlanningMode] = useState(false);
 
   const [deleteConfirmId, setDeleteConfirmId] =
@@ -438,6 +441,7 @@ export const CalendarPage: React.FC = () => {
     const targetMuscles = selectedDaySchedule.muscleGroups || []; 
     const defaultMuscleGroups = targetMuscles.length > 0 ? targetMuscles : ['Back' as MuscleGroup]; 
     setForgottenMuscleFilter(defaultMuscleGroups[0]); 
+    setPendingAddedExerciseIds([]);
     setIsPlanningMode(true); 
     const newSession: WorkoutSession = { 
       id: generateId('workout'), 
@@ -521,6 +525,7 @@ export const CalendarPage: React.FC = () => {
     const todayStr = toLocalDateString(new Date());
     const isPlan = (session.status as string) === 'planned' || session.actualDate > todayStr;
 
+    setPendingAddedExerciseIds([]);
     setIsPlanningMode(isPlan); 
     setEditingWorkout( 
       JSON.parse(JSON.stringify(session)) as WorkoutSession 
@@ -529,6 +534,7 @@ export const CalendarPage: React.FC = () => {
 
   const handleCloseEdit = () => {
     setEditingWorkout(null);
+    setPendingAddedExerciseIds([]);
     setIsPlanningMode(false);
   };
 
@@ -624,42 +630,13 @@ export const CalendarPage: React.FC = () => {
     setEditingWorkout({ ...editingWorkout, exercises: updatedExercises }); 
   };
 
-  const handleAddForgottenExercise = (exerciseId: string) => {
+  const handleTogglePendingExercise = (exerciseId: string) => {
     if (!editingWorkout || !exerciseId) return;
-
-    const exercise = exercises.find((item) => item.id === exerciseId); 
-    if (!exercise) return; 
-    const alreadyExists = editingWorkout.exercises.some( 
-      (ex) => ex.exerciseId === exerciseId 
-    ); 
-    if (alreadyExists) return; 
-    const isCardio = isCardioExercise(exercise.name, exercise.muscleGroup); 
-    const unit: WeightUnit = exercise.isBodyweight || isCardio ? 'none' : exercise.defaultWeightUnit || settings.preferredWeightUnit; 
-    const newEntry: ExerciseEntry = { 
-      id: generateId('ex_entry'), 
-      exerciseId: exercise.id, 
-      exerciseNameSnapshot: exercise.name, 
-      muscleGroup: exercise.muscleGroup, 
-      targetMuscleSnapshot: exercise.targetMuscle || '', 
-      weightType: unit, 
-      sets: isPlanningMode ? [] : [ 
-        { 
-          id: generateId('set'), 
-          setNumber: 1, 
-          weight: null, 
-          reps: isCardio ? 30 : 10, 
-          completed: true, 
-        }, 
-      ], 
-      caloriesBurned: isCardio ? 0 : undefined, 
-      notes: '', 
-    }; 
-    const groups = editingWorkout.muscleGroups.includes(exercise.muscleGroup) ? editingWorkout.muscleGroups : [...editingWorkout.muscleGroups, exercise.muscleGroup]; 
-    setEditingWorkout({ 
-      ...editingWorkout, 
-      muscleGroups: groups, 
-      exercises: [...editingWorkout.exercises, newEntry], 
-    }); 
+    setPendingAddedExerciseIds((prev) =>
+      prev.includes(exerciseId)
+        ? prev.filter((id) => id !== exerciseId)
+        : [...prev, exerciseId]
+    );
   };
 
   const handleRemoveExercise = (entryId: string) => {
@@ -679,12 +656,63 @@ export const CalendarPage: React.FC = () => {
   const handleSaveWorkout = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!editingWorkout) return;
+
+    const exercisesToAdd: ExerciseEntry[] = [];
+    for (const exId of pendingAddedExerciseIds) {
+      const alreadyInSession = editingWorkout.exercises.some(
+        (ex) => ex.exerciseId === exId
+      );
+      if (alreadyInSession) continue;
+
+      const exercise = exercises.find((item) => item.id === exId);
+      if (!exercise) continue;
+
+      const isCardio = isCardioExercise(exercise.name, exercise.muscleGroup);
+      const unit: WeightUnit =
+        exercise.isBodyweight || isCardio
+          ? 'none'
+          : exercise.defaultWeightUnit || settings.preferredWeightUnit;
+
+      exercisesToAdd.push({
+        id: generateId('ex_entry'),
+        exerciseId: exercise.id,
+        exerciseNameSnapshot: exercise.name,
+        muscleGroup: exercise.muscleGroup,
+        targetMuscleSnapshot: exercise.targetMuscle || '',
+        weightType: unit,
+        sets: isPlanningMode
+          ? []
+          : [
+              {
+                id: generateId('set'),
+                setNumber: 1,
+                weight: null,
+                reps: isCardio ? 30 : 10,
+                completed: true,
+              },
+            ],
+        caloriesBurned: isCardio ? 0 : undefined,
+        notes: '',
+      });
+    }
+
+    const finalExercises = [...editingWorkout.exercises, ...exercisesToAdd];
+    const finalMuscleGroups = Array.from(
+      new Set([
+        ...editingWorkout.muscleGroups,
+        ...exercisesToAdd.map((ex) => ex.muscleGroup),
+      ])
+    );
+
     const sessionToSave: WorkoutSession = {
       ...editingWorkout,
+      exercises: finalExercises,
+      muscleGroups: finalMuscleGroups,
       status: (isPlanningMode ? 'planned' : 'completed') as WorkoutSession['status'],
     };
     await saveHistoricalWorkout(sessionToSave);
     setEditingWorkout(null);
+    setPendingAddedExerciseIds([]);
     setIsPlanningMode(false);
   };
 
@@ -1754,47 +1782,92 @@ export const CalendarPage: React.FC = () => {
                           : 'No available exercises in this muscle group.'}
                       </p>
                     ) : (
-                      availableForgottenExercises.map((exercise) => (
-                        <div
-                          key={exercise.id}
-                          className={`flex items-center justify-between p-2.5 rounded-xl border ${
-                            isDark
-                              ? 'bg-[hsl(240,5%,10%)] border-gray-800'
-                              : 'bg-white border-slate-200'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold">
-                              {exercise.name}
-                            </span>
-                            {exercise.targetMuscle && (
-                              <span
-                                className={`text-[10px] px-1.5 py-0.5 rounded ${
-                                  isDark
-                                    ? 'bg-gray-800 text-[hsl(75,92%,56%)]'
-                                    : 'bg-slate-200 text-slate-800'
-                                }`}
-                              >
-                                🎯 {exercise.targetMuscle}
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              handleAddForgottenExercise(exercise.id)
-                            }
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                      availableForgottenExercises.map((exercise) => {
+                        const isPendingAdded = pendingAddedExerciseIds.includes(
+                          exercise.id
+                        );
+
+                        return (
+                          <div
+                            key={exercise.id}
+                            className={`flex items-center justify-between p-2.5 rounded-xl border ${
                               isDark
-                                ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
-                                : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+                                ? 'bg-[hsl(240,5%,10%)] border-gray-800'
+                                : 'bg-white border-slate-200'
                             }`}
                           >
-                            <Plus className="w-3.5 h-3.5" />
-                            <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
-                          </button>
-                        </div>
-                      ))
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-semibold">
+                                {exercise.name}
+                              </span>
+                              {exercise.targetMuscle && (
+                                <span
+                                  className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                    isDark
+                                      ? 'bg-gray-800 text-[hsl(75,92%,56%)]'
+                                      : 'bg-slate-200 text-slate-800'
+                                  }`}
+                                >
+                                  🎯 {exercise.targetMuscle}
+                                </span>
+                              )}
+                            </div>
+                            {isPendingAdded ? (
+                              <div className="flex items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleTogglePendingExercise(exercise.id)
+                                  }
+                                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                                    isDark
+                                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40'
+                                      : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800 border border-emerald-300'
+                                  }`}
+                                  title={
+                                    lang === 'ar'
+                                      ? 'اضغط لإلغاء الإضافة'
+                                      : 'Click to undo'
+                                  }
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                  <span>
+                                    {lang === 'ar' ? 'تمت الإضافة' : 'Added'}
+                                  </span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleTogglePendingExercise(exercise.id)
+                                  }
+                                  className="p-1.5 rounded-lg text-red-500 hover:bg-red-500/10 cursor-pointer transition-colors"
+                                  title={
+                                    lang === 'ar' ? 'إزالة' : 'Remove'
+                                  }
+                                  aria-label="Remove added exercise"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleTogglePendingExercise(exercise.id)
+                                }
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                                  isDark
+                                    ? 'bg-[hsl(75,92%,56%)]/20 hover:bg-[hsl(75,92%,56%)]/30 text-[hsl(75,92%,56%)] border border-[hsl(75,92%,56%)]/40'
+                                    : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs'
+                                }`}
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>{lang === 'ar' ? 'إضافة' : 'Add'}</span>
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })
                     )}
                   </div>
                 </div>
