@@ -151,6 +151,25 @@ const isCardioExercise = (exerciseName: string, muscleGroup: string) => {
   );
 };
 
+// Groups exercises by muscleGroup while preserving first-seen group order
+const groupExercisesByMuscle = (exerciseList: ExerciseEntry[]): ExerciseEntry[] => {
+  const grouped: ExerciseEntry[] = [];
+  const seenGroups = new Set<string>();
+
+  for (const ex of exerciseList) {
+    if (!seenGroups.has(ex.muscleGroup)) {
+      seenGroups.add(ex.muscleGroup);
+      for (const item of exerciseList) {
+        if (item.muscleGroup === ex.muscleGroup) {
+          grouped.push(item);
+        }
+      }
+    }
+  }
+
+  return grouped;
+};
+
 export const CalendarPage: React.FC = () => {
   const {
     completedWorkouts,
@@ -375,6 +394,7 @@ export const CalendarPage: React.FC = () => {
   const handleCopyWorkoutDetails = (workout: WorkoutSession, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
+    const orderedExercises = groupExercisesByMuscle(workout.exercises);
     const isPlan = (workout.status as string) === 'planned'; 
     let text = `🏋️‍♂️ ${workout.title}\n`; 
     text += `📅 Date: ${formatFullDate(workout.actualDate, lang)}\n`; 
@@ -391,7 +411,7 @@ export const CalendarPage: React.FC = () => {
     } 
     text += `-----------------------------------\n`; 
     let currentGroup = ''; 
-    workout.exercises.forEach((ex) => { 
+    orderedExercises.forEach((ex) => { 
       const exObj = exerciseMap.get(ex.exerciseId); 
       const displayName = exObj?.name || ex.exerciseNameSnapshot; 
       const targetMuscle = exObj?.targetMuscle || ex.targetMuscleSnapshot; 
@@ -527,9 +547,9 @@ export const CalendarPage: React.FC = () => {
 
     setPendingAddedExerciseIds([]);
     setIsPlanningMode(isPlan); 
-    setEditingWorkout( 
-      JSON.parse(JSON.stringify(session)) as WorkoutSession 
-    ); 
+    const clonedSession = JSON.parse(JSON.stringify(session)) as WorkoutSession;
+    clonedSession.exercises = groupExercisesByMuscle(clonedSession.exercises);
+    setEditingWorkout(clonedSession); 
   };
 
   const handleCloseEdit = () => {
@@ -696,12 +716,12 @@ export const CalendarPage: React.FC = () => {
       });
     }
 
-    const finalExercises = [...editingWorkout.exercises, ...exercisesToAdd];
+    const finalExercises = groupExercisesByMuscle([
+      ...editingWorkout.exercises,
+      ...exercisesToAdd,
+    ]);
     const finalMuscleGroups = Array.from(
-      new Set([
-        ...editingWorkout.muscleGroups,
-        ...exercisesToAdd.map((ex) => ex.muscleGroup),
-      ])
+      new Set(finalExercises.map((ex) => ex.muscleGroup))
     );
 
     const sessionToSave: WorkoutSession = {
@@ -1126,6 +1146,7 @@ export const CalendarPage: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 {selectedDateWorkouts.map((workout) => {
+                  const orderedExercises = groupExercisesByMuscle(workout.exercises);
                   const isPlan = (workout.status as string) === 'planned';
                   const isCopied = copiedWorkoutId === workout.id;
 
@@ -1212,7 +1233,7 @@ export const CalendarPage: React.FC = () => {
                       <div className="space-y-3 pt-2 border-t border-inherit">
                         {(() => {
                           let lastGroup: string | null = null;
-                          return workout.exercises.map((ex) => {
+                          return orderedExercises.map((ex) => {
                             const exObj = exerciseMap.get(ex.exerciseId);
                             const displayName =
                               exObj?.name || ex.exerciseNameSnapshot;
